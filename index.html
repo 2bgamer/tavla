@@ -141,6 +141,13 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 #msg:empty{display:none!important}
 #undoRow{display:none!important}
 #chat{position:relative}
+#rxRec{display:none!important;gap:0}
+@media (min-width:700px){#rxRec:not([hidden]){display:flex!important}}
+#rxRec button{min-height:34px;min-width:34px;padding:0 3px;border:0;background:transparent;font-size:19px}
+#bRes{white-space:nowrap}
+.ovch{display:block;width:100%;margin-top:10px;text-align:center;line-height:1.35}
+.ovch small{display:block;font-size:12px;font-weight:500;opacity:.85}
+.ovch.red{border-color:#c0392b!important;color:#c0392b!important;background:var(--surface)!important}
 #ctl{display:flex;gap:6px;align-items:center;margin-left:auto}
 #ctl button{min-height:34px;padding:0 9px;font-size:12.5px;white-space:nowrap}
 #bChip{white-space:nowrap}
@@ -217,11 +224,11 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
     <div class="sh">Seçenekler</div>
     <div class="opts" id="optCpu">
       <div class="og"><span class="ol">Seviye</span><div class="seg" data-grp="lvl"><button data-v="easy">Kolay</button><button data-v="mid">Orta</button><button data-v="hard">Usta</button></div></div>
-      <div class="og"><span class="ol">Maç (kaç puana)</span><div class="seg" data-grp="tgt"><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button><button data-v="0">Sınırsız</button></div></div>
+      <div class="og"><span class="ol">Set sayısı (kaç sayıya)</span><div class="seg" data-grp="tgt"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button></div></div>
       <div class="og"><span class="ol">Hamle süresi</span><div class="seg" data-grp="tlc"><button data-v="0">Kapalı</button><button data-v="20">20 sn</button><button data-v="30">30 sn</button></div></div>
     </div>
     <div class="opts" id="optOn" hidden>
-      <div class="og"><span class="ol">Maç (kaç puana)</span><div class="seg" data-grp="tgt"><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button><button data-v="0">Sınırsız</button></div></div>
+      <div class="og"><span class="ol">Set sayısı (kaç sayıya)</span><div class="seg" data-grp="tgt"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button></div></div>
       <div class="og"><span class="ol">Hamle süresi</span><div class="seg" data-grp="tl"><button data-v="0">Kapalı</button><button data-v="20">20 sn</button><button data-v="30">30 sn</button></div></div>
       <div class="og"><span class="ol">Arkadaşın oda kurduysa</span><div class="jrow"><input id="codeIn" inputmode="numeric" maxlength="4" placeholder="Oda kodu (0000)" autocomplete="off"><button id="bJoin">Katıl</button></div></div>
       <button id="bResume" hidden></button>
@@ -248,12 +255,12 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 <radialGradient id="gI" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#f4eadb"/><stop offset="1" stop-color="#cdbd9b"/></radialGradient>
 <linearGradient id="gR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb9d6" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#a9d3ff" stop-opacity=".55"/></linearGradient>
 <radialGradient id="gB" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#b3544a"/><stop offset=".5" stop-color="#6e2722"/><stop offset="1" stop-color="#34100e"/></radialGradient>
-</defs><g id="bg"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><text id="dbt" x="218" y="158"></text></g></svg><div id="fl"></div></div>
+</defs><g id="bg"></g><g id="mvl" pointer-events="none"></g><g id="opl" pointer-events="none"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><text id="dbt" x="218" y="158"></text></g></svg><div id="fl"></div></div>
     <div id="undoRow"><button id="bSnd" aria-label="Ses aç/kapat">🔊</button><span id="pipc" title="Toplamaya kalan mesafe (pul sayımı)"></span><span class="cnt" id="undoCnt">3x</span><button id="bUndo">Geri Al</button></div>
     <div id="chat">
       <div id="chatHead">
         <div class="tabs"><button class="tab on" id="tChat">Sohbet<span id="bdg" hidden></span></button><button class="tab" id="tHist">Geçmiş</button></div>
-        <span id="rx" hidden><button data-e="👍" aria-label="Beğendim">👍</button><button data-e="😂" aria-label="Güldüm">😂</button><button data-e="🔥" aria-label="Ateş">🔥</button><button data-e="👏" aria-label="Alkış">👏</button><button data-e="😤" aria-label="Sinirlendim">😤</button><button data-e="🫏" aria-label="Eşek">🫏</button><button data-e="🐴" aria-label="At">🐴</button></span><span id="chatHint" hidden></span><button id="rxBtn" aria-label="Hızlı tepki" hidden>😊</button><div id="ctl"></div>
+        <span id="rx" hidden><button data-e="👍" aria-label="Beğendim">👍</button><button data-e="😂" aria-label="Güldüm">😂</button><button data-e="🔥" aria-label="Ateş">🔥</button><button data-e="👏" aria-label="Alkış">👏</button><button data-e="😤" aria-label="Sinirlendim">😤</button><button data-e="🫏" aria-label="Eşek">🫏</button><button data-e="🐴" aria-label="At">🐴</button><button data-e="♂️" aria-label="Mars">♂️</button><button data-e="♀️" aria-label="Venüs">♀️</button></span><span id="chatHint" hidden></span><span id="rxRec" hidden></span><button id="rxBtn" aria-label="Hızlı tepki" hidden>😊</button><div id="ctl"></div>
       </div>
       <div id="chatList" class="scr"></div>
       <div id="histList" class="scr" hidden></div>
@@ -707,8 +714,8 @@ let LVL=lsGet('tavla_lvl','hard');
 if(!['easy','mid','hard'].includes(LVL))LVL='hard';
 const LVLN={easy:'Kolay',mid:'Orta',hard:'Usta'};
 let tmKey='',prevMyTurn=false;
-let TARGET=lsGet('tavla_target',0),TLIM=lsGet('tavla_tl',20),TLC=lsGet('tavla_tlc',20),MUTE=lsGet('tavla_mute',false);
-if(![0,20,30].includes(TLIM))TLIM=20;if(![0,20,30].includes(TLC))TLC=20;
+let TARGET=lsGet('tavla_target',3),TLIM=lsGet('tavla_tl',20),TLC=lsGet('tavla_tlc',20),MUTE=lsGet('tavla_mute',false);
+if(![1,2,3,4,5].includes(TARGET))TARGET=3;if(![0,20,30].includes(TLIM))TLIM=20;if(![0,20,30].includes(TLC))TLC=20;
 let NAME=lsGet('tavla_name','');
 const UP=s=>String(s||'').toLocaleUpperCase('tr');
 const myName=()=>UP(NAME)||'SEN';
@@ -742,16 +749,80 @@ function logRoll(seat,dice,opening){
 /* ---------- bilgisayara karşı ---------- */
 function startLocal(){
   leaveRoom();G.run++;G.autoTok++;G.endTok++;
-  if(matchDone('local')){SC={you:0,cpu:0};lsSet('tavla_score',SC);}
-  let a,b;do{a=r6();b=r6();}while(a===b);
-  const starter=a>b?1:-1;
-  Object.assign(G,{mode:'local',me:1,st:newState(),turn:starter,dice:[a,b],all:[a,b],rolled:true,over:false,hist:[],sel:null,busy:false,auto:false,
-    msg:'',flash:'',last:null,result:null,endTimer:null,un:{w:3,k:3},hl:[],poseKey:'',open:[a,b],...openRoll()});
-  G.hl=logRoll(starter,[a,b],true);
-  G.note='';const openTxt=`Açılış zarı: sen ${a}, bilgisayar ${b}. `+(a>b?'Sen başlıyorsun.':'Bilgisayar başlıyor.');setTimeout(()=>flash(openTxt,3800),0);
+  if(matchDone('local')){SC={you:0,cpu:0};lsSet('tavla_score',SC);G.prevW=0;}
+  const first=(SC.you+SC.cpu)===0||!G.prevW;
+  Object.assign(G,{mode:'local',me:1,st:newState(),turn:1,dice:[],all:[],rolled:false,over:false,hist:[],sel:null,busy:true,auto:false,
+    msg:'',flash:'',last:null,result:null,endTimer:null,un:{w:3,k:3},hl:[],poseKey:'',open:[0,0],openN:[0,0],offN:{w:3,k:3},offer:null,...openRoll()});
+  G.note='';
   $('#tChat').hidden=true;
   showPlay();setTab('h');
-  proceed();
+  if(first){
+    G.op=1;G.open=[0,0];G.turn=1;G.busy=false;opClear();render();opPrompt();
+  }else{
+    G.op=0;opClear();
+    const s=G.prevW;G.turn=s;render();
+    flash(`Önceki seti ${s===1?myName():'BİLGİSAYAR'} kazandı.`,3000);showBanner(150,'KAZANAN BAŞLAR!',true);
+    later(()=>{G.busy=false;proceed();},1500);
+  }
+}
+/* ---------- açılış: sırayla tek zar, büyük atan çift zarla başlar ---------- */
+const OPD={};let opRaf=0,opTok=0;G.opHold=0;
+const opIdx=s=>s===1?0:1;
+const opHeld=()=>performance.now()<(G.opHold||0);
+function opClear(){for(const k in OPD)delete OPD[k];const g=$('#opl');if(g)g.innerHTML='';opTok++;G.opShown=(G.openN||[0,0]).slice();}
+function opPrompt(){
+  if(!G.op||G.over)return;
+  if(G.turn===G.me){showBanner(120,'ZARINI AT!',true);flash(G.open[0]||G.open[1]?'Şimdi sen at! Büyük atan başlar.':'Başlamak için tek zarını at. Büyük atan başlar.',3200);}
+  else flash(`${nameOf(G.turn)} tek zarını atacak…`,3000);
+}
+function opLoop(){
+  const g=$('#opl');if(!g){opRaf=0;return;}
+  const now=performance.now();let s='',live=false;
+  for(const k in OPD){const d=OPD[k];const t=(now-d.t0)/1000,u=Math.min(1,t/.95),e=1-Math.pow(1-u,3),hop=Math.abs(Math.sin(u*Math.PI*2.2))*(1-u)*26;
+    if(u<1)live=true;
+    const x=396+(306-396)*e,R=rotAt(d.Re,d.segs,Math.min(t,.95)),mine=+k===G.me,y=mine?300:100;
+    s+=cubeSVG(x,y,hop,R,13.5,PAL);
+    if(u>=1)s+=`<text x="306" y="${y+(mine?34:-24)}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" stroke="#000" stroke-opacity=".45" stroke-width="3" paint-order="stroke">${(mine?myName():oppName()).replace(/[<&>]/g,'')}</text>`;}
+  g.innerHTML=s;
+  opRaf=live?requestAnimationFrame(opLoop):0;
+}
+function opAnimate(side,v){
+  const rnd=mulberry((Math.random()*1e9)|0),up=side===G.me?.2:-.2;
+  OPD[side]={v,t0:performance.now(),segs:spinPlan(rnd,[],[-1,up],.95),Re:endRot(v,(rnd()-.5)*.6)};
+  try{const ac=audio();if(ac&&ac.state==='running'&&!MUTE){const t=ac.currentTime;[.55,.78,.95].forEach((d,i)=>thump(t+d,.18-.04*i,260,.12));}}catch(e){}
+  if(!opRaf)opRaf=requestAnimationFrame(opLoop);
+}
+// yeni gelen açılış zarlarını canlandır, ikisi de atıldıysa sonucu göster. cb(sonuç): 'next' | 'tie' | starter
+function opSync(cb){
+  const o=G.open||[0,0],n=G.openN||[0,0],sh=G.opShown||[0,0];let any=false;
+  [1,-1].forEach(sd=>{const i=opIdx(sd);if(o[i]&&n[i]!==sh[i]){opAnimate(sd,o[i]);any=true;}if(!o[i])delete OPD[sd];});
+  G.opShown=n.slice();if(!any)opLoop();
+  if(!any)return;
+  const tok=++opTok;G.opHold=performance.now()+(o[0]&&o[1]?2700:1000);
+  later(()=>{if(tok!==opTok)return;
+    if(!(o[0]&&o[1])){render();if(cb)cb('next');return;}
+    const mine=o[opIdx(G.me)],theirs=o[opIdx(-G.me)];
+    if(o[0]===o[1]){showBanner(0,'BERABERE!',true);flash(`İkiniz de ${o[0]} attınız, tekrar atılıyor.`,2600);}
+    else{const st=o[0]>o[1]?1:-1;showBanner(0,nameOf(st)+' BAŞLIYOR!',true);flash(`Açılış zarı: sen ${mine}, ${oppName()} ${theirs}.`,3200);}
+    later(()=>{if(tok!==opTok)return;opClear();G.opHold=0;render();if(cb)cb(o[0]===o[1]?'tie':(o[0]>o[1]?1:-1));},1600);
+  },1050);
+}
+function opThrowLocal(side){
+  const o=G.open.slice(),n=(G.openN||[0,0]).slice(),i=opIdx(side);o[i]=r6();n[i]=Math.max(n[0],n[1])+1;G.open=o;G.openN=n;G.busy=true;render();
+  opSync(r=>{
+    if(G.mode!=='local'||G.over)return;
+    if(r==='next'){G.turn=-1;render();later(()=>{if(G.mode==='local'&&G.op)opThrowLocal(-1);},700);}
+    else if(r==='tie'){G.open=[0,0];G.turn=1;G.busy=false;render();opPrompt();}
+    else{G.op=0;G.open=o;G.turn=r;G.busy=false;render();proceed();}
+  });
+}
+function opThrowOnline(){
+  const i=opIdx(G.me),o=(G.open[0]&&G.open[1])?[0,0]:G.open.slice(),n=(G.openN||[0,0]).slice();
+  o[i]=r6();n[i]=Math.max(n[0],n[1])+1;G.open=o;G.openN=n;
+  if(!o[0]||!o[1]){G.turn=-G.me;pushFields({open:o,openN:n,turn:G.turn,op:1});}
+  else if(o[0]===o[1]){G.turn=1;pushFields({open:o,openN:n,turn:1,op:1});}
+  else{G.op=0;G.turn=o[0]>o[1]?1:-1;pushFields({open:o,openN:n,turn:G.turn,op:0,rolled:false,dice:[],all:[]});}
+  render();opSync(r=>{if(r==='next'||r==='tie'){render();if(G.op)opPrompt();}else{render();notifyTurn();}});
 }
 function endTurn(){
   if(G.over)return;
@@ -799,28 +870,34 @@ function aiTurn(){
 }
 
 /* ---------- ortak oyun akışı ---------- */
-function gameOver(s){
+function gameOver(s,pts0,why){
   G.over=true;G.busy=true;G.sel=null;G.endTimer=null;G.endTok++;G.autoTok++;G.auto=false;
-  const loser=-s,mars=G.st.off[K(loser)]===0,pts=mars?2:1;
-  G.result={winner:s,pts,mars};
+  const loser=-s,mars=pts0?pts0>=2:G.st.off[K(loser)]===0,pts=pts0||(mars?2:1);
+  G.result={winner:s,pts,mars,why:why||''};G.prevW=s;G.pw=s;
+  let owner=false;
   if(G.mode==='local'){
     if(s===1)SC.you+=pts;else SC.cpu+=pts;
-    lsSet('tavla_score',SC);
-    G.msg=s===1?'Kazandın.':'Bilgisayar kazandı.';
-  }else if(s===G.me){
-    const sc=Object.assign({},G.score);sc[myKey()]=(sc[myKey()]||0)+pts;G.score=sc;
-    pushFields({over:true,winner:s,pts,mars,score:sc});
+    lsSet('tavla_score',SC);owner=true;
+  }else if(s===G.me||why){
+    const sc=Object.assign({},G.score),wk=s===1?'w':'k';sc[wk]=(sc[wk]||0)+pts;G.score=sc;owner=true;
+    pushFields({over:true,winner:s,pts,mars,score:sc,pw:s,why:why||'',offer:null});
   }
   G.shownGid=G.gid;
-  render();later(showResult,900);
+  render();later(()=>showResult(owner),900);
 }
-function showResult(){
+let resTok=0;
+function showResult(owner){
   const r=G.result;if(!r)return;
   const local=G.mode==='local',won=r.winner===G.me;
   const sc=local?`${myName()} ${SC.you} – ${SC.cpu} BİLGİSAYAR`:`${myName()} ${G.score[myKey()]||0} – ${G.score[oppKey()]||0} ${oppName()}`;
   const mt=matchDone(local?'local':'online'),T=curTarget();
-  const title=mt?(won?'Maçı kazandın':(local?'Bilgisayar maçı kazandı':'Rakip maçı kazandı')):(won?'Kazandın':(local?'Bilgisayar kazandı':'Rakip kazandı'));
-  showOverlay(`<h2>${title}</h2>${mt?`<p>${T} puanlık maç bitti.</p>`:''}${r.mars?`<p>Mars: ${r.pts} puan.</p>`:''}<p class="sc">${sc}</p><button class="primary" id="ovOk">${mt?'Yeni maç':(local?'Yeni oyun':'Tekrar oyna')}</button><button id="ovNo">Kapat</button>`,local?startLocal:startOnline);
+  const wn=r.winner===G.me?myName():oppName(),ln=r.winner===G.me?oppName():myName();
+  const why=r.why==='resign'?`<p>${ln} çekildi: ${r.pts} sayı.</p>`:r.why==='offer'?`<p>${ln} 1 sayı vererek çekildi.</p>`:(r.mars?`<p>Mars: ${r.pts} sayı.</p>`:'');
+  const title=mt?(won?'Maçı kazandın':`Maçı ${wn} kazandı`):(won?'Seti kazandın':`Seti ${wn} kazandı`);
+  const tok=++resTok;
+  if(mt){showOverlay(`<h2>${title}</h2><p>${T} sayılık maç bitti.</p>${why}<p class="sc">${sc}</p><button class="primary" id="ovOk">Yeni maç</button><button id="ovNo">Kapat</button>`,local?startLocal:startOnline);return;}
+  showOverlay(`<h2>${title}</h2>${why}<p class="sc">${sc}</p><p class="sc">Sonraki set birazdan başlıyor…</p><button class="primary" id="ovOk">Devam</button>`,()=>{if(local)startLocal();else if(owner)startOnline();});
+  later(()=>{if(resTok!==tok)return;if(!$('#overlay').hidden){$('#overlay').hidden=true;if(local)startLocal();else if(owner)startOnline();}},3400);
 }
 function scheduleEnd(ms){
   G.endTimer=true;G.endTok++;const tok=G.endTok;
@@ -831,8 +908,9 @@ function scheduleEnd(ms){
   },ms);
 }
 function doRoll(x,y,sw){
-  if(G.over||G.busy||G.turn!==G.me||G.rolled)return;
+  if(G.over||G.busy||G.turn!==G.me||G.rolled||opHeld())return;
   if(G.mode==='online'&&!G.started)return;
+  if(G.op){if(G.mode==='local')opThrowLocal(G.me);else opThrowOnline();return;}
   const a=r6(),b=r6();
   G.all=a===b?[a,a,a,a]:[a,b];G.dice=G.all.slice();G.rolled=true;G.hist=[];G.last=null;G.sel=null;
   G.hl=logRoll(G.me,[a,b]);
@@ -849,7 +927,7 @@ function centerBtn(){
     if(!G.started)return {label:'Oyunu Başlat',en:true};
     if(G.over)return {label:'Tekrar Oyna',en:true};
   }
-  if(G.turn===G.me&&!G.rolled&&!G.busy&&!G.over)return {label:'Zar At',en:true};
+  if(G.turn===G.me&&!G.rolled&&!G.busy&&!G.over&&!opHeld())return {label:'Zar At',en:true};
   return null;
 }
 function centerAction(){
@@ -981,8 +1059,9 @@ function applyRoom(d){
   G.over=!!d.over;G.started=!!d.started;G.seats=Object.assign({w:null,k:null},d.seats);
   G.last=Array.isArray(d.last)?d.last:(d.last&&typeof d.last.to!=='undefined'?[{f:null,t:d.last.to,by:d.last.by}]:null);G.score=Object.assign({w:0,k:0},d.score);
   G.target=d.target||0;G.tl=d.tl||0;
-  G.result=d.over?{winner:d.winner,pts:d.pts,mars:d.mars}:null;
-  G.nm=Object.assign({w:'',k:''},d.nm);G.open=d.open||[0,0];G.hl=Array.isArray(d.hl)?d.hl:[];G.un=Object.assign({w:3,k:3},d.un);
+  G.result=d.over?{winner:d.winner,pts:d.pts,mars:d.mars,why:d.why||''}:null;
+  G.op=d.op||0;G.pw=d.pw||0;G.offer=d.offer||null;G.offN=Object.assign({w:3,k:3},d.offN);
+  G.nm=Object.assign({w:'',k:''},d.nm);G.open=d.open||[0,0];G.openN=d.openN||[0,0];G.hl=Array.isArray(d.hl)?d.hl:[];G.un=Object.assign({w:3,k:3},d.un);
   G.sw=(d.rp&&d.rp.sw&&typeof d.rp.sw.sx==='number')?d.rp.sw:null;G.rollPos=(d.rp&&typeof d.rp.x==='number')?(d.rp.s===G.me?{x:d.rp.x,y:d.rp.y}:{x:d.rp.x,y:400-d.rp.y}):{x:218,y:200};
   G.flip=!!(d.rp&&d.rp.s!==undefined&&d.rp.s!==G.me);G.seed=(d.rp&&d.rp.sd)|0||1;
 }
@@ -999,12 +1078,15 @@ function onRoom(snap){
   G.loaded=true;G.rev=d.rev||0;
   applyRoom(d);
   const gid=d.gid||0;
-  G.hist=[];G.sel=null;if(!G.endTimer&&!G.auto)G.busy=false;
+  G.hist=[];G.sel=null;if(!G.endTimer&&!G.auto&&!G.opAnim)G.busy=false;
   const fresh=gid!==G.gid;
   G.gid=gid;
-  if(fresh&&d.started&&!d.over)flash(openingNote(),5000);
+  if(fresh&&d.started&&!d.over&&!d.rolled&&!(d.last&&d.last.length))setIntro();
+  else if(d.started&&!d.over){const o=G.open||[0,0],sh=G.opShown||[0,0];
+    const n=G.openN||[0,0];if(n[0]!==sh[0]||n[1]!==sh[1]||(!o[0]&&!o[1]&&Object.keys(OPD).length)){opSync(r=>{render();if(r==='next'||r==='tie'){if(G.op)opPrompt();}else notifyTurn();});}}
   render();notifyTurn();onlineProceed();maybeSkip();
-  if(G.over&&G.shownGid!==G.gid){G.shownGid=G.gid;later(showResult,900);}
+  offerCheck();
+  if(G.over&&G.shownGid!==G.gid){G.shownGid=G.gid;later(()=>showResult(false),900);}
 }
 let skipKey='';
 function maybeSkip(){
@@ -1029,15 +1111,21 @@ function endTurnOnline(){
 }
 function startOnline(){
   if(G.mode!=='online'||!(G.seats.w&&G.seats.k))return;
-  let a,b;do{a=r6();b=r6();}while(a===b);
-  const st=newState(),gid=(G.gid||0)+1,starter=a>b?1:-1;
-  const keep=matchDone('online')?{w:0,k:0}:G.score;
+  if(G.started&&!G.over)return;
+  const md=matchDone('online'),keep=md?{w:0,k:0}:G.score;
+  const newMatch=md||((keep.w||0)+(keep.k||0))===0||!G.pw;
+  const st=newState(),gid=(G.gid||0)+1;
+  let a=0,b=0,starter,op=0;
+  if(newMatch){starter=1;op=1;}else starter=G.pw;
+  opClear();
   G.endTok++;G.autoTok++;
-  Object.assign(G,{score:keep,st,turn:starter,dice:[a,b],all:[a,b],rolled:true,started:true,over:false,result:null,last:null,hist:[],sel:null,busy:false,auto:false,endTimer:null,gid,open:[a,b],shownGid:-1,un:{w:3,k:3},poseKey:'',...openRoll()});
-  G.hl=logRoll(starter,[a,b],true);
-  pushFields({b:st.b,bar:st.bar,off:st.off,turn:G.turn,dice:G.dice,all:G.all,rolled:true,started:true,over:false,winner:0,last:null,score:keep,gid,open:[a,b],hl:G.hl,un:G.un,rp:{x:G.rollPos.x,y:G.rollPos.y,s:starter,sd:G.seed}});
-  flash(openingNote(),5000);
-  render();onlineProceed();
+  Object.assign(G,{score:keep,st,turn:starter,dice:[],all:[],rolled:false,started:true,over:false,result:null,last:null,hist:[],sel:null,busy:false,auto:false,endTimer:null,gid,open:[a,b],openN:[0,0],op,shownGid:-1,un:{w:3,k:3},offN:{w:3,k:3},offer:null,poseKey:'',hl:[],...openRoll()});
+  pushFields({b:st.b,bar:st.bar,off:st.off,turn:starter,dice:[],all:[],rolled:false,started:true,over:false,winner:0,last:null,score:keep,gid,open:[a,b],openN:[0,0],op,hl:[],un:G.un,offN:G.offN,offer:null,why:'',rp:{x:218,y:200,s:starter,sd:G.seed,sw:null}});
+  render();setIntro();
+}
+function setIntro(){
+  if(G.op){opClear();G.opShown=[0,0];opSync(r=>{render();if(r==='next'||r==='tie'){if(G.op)opPrompt();}else notifyTurn();});opPrompt();}
+  else{flash(`Önceki seti ${G.turn===G.me?myName():oppName()} kazandı.`,3000);showBanner(150,'KAZANAN BAŞLAR!',true);}
 }
 function enterRoom(code,ref,me){
   leaveRoom();G.run++;G.autoTok++;G.endTok++;
@@ -1454,6 +1542,94 @@ function tagsPaint(){
   else if(opp){const t=('SIRA '+locSfx(oppName())).replace(/[<&>]/g,'');s+=`<text class="sira" x="${sx(t,oppName())}" y="-18.5">${t}</text>`;}
   g.innerHTML=s;
 }
+/* ---------- pul hareket animasyonu: rakip ve bilgisayar hamleleri gözle izlenebilsin ---------- */
+const BS=n=>Math.min(26,150/Math.max(n,1));
+const MV={q:[],cur:null,hide:{},prevLen:0,prevFirst:'',init:false,raf:0};
+const MVDUR=420;
+function ptXY(i,j,c){ // tahta indeksi i, yığında j. pul, yığın c pul
+  const p=G.me===1?i:23-i,x=PX(p)+14,top=PTOP(p),step=c<=6?25:125/(c-1);
+  return [x,top?8+13.5+j*step:392-13.5-j*step];
+}
+function mvEndXY(e){ // hareketin bittiği yer (son durum)
+  const st=G.st,s=e.by;
+  if(e.t==='off'){const n=st.off[K(s)];const j=Math.max(0,n-1-(MV.pend['o'+s]||0));return s===G.me?[19,390-(j+1)*8.5+3.5]:[19,10+j*8.5+3.5];}
+  const c=Math.abs(st.b[e.t]);const j=Math.max(0,c-1-(MV.pend['p'+e.t]||0));return ptXY(e.t,j,c);
+}
+function mvStartXY(e){ // hareketin başladığı yer (pul çıkmadan önceki yığının tepesi)
+  const st=G.st,s=e.by;
+  if(e.f==='bar'){const n=st.bar[K(s)];return s===G.me?[218,173-n*BS(n+1)]:[218,227+n*BS(n+1)];}
+  const c=Math.abs(st.b[e.f]*(Math.sign(st.b[e.f])===s?1:0));return ptXY(e.f,c,c+1);
+}
+function mvFeed(){
+  const L=Array.isArray(G.last)?G.last:[],first=L.length?JSON.stringify(L[0]):'';
+  if(!MV.init||RM){MV.init=true;MV.prevLen=L.length;MV.prevFirst=first;return;}
+  if(L.length<MV.prevLen){ // geri alındı: animasyonları bırak
+    MV.q=[];MV.hide={};MV.cur=null;cancelAnimationFrame(MV.raf);const g=$('#mvl');if(g)g.innerHTML='';
+    MV.prevLen=L.length;MV.prevFirst=first;return;}
+  if(first!==MV.prevFirst&&MV.prevLen>0){MV.prevLen=0;}
+  if(!L.length){MV.prevLen=0;MV.prevFirst='';return;}
+  for(let k=MV.prevLen;k<L.length;k++){const e=L[k];if(!e||typeof e.t==='undefined')continue;
+    const key=e.t==='off'?'o'+e.by:'p'+e.t;MV.hide[key]=(MV.hide[key]||0)+1;MV.q.push({e,key});}
+  MV.prevLen=L.length;MV.prevFirst=first;
+  if(MV.q.length&&!MV.cur)mvNext();
+}
+MV.pend={};
+function mvNext(){
+  const it=MV.q.shift();if(!it){MV.cur=null;$('#mvl').innerHTML='';return;}
+  // sonraki (henüz başlamamış) hamlelerin hedefleri yığının üstünde ayrılır
+  MV.pend={};for(const o of MV.q)MV.pend[o.key]=(MV.pend[o.key]||0)+1;
+  MV.hide[it.key]=(MV.hide[it.key]||1);
+  it.a=mvStartXY(it.e);it.b=mvEndXY(it.e);it.t0=performance.now();it.light=it.e.by===G.me;
+  MV.cur=it;cancelAnimationFrame(MV.raf);MV.raf=requestAnimationFrame(mvFrame);
+}
+function mvFrame(now){
+  const it=MV.cur;if(!it)return;
+  const u=Math.min(1,(now-it.t0)/MVDUR),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  const x=it.a[0]+(it.b[0]-it.a[0])*e,y=it.a[1]+(it.b[1]-it.a[1])*e,lift=Math.sin(Math.PI*u);
+  const sc=1+.14*lift;
+  $('#mvl').innerHTML=`<ellipse cx="${(x+3+6*lift).toFixed(1)}" cy="${(y+5+8*lift).toFixed(1)}" rx="${(13*sc).toFixed(1)}" ry="${(11*sc).toFixed(1)}" fill="#000" opacity="${(.35-.15*lift).toFixed(2)}"/>`+
+    `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${sc.toFixed(3)}) translate(${(-x).toFixed(1)} ${(-y).toFixed(1)})">${checker(x,y,it.light)}</g>`;
+  if(u<1){MV.raf=requestAnimationFrame(mvFrame);return;}
+  MV.hide[it.key]=Math.max(0,(MV.hide[it.key]||1)-1);if(!MV.hide[it.key])delete MV.hide[it.key];
+  MV.cur=null;
+  if(MV.q.length)mvNext();else{$('#mvl').innerHTML='';}
+  render();
+}
+/* ---------- setten çekilme ---------- */
+function canResign(){return !!(G.mode&&!G.over&&G.turn===G.me&&(G.mode==='local'||G.started)&&!G.op&&!opHeld()&&!G.auto&&!(G.offer&&!G.offer.ans));}
+function resignMenu(){
+  if(!canResign()){flash('Çekilme teklifini kendi sıranda yapabilirsin.',2200);return;}
+  const left=(G.offN||{})[myKey()]??3;
+  showOverlay(`<h2>Setten çekil</h2><p>Bu seti bitirmek için bir seçim yap.</p>
+   <button class="primary ovch" id="ovOk" ${left>0?'':'disabled'}>1 sayı teklif et<small>Rakip kabul ederse seti 1 sayıyla kaybedersin · kalan hak: ${left}</small></button>
+   <button class="ovch red" id="ovR2">2 sayı ver, hemen çekil<small>Mars gibi sayılır, rakibe sorulmaz</small></button>
+   <button id="ovNo">Vazgeç</button>`,offerOne);
+}
+function offerOne(){
+  if(!canResign())return;
+  const k=myKey();G.offN=Object.assign({w:3,k:3},G.offN);if(G.offN[k]<=0)return;G.offN[k]--;
+  if(G.mode==='local'){
+    G.busy=true;flash('Teklif bilgisayara iletildi…',1500);render();
+    later(()=>{
+      const eq=(typeof NNET!=='undefined'&&NNET)?nnEval(G.st,-1):0;
+      G.busy=false;
+      if(eq<1){gameOver(-1,1,'offer');}
+      else{flash('BİLGİSAYAR teklifini reddetti, oyun devam ediyor.',2600);render();humanProceed();}
+    },1200);
+    return;
+  }
+  G.offer={by:G.me,id:(Math.random()*1e9)|0,ans:''};
+  pushFields({offer:G.offer,offN:G.offN});flash('Teklif gönderildi, cevap bekleniyor…',4000);render();
+}
+let offShown=0,offAnsShown=0;
+function offerCheck(){
+  const o=G.offer;if(!o||G.over)return;
+  if(o.by!==G.me&&!o.ans&&offShown!==o.id){offShown=o.id;
+    showOverlay(`<h2>Çekilme teklifi</h2><p><b>${oppName()}</b> bu seti <b>1 sayı</b> vererek bitirmek istiyor.</p><p class="sc">Kabul edersen seti 1 sayıyla kazanırsın. Reddedersen oyun devam eder.</p><button class="primary" id="ovOk">Kabul et (+1 sayı)</button><button id="ovRej">Reddet, oynamaya devam</button>`,
+      ()=>{if(G.over)return;gameOver(G.me,1,'offer');});
+  }
+  if(o.by===G.me&&o.ans==='no'&&offAnsShown!==o.id){offAnsShown=o.id;flash(`${oppName()} teklifini reddetti, oyun devam ediyor.`,2800);G.offer=null;pushFields({offer:null});render();}
+}
 function hintText(){return G.dice.length<G.all.length?'Kalan zar için parlayan bir pula dokun.':'Parlayan bir pul seç, sonra yeşil yere dokun.';}
 function msgText(){
   if(G.flash)return G.flash;
@@ -1533,11 +1709,15 @@ function render(){
     }
   }
   let emK=0;
+  mvFeed();
+  const hideN=k=>MV.hide[k]||0;
   for(let p=0;p<24;p++){
     const v=st.b[IDX(me,p)]*me;if(!v)continue;
     const c=Math.abs(v),light=v>0,x=PX(p),top=PTOP(p);
     const step=c<=6?25:125/(c-1);
+    const hid=hideN('p'+IDX(me,p));
     for(let j=0;j<c;j++){
+      if(j>=c-hid)continue;
       const cy=top?8+13.5+j*step:392-13.5-j*step;
       h+=checker(x+14,cy,light);
       if(light?burnMe:burnOp)h+=tint(x+14,cy,emDel[emK++]||'');
@@ -1545,7 +1725,7 @@ function render(){
     }
   }
   const mb=st.bar[K(me)],ob=st.bar[K(-me)];
-  const bs=n=>Math.min(26,150/Math.max(n,1));
+  const bs=BS;
   for(let j=0;j<mb;j++){
     const cy=173-j*bs(mb);
     if(burnMe)h+=halo(218,cy);
@@ -1554,8 +1734,8 @@ function render(){
     if(j===mb-1&&(srcs.has('bar')||sel==='bar'))h+=`<circle class="ring" cx="218" cy="${cy}" r="14.5"/>`;
   }
   for(let j=0;j<ob;j++){const cy=227+j*bs(ob);if(burnOp)h+=halo(218,cy);h+=checker(218,cy,false);if(burnOp)h+=tint(218,cy,'');}
-  for(let j=0;j<st.off[K(me)];j++)h+=`<rect x="8" y="${390-(j+1)*8.5}" width="22" height="7" rx="2" fill="url(#gI)" stroke="#a89878"/>`;
-  for(let j=0;j<st.off[K(-me)];j++)h+=`<rect x="8" y="${10+j*8.5}" width="22" height="7" rx="2" fill="url(#gB)" stroke="#1c0706"/>`;
+  for(let j=0;j<st.off[K(me)]-hideN('o'+me);j++)h+=`<rect x="8" y="${390-(j+1)*8.5}" width="22" height="7" rx="2" fill="url(#gI)" stroke="#a89878"/>`;
+  for(let j=0;j<st.off[K(-me)]-hideN('o'+(-me));j++)h+=`<rect x="8" y="${10+j*8.5}" width="22" height="7" rx="2" fill="url(#gB)" stroke="#1c0706"/>`;
   for(let p=0;p<24;p++){
     const x=PX(p),top=PTOP(p);
     h+=`<rect data-k="pt" data-i="${p}" x="${x}" y="${top?6:204}" width="28" height="190" fill="transparent"/>`;
@@ -1620,7 +1800,7 @@ function render(){
 function subText(){
   const p=[],T=curTarget();
   if(G.mode&&G.st)p.push(`Kalan ${pips(G.st,G.me)}–${pips(G.st,-G.me)}`);
-  if(T>0)p.push(`${T} puana`);
+  if(T>0)p.push(`${T} sayıya`);
   if(G.deadline)p.push('⏱ '+Math.max(0,Math.ceil((G.deadline-Date.now())/1000)));
   return p.join(' · ');
 }
@@ -1633,7 +1813,7 @@ const tlNow=()=>G.mode==='online'?(G.tl||0):(G.mode==='local'?TLC:0);
 let tmDbl=false;
 function timerSync(){
   const tl=tlNow(),mine=G.turn===G.me;
-  const active=!!G.mode&&!G.over&&tl>0&&(G.mode==='local'||G.started);
+  const active=!!G.mode&&!G.over&&!G.op&&tl>0&&(G.mode==='local'||G.started);
   const show=active&&(mine||G.mode==='online');
   const key=show?(G.run+':'+G.gid+':'+G.turn+':'+G.mode):'';
   if(key!==tmKey){tmKey=key;tmDbl=false;G.dlLen=tl*1000;G.dlMine=mine;G.deadline=show?Date.now()+G.dlLen:0;}
@@ -1730,7 +1910,7 @@ function setTab(t){
   $('#chatForm').hidden=t!=='c';
   $('#histList').hidden=t!=='h';
   const rxOn=t==='c'&&G.mode==='online';
-  $('#chatHint').hidden=true;$('#rxBtn').hidden=!rxOn;$('#rx').hidden=true;
+  $('#chatHint').hidden=true;$('#rxBtn').hidden=!rxOn;$('#rx').hidden=true;$('#rxRec').hidden=!rxOn||!RXR.length;
   if(t==='c'){CH.seen=Math.max(CH.seen,chatTop());CH.unread=0;chatPaint();}
   else histPaint(true);
 }
@@ -1840,15 +2020,22 @@ $('#bJoin').onclick=()=>joinRoom($('#codeIn').value.trim());
 $('#codeIn').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4);});
 $('#bBack').onclick=showHome;
 $('#bUndo').onclick=undo;
+$('#ctl').insertAdjacentHTML('afterbegin','<button id="bRes" aria-label="Setten çekil">🏳️ Çekil</button>');
+$('#bRes').onclick=resignMenu;
 $('#ctl').appendChild($('#bSnd'));$('#ctl').appendChild($('#bUndo'));
 $('#rxBtn').onclick=e=>{e.stopPropagation();$('#rx').hidden=!$('#rx').hidden;};
 document.addEventListener('click',e=>{if(!e.target.closest('#rx')&&!e.target.closest('#rxBtn')){const r=$('#rx');if(r)r.hidden=true;}});
 $('#bSnd').onclick=()=>{MUTE=!MUTE;lsSet('tavla_mute',MUTE);render();if(!MUTE){audio();pingSound();}};
-$('#rx').addEventListener('click',async e=>{
-  const b=e.target.closest('button');if(!b||!ROOM)return;
-  const em=b.dataset.e;floatEmoji(em,true);$('#rx').hidden=true;
+let RXR=lsGet('tavla_rxr',[]);if(!Array.isArray(RXR))RXR=[];
+function rxRecPaint(){const r=$('#rxRec');if(r)r.innerHTML=RXR.slice(0,3).map(e=>`<button data-e="${e}">${e}</button>`).join('');}
+async function sendRx(em){
+  if(!ROOM||!em)return;floatEmoji(em,true);$('#rx').hidden=true;
+  RXR=[em].concat(RXR.filter(x=>x!==em)).slice(0,3);lsSet('tavla_rxr',RXR);rxRecPaint();
   try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:NAME||'',t:Date.now(),text:em,r:1});}catch(err){}
-});
+}
+$('#rx').addEventListener('click',e=>{const b=e.target.closest('button');if(b)sendRx(b.dataset.e);});
+$('#rxRec').addEventListener('click',e=>{const b=e.target.closest('button');if(b)sendRx(b.dataset.e);});
+rxRecPaint();
 function segSync(){
   document.querySelectorAll('.seg').forEach(g=>{
     const cur=String(g.dataset.grp==='lvl'?LVL:g.dataset.grp==='tgt'?TARGET:g.dataset.grp==='tlc'?TLC:TLIM);
@@ -1873,9 +2060,14 @@ $('#bChip').onclick=()=>{
     catch(e){flash('Oda kodu: '+G.code);}
   }else{LVL=LVL==='easy'?'mid':LVL==='mid'?'hard':'easy';lsSet('tavla_lvl',LVL);segSync();render();}
 };
-$('#bNew').onclick=()=>showOverlay('<h2>Yeni oyun?</h2><p>Mevcut oyun kaybolacak.</p><button class="primary" id="ovOk">Evet, yeni oyun</button><button id="ovNo">Vazgeç</button>',startLocal);
-$('#bHelp').onclick=()=>showOverlay('<h2>Nasıl oynanır?</h2><p>Açık renkli pullar senin; tahtayı her zaman kendi tarafından görürsün. Pulların saat yönünde ilerler. Amaç, 15 pulunu önce sol alttaki eve getirip sonra tahtadan toplamaktır.</p><p>Sıra sendeyken tahtanın herhangi bir yerine dokun, zarlar orada atılır. İlk hamlede parlayan bir pula, ardından yeşil işaretli yere dokun; pulun gidebileceği tek yer varsa hemen oynanır. Sonraki hamlelerde parlayan pula dokunman yeter, kalan zar otomatik oynanır. Tek bir oynanabilir sonuç varsa hamleler kendiliğinden oynanır. Tek duran rakip pulu vurabilirsin; vurulan pul ortadaki çubuğa gider ve önce o içeri girmelidir. Rakibin 2 veya daha fazla pulu olan noktaya gidemezsin. Çift zar 4 hamle verir. Rakip hiç pul toplamadan oyun biterse mars olur (2 puan).</p><p>Her oyunda 3 kez geri alabilirsin. Üstteki düğmeye basarak bilgisayarın seviyesini (Kolay, Orta, Usta) değiştirebilirsin. Soldaki hoparlör düğmesi sesi kapatır; yanındaki "Kalan" yazısı iki tarafın toplamaya kalan mesafesidir. Rakibin son hamlesi sarı çerçeveyle gösterilir (kesik çizgi: çıktığı yer). Maç kaç puana oynanıyorsa üstte görünür. Online oyunda sohbet başlığındaki simgelerle hızlı tepki gönderebilirsin; tahtanın altında (rakipte üstünde) yanan neon çubuk hamle süreni gösterir; süre dolarsa oyun senin yerine orta seviyede oynar. Çift atınca bir de komik yazı çıkar.</p><button class="primary" id="ovOk">Tamam</button>');
-document.addEventListener('click',e=>{if(e.target.id==='ovNo')$('#overlay').hidden=true;});
+$('#bNew').onclick=()=>showOverlay('<h2>Yeni maç?</h2><p>Mevcut maç ve skor sıfırlanacak.</p><button class="primary" id="ovOk">Evet, yeni maç</button><button id="ovNo">Vazgeç</button>',()=>{SC={you:0,cpu:0};lsSet('tavla_score',SC);G.prevW=0;startLocal();});
+$('#bHelp').onclick=()=>showOverlay('<h2>Nasıl oynanır?</h2><p>Açık renkli pullar senin; tahtayı her zaman kendi tarafından görürsün. Pulların saat yönünde ilerler. Amaç, 15 pulunu önce sol alttaki eve getirip sonra tahtadan toplamaktır.</p><p>Sıra sendeyken tahtanın herhangi bir yerine dokun, zarlar orada atılır. İlk hamlede parlayan bir pula, ardından yeşil işaretli yere dokun; pulun gidebileceği tek yer varsa hemen oynanır. Sonraki hamlelerde parlayan pula dokunman yeter, kalan zar otomatik oynanır. Tek bir oynanabilir sonuç varsa hamleler kendiliğinden oynanır. Tek duran rakip pulu vurabilirsin; vurulan pul ortadaki çubuğa gider ve önce o içeri girmelidir. Rakibin 2 veya daha fazla pulu olan noktaya gidemezsin. Çift zar 4 hamle verir. Rakip hiç pul toplamadan set biterse mars olur (2 sayı).</p><p>İlk sette oyuncular sırayla birer tek zar atar; büyük atan çift zarla oyuna başlar (eşitse tekrar atılır). Sonraki setlere bir önceki seti kazanan başlar. Maç kaç sayıya oynanıyorsa (1–5) o sayıya ilk ulaşan kazanır; set bitince sıradaki set kendiliğinden başlar. 🏳️ Çekil düğmesiyle sıran geldiğinde rakibe 1 sayı teklif edebilirsin (her sette en fazla 3 kez; rakip kabul ederse set biter) ya da 2 sayı verip hemen çekilebilirsin.</p><p>Her oyunda 3 kez geri alabilirsin. Üstteki düğmeye basarak bilgisayarın seviyesini (Kolay, Orta, Usta) değiştirebilirsin. Soldaki hoparlör düğmesi sesi kapatır; yanındaki "Kalan" yazısı iki tarafın toplamaya kalan mesafesidir. Rakibin son hamlesi sarı çerçeveyle gösterilir (kesik çizgi: çıktığı yer). Maçın kaç sayıya oynandığı üstte görünür. Online oyunda sohbet başlığındaki simgelerle hızlı tepki gönderebilirsin; tahtanın altında (rakipte üstünde) yanan neon çubuk hamle süreni gösterir; süre dolarsa oyun senin yerine orta seviyede oynar. Çift atınca bir de komik yazı çıkar.</p><button class="primary" id="ovOk">Tamam</button>');
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('button');const id=b&&b.id;
+  if(id==='ovNo')$('#overlay').hidden=true;
+  if(id==='ovR2'){$('#overlay').hidden=true;if(canResign())gameOver(-G.me,2,'resign');}
+  if(id==='ovRej'){$('#overlay').hidden=true;const o=G.offer;if(o&&!o.ans){G.offer=Object.assign({},o,{ans:'no'});pushFields({offer:G.offer});}}
+});
 $('#chatForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const i=$('#chatIn'),t=i.value.trim().slice(0,200);
@@ -1980,7 +2172,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610181820';
+const APP_VER='202610201647';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
