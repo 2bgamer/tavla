@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "games": {
+      ".read": true,
+      ".write": true
+    },
+    "users": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['pts', 'w', 'l'])",
+        "pts": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && (data.exists() ? newData.val() - data.val() <= 25 : newData.val() <= 500)"
+        },
+        "w": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "l": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 14" }
+      }
+    }
+  }
+}
