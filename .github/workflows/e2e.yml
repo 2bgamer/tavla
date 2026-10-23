@@ -10,7 +10,7 @@ permissions:
 jobs:
   e2e:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.56 ubuntu-latest (26.04) üzerinde tarayıcı kuramıyor
     timeout-minutes: 20
     strategy:
       fail-fast: false
