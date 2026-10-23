@@ -223,8 +223,8 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 .hx{position:relative;display:flex;flex-direction:column;align-items:center;padding-top:6px}
 .hxi{position:absolute;top:0;right:0;display:flex;gap:8px;z-index:1}
 .hxi .ic{width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--surface) 70%,transparent);border:1.5px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.25)}
-#home h1.logo{position:relative;margin:34px 0 0;padding:0 26px;text-align:center;line-height:.95}
-.logo .lg-t{display:inline-block;font-family:"Fredoka",var(--display);font-weight:700;font-size:clamp(36px,11.2vw,52px);white-space:nowrap;letter-spacing:-.01em;transform:rotate(-3deg);
+#home h1.logo{position:relative;margin:34px 0 0;padding:0 6px;max-width:100%;text-align:center;line-height:.95}
+.logo .lg-t{display:inline-block;font-family:"Fredoka",var(--display);font-weight:700;font-size:clamp(30px,9.8vw,50px);white-space:nowrap;letter-spacing:-.01em;transform:rotate(-3deg);
   background:linear-gradient(180deg,#fff3a8 0%,#ffd23f 38%,#ff9a1f 70%,#ff6a13 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   -webkit-text-stroke:2px #4a1200;filter:drop-shadow(0 3px 0 #b3123f) drop-shadow(0 7px 10px rgba(0,0,0,.45))}
 #home .logo .lg-t{text-shadow:none}

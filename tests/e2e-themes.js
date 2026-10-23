@@ -76,6 +76,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok(`[${t}] giriş: OYUNA DEVAM ET aynı oyunu açtı`,await p.evaluate(s=>G.mode==='local'&&JSON.stringify(G.st)===s,snap));
     await p.evaluate(()=>showHome());await sleep(200);
     // mobil: üç genişlikte yatay taşma yok, dikey kaydırılabilir, dokunma hedefleri
+    // CI'daki geniş yedek yazı tipleri de denenir (Linux'ta Google Fonts yerine)
+    await p.evaluate(()=>{const st=document.createElement('style');st.textContent='*{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);});
     for(const w of [375,390,430]){await p.setViewportSize({width:w,height:w===375?667:w===390?844:932});await sleep(150);
       const m=await p.evaluate(()=>{const h=$('#home'),r=e=>e.getBoundingClientRect();return {ov:document.scrollingElement.scrollWidth<=innerWidth&&h.scrollWidth<=h.clientWidth+1,
         go:r($('#bGo')).height,seg:Math.min(...[...document.querySelectorAll('#optCpu .seg button')].map(b=>r(b).height)),ic:r($('#bSet')).height,mc:r($('#mCpu')).height,scroll:h.scrollHeight>h.clientHeight};});
