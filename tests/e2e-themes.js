@@ -469,8 +469,17 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.evaluate(({x,y})=>{const h=$('#hero'),ev=(t,cx)=>h.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:cx,clientY:y,pointerId:1}));ev('pointerdown',x+80);ev('pointerup',x-80);},r);await sleep(200);
     ok('giriş tahtası: sola kaydırınca sonraki tema',await p.evaluate(()=>THEME==='neon'));
     await p.click('#bGo');await sleep(500);
-    ok('oyun ekranı: tahta üstünde/altında isim etiketi yok, sıra yazısı var',await p.evaluate(()=>!$('#tags .ntg')&&$('#tags').textContent.length>0));
+    ok('oyun ekranı: tahta üstünde/altında isim etiketi yok, sıra yazısı skor kutusunda',await p.evaluate(()=>!$('#tags .ntg')&&$('#ascS').classList.contains('sira')&&$('#ascS').textContent==='SIRA SENDE'),await p.evaluate(()=>$('#ascS').textContent));
     ok('tema kaydırma testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
+  /* 5e) ses: iOS'ta askıya alınan ses bağlamı ses anında yeniden açılır, ses düşmez */
+  if(BR==='chromium'){
+    const p=await mkPage(b,{ls:{tavla_snd:'all'},noSW:true});await p.goto(URL);await sleep(300);
+    await p.mouse.click(5,5);await sleep(200);
+    const r=await p.evaluate(async()=>{const ac=audio();await ac.suspend();const o0=__osc;moveSound(false);await new Promise(r=>setTimeout(r,350));return {st:ac.state,d:__osc-o0};});
+    ok('ses: bağlam askıdayken pul sesi bağlamı açıp çaldı',r.st==='running'&&r.d>0,JSON.stringify(r));
+    ok('ses testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
   /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde son 3 mesaj ve son 3 zar */
@@ -479,7 +488,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.click('#bGo');await sleep(500);
     const bw=await p.evaluate(()=>{const r=$('#board').getBoundingClientRect();return {l:r.left,r:innerWidth-r.right,h:r.height,w:r.width};});
     ok('kısa ekran: tahta yanlarda en fazla 6px boşluk bırakıyor',bw.l<=6&&bw.r<=6,JSON.stringify(bw));
-    ok('kısa ekran: tahta yüksekliğe göre küçülmedi',Math.abs(bw.h-bw.w*468/410)<2,JSON.stringify(bw));
+    ok('kısa ekran: tahta yüksekliğe göre küçülmedi',Math.abs(bw.h-bw.w*406/410)<2,JSON.stringify(bw));
+    ok('kısa ekran (390×664): üst bölüm, tahta ve alt panel kaydırmadan tek ekrana sığıyor',await p.evaluate(()=>{const pl=$('#play');return pl.scrollHeight<=pl.clientHeight+1;}),await p.evaluate(()=>$('#play').scrollHeight+'/'+$('#play').clientHeight));
+    await p.evaluate(()=>{G.turn=-G.me;render();});
+    ok('sıra rakipteyken yazı skor kutusunda ve üst bölüm taşmıyor',await p.evaluate(()=>{const a=$('#adv');return $('#ascS').textContent==='SIRA RAKİPTE'&&$('#anOp').scrollWidth<=$('#anOp').clientWidth+1&&a.scrollWidth<=a.clientWidth+1&&document.scrollingElement.scrollWidth<=innerWidth;}),await p.evaluate(()=>$('#ascS').textContent));
+    await p.evaluate(()=>{G.turn=G.me;render();});
     ok('kısa ekran: alt panele kaydırarak ulaşılıyor',await p.evaluate(()=>{const pl=$('#play');pl.scrollTop=9999;const r=$('#chat').getBoundingClientRect();return r.bottom<=innerHeight+1;}));
     await p.evaluate(()=>{G.hl=[1,2,3,4,5].map(i=>({w:[i,1],k:[i,2]}));histPaint(true);
       CH.msgs=[1,2,3,4,5].map(i=>({from:i%2?TOKEN:'x',nm:'ALI',text:'m'+i,t:i}));chatPaint();});

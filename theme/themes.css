@@ -209,9 +209,17 @@ button.primary{background:var(--pri-bg)}
 /* tahta hiç küçülmez: genişliği doldurur, yüksekliği oranından gelir; ekran yetmezse oyun ekranı kayar */
 #play{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;margin:0 -12px;padding:0 12px} /* kenar taşması kaydırma kutusunun içinde kalsın */#play::-webkit-scrollbar{display:none}
 #play>*{flex-shrink:0}
-#play #boardWrap{flex:none;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/468;min-height:0}
-#play #chat{flex:none;height:auto;min-height:0}
-#play #chat .scr{flex:none;overflow:visible}
+#play #boardWrap{flex:none;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/406;min-height:0}
+/* alt panel sabit yükseklikte (son 3 satır sığar); uzun ekranda kalan boşluğu doldurur */
+#play #chat{flex:none;height:156px;min-height:0}
+#play #chat .scr{flex:1 1 auto;overflow:hidden}
+#play .hh{padding:4px 0 2px;font-size:11px}
+#play .hr{height:29px}#play .hr .c svg{width:21px;height:21px}#play .hr .n{font-size:13px}
+#play .hempty{padding:8px 4px}
+#play #chatList{padding:2px 8px;gap:2px;justify-content:flex-end}
+#play .cmn{display:none}
+#play .cm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 9px;font-size:13px;line-height:1.25;flex:none}
+#play #chatForm{padding:4px 8px}#play #chatForm input,#play #chatForm button{min-height:34px}
 #play.chatmin #chat{flex:none;min-height:0}
 #play.chatmin #chatList,#play.chatmin #histList,#play.chatmin #chatForm{display:none!important}
 #play.chatmin #chatHead{border-bottom:0}
@@ -322,3 +330,8 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 #slg.ovr{top:calc(env(safe-area-inset-top,0px) + 90px)}
 /* v2 ZAR AT zemini her temada koyu: etiket açık renk */
 .asset .rbig .rlab{fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2.2px;paint-order:stroke}
+
+/* sıra yazısı skor kutusunda (tahtanın üstündeki/altındaki şeritler kaldırıldı) */
+#adv .asc small.sira{color:#ff9b2f;font-weight:800;font-size:10px;letter-spacing:0;text-shadow:0 1px 0 #5a1a00}
+#play #adv .asc{padding-left:7px;padding-right:7px}
+#play #chatHead{padding-top:2px;padding-bottom:2px}#play #chatForm{padding-top:3px;padding-bottom:3px}
