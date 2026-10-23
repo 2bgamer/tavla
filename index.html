@@ -134,7 +134,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 .chipb{fill:var(--accent);stroke:#fff;stroke-opacity:.8}
 .chipt{fill:var(--accent-fg);font-family:var(--body);font-weight:700;text-anchor:middle}
 @keyframes pulse{from{opacity:.35}to{opacity:1}}
-#dbt{font-family:var(--display);font-weight:800;font-size:36px;text-anchor:middle;fill:#fff;stroke:#17382c;stroke-width:6;paint-order:stroke;opacity:0;transform-box:fill-box;transform-origin:center;pointer-events:none}
+#dbt{font-family:var(--display);font-weight:800;font-size:36px;text-anchor:middle;fill:#fff;stroke:#17382c;stroke-width:6;paint-order:stroke;opacity:0;transform-box:view-box;transform-origin:0 0;pointer-events:none}
 #dbt.pop{animation:dblpop 1.6s ease-out forwards}
 #dbt.side.pop{animation-name:dblpops} /* yarım tahtada: daha az büyür, bara taşmaz */
 @keyframes dblpops{0%{opacity:0;transform:scale(.5) rotate(-7deg)}14%{opacity:1;transform:scale(1.1) rotate(-5deg)}26%{transform:scale(1) rotate(-4deg)}82%{opacity:1;transform:scale(1.03) rotate(-4deg)}100%{opacity:0;transform:scale(1.06) rotate(-4deg) translateY(-8px)}}
@@ -297,7 +297,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 <radialGradient id="gB" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#b3544a"/><stop offset=".5" stop-color="#6e2722"/><stop offset="1" stop-color="#34100e"/></radialGradient>
 <pattern id="txGrid" width="23" height="23" patternUnits="userSpaceOnUse"><path d="M23 0H0V23" fill="none" stroke="#22e4ff" stroke-opacity=".14" stroke-width="1"/></pattern><pattern id="txSun" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="14" fill="#ffd2ad" opacity=".35"/></pattern><pattern id="txFelt" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 4L4 0" stroke="#000" stroke-opacity=".14" stroke-width=".6"/><path d="M0 0L4 4" stroke="#fff" stroke-opacity=".04" stroke-width=".6"/></pattern><pattern id="txDots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="4.5" cy="4.5" r="1.7" fill="#fff" fill-opacity=".16"/></pattern>
 
-<g id="thdefs"></g></defs><g id="bg"></g><g id="mvl" pointer-events="none"></g><g id="opl" pointer-events="none"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><text id="dbt" x="218" y="142"></text></g></svg><div id="fl"></div></div>
+<g id="thdefs"></g></defs><g id="bg"></g><g id="mvl" pointer-events="none"></g><g id="opl" pointer-events="none"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><g id="dbtG" transform="translate(218 127)"><text id="dbt" x="0" y="0" dominant-baseline="central"></text></g></g></svg><div id="fl"></div></div>
     <div id="undoRow"><button id="bSnd" data-ia="sndT" aria-label="Ses">🔊</button><span id="pipc" data-it="pipTitle" title="Toplamaya kalan mesafe (pul sayımı)"></span><span class="cnt" id="undoCnt">3x</span><button id="bUndo">Geri Al</button></div>
     <div id="chat">
       <div id="chatHead"><button type="button" id="bFold" data-ia="foldT" aria-label="Sohbeti daralt" aria-expanded="true" aria-controls="chat">▾</button>
@@ -1867,7 +1867,9 @@ function showBanner(delay,text,gold){
   dblT=setTimeout(()=>{
     // barda kırık pul varsa yazı sol yarının ortasındaki boş şeride gider (ZAR AT düğmesi o zaman sağ yarıda): bardaki pullar kapanmaz
     const side=!!(G.st&&G.st.bar&&(G.st.bar[0]+G.st.bar[1])>0),maxW=side?150:330;
-    t.setAttribute('x',side?119:218);t.setAttribute('y',side?211:142); /* ortada: en büyüdüğü anda da ZAR AT düğmesine değmesin */t.classList.toggle('side',side);
+    // yazı (0,0) noktasında, konumu kapsayan grubun translate'i verir: büyütme her tarayıcıda yazının merkezinden olur
+    // (Safari SVG yazıda transform-box:fill-box'ı Chromium gibi uygulamıyor). Ortada: en büyüdüğü anda da ZAR AT düğmesine değmesin
+    const g=$('#dbtG');if(g)g.setAttribute('transform',side?'translate(119 201)':'translate(218 127)');t.classList.toggle('side',side);
     t.classList.toggle('gold',!!gold);t.textContent=text;t.style.fontSize='';try{const w=t.getComputedTextLength();if(w>maxW){const fs=parseFloat(getComputedStyle(t).fontSize)||36;t.style.fontSize=(fs*maxW/w).toFixed(1)+'px';}}catch(e){}void t.getBoundingClientRect();t.classList.add('pop');},delay);
 }
 function showDbl(delay){if(!JOKE)return;const hk=G.all[0]===6,D=DBLS();showBanner(delay,hk?i18('hakko'):D[(G.seed>>>0)%D.length],hk);}
