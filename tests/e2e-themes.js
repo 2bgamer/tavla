@@ -1,13 +1,20 @@
 // Tavla tema + slogan entegrasyonu uçtan uca testleri (Playwright, Chromium)
-const {chromium}=require(process.env.PW||'playwright');
-const SP=process.env.SP||__dirname+'/out',OUT=SP+'/shots';require('fs').mkdirSync(OUT,{recursive:true});
+// BROWSER=chromium|webkit, DEVICE="iPhone 13" gibi bir Playwright cihaz profili (isteğe bağlı)
+const pw=require(process.env.PW||'playwright');
+const BR=process.env.BROWSER||'chromium',DEVN=process.env.DEVICE||'',DEV=DEVN?pw.devices[DEVN]:null;
+if(DEVN&&!DEV)throw new Error('bilinmeyen cihaz: '+DEVN);
+const TAG=BR+(DEVN?'-'+DEVN.replace(/\W+/g,'_'):'');
+const SP=process.env.SP||__dirname+'/out',OUT=SP+'/shots-'+TAG;require('fs').mkdirSync(OUT,{recursive:true});
 const URL='http://localhost:8765/index.html',DB='http://localhost:8790';
 const THEMES=['neon','sunset','poker','arcade'];
 const res=[];let fails=0;
+const skip=(name,why)=>res.push(`SKIP  ${name}  — ${why}`);
 const ok=(name,cond,info)=>{res.push(`${cond?'PASS':'FAIL'}  ${name}${info?'  — '+info:''}`);if(!cond)fails++;};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function mkPage(b,opts={}){
-  const ctx=await b.newContext({viewport:opts.vp||{width:390,height:844},deviceScaleFactor:2,reducedMotion:opts.rm||'no-preference'});
+  const base=DEV?Object.assign({},DEV):{viewport:{width:390,height:844},deviceScaleFactor:2};
+  if(opts.vp)base.viewport=opts.vp;
+  const ctx=await b.newContext(Object.assign(base,{reducedMotion:opts.rm||'no-preference'}));
   const p=await ctx.newPage();p.errs=[];
   p.on('pageerror',e=>p.errs.push(e.message));
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.fulfill({status:200,contentType:'text/css',body:''}));
@@ -18,7 +25,8 @@ async function mkPage(b,opts={}){
     window.__DBURL=o.db;
     // olay kaydı + zar kuyruğu (r6 global fonksiyon bildirimi)
     window.__log=[];window.__dice=[];
-    const n=AudioContext.prototype.createOscillator;window.__osc=0;AudioContext.prototype.createOscillator=function(){window.__osc++;return n.call(this);};
+    const AC0=window.AudioContext||window.webkitAudioContext;if(AC0){const n=AC0.prototype.createOscillator,g=AC0.prototype.createGain;window.__osc=0;window.__gains=[];
+      AC0.prototype.createOscillator=function(){window.__osc++;return n.call(this);};AC0.prototype.createGain=function(){const x=g.call(this);window.__gains.push(x);if(window.__gains.length>400)window.__gains.shift();return x;};}
   },{name:opts.name,ls:opts.ls,db:DB});
   return p;
 }
@@ -31,7 +39,8 @@ async function setBoard(p,b,o){await p.evaluate(([b,o])=>{G.run++;G.autoTok++;G.
 const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m))b[+i]=v;return b;};
 
 (async()=>{
-  const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']});
+  const b=await pw[BR].launch(BR==='chromium'?{args:['--autoplay-policy=no-user-gesture-required']}:{});
+  res.push(`#  tarayıcı: ${BR}${DEVN?' · cihaz: '+DEVN:''}`);
 
   /* 1) ana ekran: dört tema, kalıcılık */
   for(const t of THEMES){
@@ -118,6 +127,22 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await setBoard(p,board({0:1,12:-12}),{all:[1,2],off:[14,3]});
     await p.evaluate(()=>doHuman({f:0,t:'off',d:1}));
     ok('galibiyet: İŞTE BU!',await waitSlg(p,'İŞTE BU!',5000),await slgText(p));
+    // sonuç türleri: 2 sayılık çekilme mars sayılmaz, teklif ayrı, yenilgide slogan yok
+    for(const [why,pts,txt] of [['resign',2,'PES ETTİ!'],['offer',1,'SAYI CEBİMDE!']]){
+      await sleep(1800);
+      await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
+      await setBoard(p,board({0:1,12:-15}),{all:[1,2],off:[5,0]});
+      const n=await p.evaluate(()=>__log.length);
+      await p.evaluate(([w,pt])=>gameOver(1,pt,w),[why,pts]);
+      ok(`bitiş "${why}" (${pts} sayı): ${txt}`,await waitSlg(p,txt,5000),await slgText(p));
+      const lg=await p.evaluate(n=>__log.slice(n),n);
+      ok(`bitiş "${why}": mars sloganı yok`,!lg.some(x=>x.startsWith('mars')),lg.join(','));
+    }
+    await sleep(1800);
+    await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
+    await setBoard(p,board({0:1,12:-15}),{all:[1,2],off:[5,0]});
+    {const n=await p.evaluate(()=>__log.length);await p.evaluate(()=>gameOver(-1));await sleep(2200);
+      const lg=await p.evaluate(n=>__log.slice(n),n);ok('yenilgide slogan yok',!lg.length&&!(await slgText(p)).trim(),lg.join(','));}
     // yeni maç
     await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
     ok('yeni maç başladı',await p.evaluate(()=>G.mode==='local'&&!G.over));
@@ -145,20 +170,43 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 4) ses ayarları, reduced motion, dil, slogan kapalı */
   {
     const p=await mkPage(b,{ls:{tavla_snd:'all'}});await p.goto(URL);await sleep(300);
+    await p.mouse.click(5,5);// kullanıcı etkileşimi: iOS ses kilidi
     await p.evaluate(()=>{audio();});await p.waitForFunction(()=>AC&&AC.state==='running',null,{timeout:3000}).catch(()=>{});
-    const osc=async snd=>p.evaluate(async s=>{setSnd(s);await new Promise(r=>setTimeout(r,400));const a=__osc;sfx('win');return __osc-a;},snd);
-    const all=await osc('all'),game=await osc('game'),off=await osc('off');
-    ok('ses "Tümü": slogan efekti çalar',all>0,'osc='+all);
-    ok('ses "Pul ve zar": slogan efekti çalmaz',game===0,'osc='+game);
-    ok('ses "Kapalı": efekt çalmaz',off===0,'osc='+off);
-    await p.evaluate(()=>{setSnd('game');moment('win',0,'k1');});
+    ok('ana ekranda bağımsız ayarlar var (slogan, animasyon, efekt, seviye)',await p.evaluate(()=>!!($('#slIn')&&$('#saIn')&&$('#fxIn')&&$('#fxV'))));
+    if(!(await p.evaluate(()=>!!AC&&AC.state==='running')))skip('efekt sesi ölçümleri',`${BR} başsız modunda ses bağlamı başlamadı`);
+    else{
+      const fx=async setup=>p.evaluate(async f=>{(new Function(f))();await new Promise(r=>setTimeout(r,450));const a=__osc;sfx('win');return __osc-a;},setup);
+      const all=await fx("setSnd('all');setFx(true);setFxVol(.8)"),game=await fx("setSnd('game');setFx(true)"),fxOff=await fx("setSnd('all');setFx(false)"),
+        mute=await fx("setSnd('off');setFx(true)"),vol0=await fx("setSnd('all');setFx(true);setFxVol(0)");
+      ok('efekt açık + ses Tümü: efekt çalar',all>0,'osc='+all);
+      ok('efekt açık + ses Pul ve zar: efekt çalar (bağımsız ayar)',game>0,'osc='+game);
+      ok('efekt kapalı: çalmaz',fxOff===0,'osc='+fxOff);
+      ok('ses Kapalı: efekt de çalmaz',mute===0,'osc='+mute);
+      ok('efekt seviyesi %0: çalmaz',vol0===0,'osc='+vol0);
+      const vol=await p.evaluate(async()=>{setSnd('all');setFx(true);setFxVol(.35);await new Promise(r=>setTimeout(r,450));const n=__gains.length;sfx('hit');return __gains.slice(n).some(g=>Math.abs(g.gain.value-.35)<1e-6);});
+      ok('efekt seviyesi ses yoluna uygulanıyor (%35)',vol);
+    }
+    await p.evaluate(()=>{setSnd('off');moment('win',0,'k1');});
     ok('ses kapalıyken de slogan yazısı görünür',await waitSlg(p,'İŞTE BU!'));
+    await sleep(1700);
+    await p.evaluate(()=>{setSlgAnim(false);moment('win',0,'k3');});await sleep(80);
+    ok('slogan animasyonu kapalı: sade görünüm',await p.evaluate(()=>$('#slg').classList.contains('still')&&getComputedStyle($('#slg')).animationName==='slgfade'));
+    await sleep(1700);
     await p.evaluate(()=>setSlogan(false));await sleep(1600);
     const r=await p.evaluate(()=>{const x=moment('win',0,'k2');return x;});await sleep(200);
     ok('slogan kapalı: yazı görünmez',!r&&!(await slgText(p)).trim());
     await p.reload();await sleep(300);
     ok('slogan tercihi kalıcı',await p.evaluate(()=>SLOGAN===false&&$('#slIn').checked===false));
+    ok('animasyon ve efekt seviyesi kalıcı',await p.evaluate(()=>SLGANIM===false&&$('#saIn').checked===false&&Math.abs(FXVOL-.35)<1e-9&&$('#fxV').value==='35'));
+    await p.evaluate(()=>{startLocal();});await sleep(300);await p.click('#bSnd');await sleep(150);
+    ok('oyun içi ayar menüsünde aynı ayarlar',await p.evaluate(()=>!!($('#slIn2')&&$('#saIn2')&&$('#fxIn2')&&$('#fxV2'))));
+    await p.evaluate(()=>{const r=$('#fxV2');r.value='60';r.dispatchEvent(new Event('input'));r.dispatchEvent(new Event('change'));});
+    ok('menüden seviye değişimi ana ekrana yansıdı',await p.evaluate(()=>FXVOL===.6&&$('#fxV').value==='60'&&lsGet('tavla_fxv')===.6));
+    ok('ayar menüsü ekranda kalıyor',await p.evaluate(()=>{const r=$('#sndPop').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}));
     await p.context().close();
+    const p5=await mkPage(b,{ls:{tavla_snd:'game'}});await p5.goto(URL);await sleep(300);
+    ok('eski "Pul ve zar" tercihi: efekt sesleri kapalı başlar',await p5.evaluate(()=>FXON===false));
+    await p5.context().close();
     const p2=await mkPage(b,{ls:{tavla_joke:false}});await p2.goto(URL);await sleep(300);
     ok('eski "esprili yazılar: kapalı" tercihi sloganlara devredildi',await p2.evaluate(()=>SLOGAN===false));
     await p2.context().close();
@@ -225,6 +273,13 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const vis=await A.evaluate(()=>{const r=$('#chatIn').getBoundingClientRect();return r.bottom<=innerHeight&&r.top>=0&&document.scrollingElement.scrollWidth<=innerWidth;});
     ok('kısa ekran (klavye açık benzetimi): giriş görünür, yatay taşma yok',vis);
     await A.screenshot({path:`${SP}/keyboard-sim.png`});
+    // rakip 2 sayıyla çekilir: kazanan tarafta "PES ETTİ!", mars değil; çekilen tarafta slogan yok
+    await A.setViewportSize(DEV?DEV.viewport:{width:390,height:844});
+    {const na=await A.evaluate(()=>__log.length),nb=await B.evaluate(()=>__log.length);
+      await B.evaluate(()=>{$('#overlay').hidden=true;G.turn=G.me;G.rolled=false;gameOver(-G.me,2,'resign');});
+      ok('online: rakip çekildi, kazanan tarafta PES ETTİ!',await waitSlg(A,'PES ETTİ!',6000),await slgText(A));
+      const la=await A.evaluate(n=>__log.slice(n),na),lb=await B.evaluate(n=>__log.slice(n),nb);
+      ok('online: çekilmede mars sloganı yok, çekilen tarafta slogan yok',!la.some(x=>x.startsWith('mars'))&&!lb.length,la.concat(['|']).concat(lb).join(','));}
     ok('online testlerde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
