@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "assets": {
+    "neon": [
+      "adv-bar-track.svg",
+      "avatar-ring.svg",
+      "board-field.svg",
+      "board-frame.svg",
+      "btn-roll.svg",
+      "checker-dark.svg",
+      "checker-light.svg",
+      "fx-closed-point.svg",
+      "points.svg"
+    ],
+    "sunset": [
+      "adv-bar-track.svg",
+      "avatar-ring.svg",
+      "board-field.svg",
+      "board-frame.svg",
+      "btn-roll.svg",
+      "checker-dark.svg",
+      "checker-light.svg",
+      "fx-closed-point.svg",
+      "points.svg"
+    ],
+    "poker": [
+      "adv-bar-track.svg",
+      "avatar-ring.svg",
+      "board-field.svg",
+      "board-frame.svg",
+      "btn-roll.svg",
+      "checker-dark.svg",
+      "checker-light.svg",
+      "fx-closed-point.svg",
+      "points.svg"
+    ],
+    "arcade": [
+      "adv-bar-track.svg",
+      "avatar-ring.svg",
+      "board-field.svg",
+      "board-frame.svg",
+      "btn-roll.svg",
+      "checker-dark.svg",
+      "checker-light.svg",
+      "fx-closed-point.svg",
+      "points.svg"
+    ]
+  },
+  "runtimeDynamic": [
+    "checkers position",
+    "point positioning",
+    "dice pips",
+    "roll button label",
+    "avatar picture",
+    "score",
+    "turn timer",
+    "win bar fill"
+  ],
+  "referenceOnly": "references/*.png"
+}

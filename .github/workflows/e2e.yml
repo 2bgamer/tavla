@@ -1,0 +1,57 @@
+name: Uçtan uca testler
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Chromium (390×844)
+            browser: chromium
+            device: ''
+            slug: chromium
+          - name: Chromium · iPhone SE
+            browser: chromium
+            device: iPhone SE
+            slug: chromium-iphone-se
+          - name: WebKit (Safari motoru) · iPhone 13
+            browser: webkit
+            device: iPhone 13
+            slug: webkit-iphone-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Playwright
+        run: |
+          npm i --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Sunucular (statik site + RTDB taklidi)
+        run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          node tests/rtdb-mock.js 8790 >/dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://localhost:8765/index.html >/dev/null && curl -sf http://localhost:8790/x.json >/dev/null && break; sleep 0.5; done
+      - name: Testler
+        env:
+          BROWSER: ${{ matrix.browser }}
+          DEVICE: ${{ matrix.device }}
+        run: mkdir -p tests/out && node tests/e2e-themes.js | tee tests/out/sonuc.txt
+        shell: bash -o pipefail {0}
+      - name: Ekran görüntüleri
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.slug }}
+          path: tests/out
+          if-no-files-found: ignore
