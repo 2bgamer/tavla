@@ -1877,8 +1877,10 @@ function showBanner(delay,text,gold){
         const ws=text.split(' ');
         if(side&&f<fs*.72&&ws.length>1){let k=1,best=1e9;for(let i=1;i<ws.length;i++){const d=Math.abs(ws.slice(0,i).join(' ').length-ws.slice(i).join(' ').length);if(d<best){best=d;k=i;}}
           t.textContent='';[ws.slice(0,k).join(' '),ws.slice(k).join(' ')].forEach((l,i)=>{const sp=document.createElementNS('http://www.w3.org/2000/svg','tspan');sp.setAttribute('x','0');sp.setAttribute('dy',i?'1.05em':'-.52em');sp.textContent=l;t.appendChild(sp);});
-          const lw=Math.max(...[...t.children].map(c=>c.getComputedTextLength()));f=Math.min(fs,fs*maxW/lw);}
-        t.style.fontSize=f.toFixed(1)+'px';}}catch(e){}
+          f=fs;}
+        t.style.fontSize=f.toFixed(1)+'px';
+        // son ölçüm yazının gerçek kutusundan (getBBox CSS büyütmesinden etkilenmez; Safari'de tspan uzunluğu güvenilmez)
+        const bw=t.getBBox().width;if(bw>maxW)t.style.fontSize=(f*maxW/bw).toFixed(1)+'px';}}catch(e){}
     void t.getBoundingClientRect();t.classList.add('pop');},delay);
 }
 function showDbl(delay){if(!JOKE)return;const hk=G.all[0]===6,D=DBLS();showBanner(delay,hk?i18('hakko'):D[(G.seed>>>0)%D.length],hk);}
