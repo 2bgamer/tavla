@@ -16,6 +16,12 @@ body{background:var(--bg-img),var(--bg);background-attachment:fixed}
 .thg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .thc{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:8px;margin:0!important;border-radius:16px;border:2px solid transparent;text-align:start;min-height:0;font-weight:700;color:#fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .thc svg{display:block;width:100%;height:auto;border-radius:10px}
+/* sinematik tema kartı: 384×1024 görselin yazısız orta bandı (masa sahnesi) kare pencerede; yazılar HTML'den */
+.thpv{position:relative;display:block;border-radius:10px;overflow:hidden}
+.thpv.has{aspect-ratio:1/1}
+.thpv.has svg{position:absolute;inset:0;height:100%;object-fit:cover}
+.thc[aria-pressed=true]::after{z-index:3} /* seçili işareti görselin üstünde kalsın */
+.thpv .thimg{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:50% 65%;display:block}
 .thc b{font-size:15px;line-height:1.1;padding:0 2px}
 .thc small{font-size:11.5px;font-weight:500;opacity:.85;line-height:1.25;padding:0 2px 2px}
 .thc[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent),0 6px 18px rgba(0,0,0,.25)}
