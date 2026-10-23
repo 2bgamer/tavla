@@ -622,6 +622,7 @@ function unlockAudio(){
   const ac=audio();if(!ac)return;
   if(typeof loadBinf==='function')loadBinf(ac);
   if(typeof loadOh==='function')loadOh(ac);
+  if(typeof loadOh2==='function')loadOh2(ac);
   if(window.TavlaFoley)TavlaFoley.load(ac);
   if(!unlocked||ac.state!=='running'){try{const b=ac.createBuffer(1,1,22050),s=ac.createBufferSource();s.buffer=b;s.connect(ac.destination);s.start(0);unlocked=true;}catch(e){}}
   if(ac.state!=='running')setTimeout(()=>{if(AC===ac&&ac.state!=='running'&&ac.state!=='closed')acStale=true;},1200);
@@ -733,6 +734,12 @@ const OH_AUD='data:audio/mpeg;base64,SUQzBAAAAAABRFRYWFgAAAASAAADbWFqb3JfYnJhbmQ
 let ohBuf=null,ohLoading=null;
 function decodeB64(ac,durl){const bin=atob(durl.split(',')[1]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Promise((res,rej)=>ac.decodeAudioData(u.buffer,res,rej));}
 function loadOh(ac){if(ohBuf||ohLoading)return ohLoading;try{ohLoading=decodeB64(ac,OH_AUD).then(b=>{ohBuf=b;return b;}).catch(()=>{ohLoading=null;return null;});}catch(e){ohLoading=null;}return ohLoading;}
+// 2. ve sonraki kırıklarda eski sesle birlikte çalınan kayıt (dosyayı değiştirerek ses değişir)
+let oh2Buf=null,oh2Loading=null;
+function loadOh2(ac){if(oh2Buf||oh2Loading)return oh2Loading;
+  oh2Loading=fetch('assets/sfx/kirik-coklu.mp3').then(r=>{if(!r.ok)throw new Error('oh2');return r.arrayBuffer();})
+    .then(b=>new Promise((ok,no)=>ac.decodeAudioData(b,ok,no))).then(b=>{oh2Buf=b;return b;}).catch(()=>{oh2Loading=null;return null;});
+  return oh2Loading;}
 // k. kırık: 1 → tek ses (senin sesin), 2 → küçük grup, 3+ → kalabalık
 function ohSound(k){
   try{if(MUTE||!RXOK())return;const ac=audio();if(!ac)return;if(ac.state!=='running'){acRetry(()=>ohSound(k));return;}
@@ -750,6 +757,8 @@ function ohSound(k){
       }
     };
     if(ohBuf)go(ohBuf);else (loadOh(ac)||Promise.resolve(null)).then(go,()=>go(null));
+    if(k>=2){const go2=b=>{if(!b||MUTE)return;const s=ac.createBufferSource();s.buffer=b;const g=ac.createGain();g.gain.value=1;s.connect(g);g.connect(MASTER);s.start(ac.currentTime+.04);};
+      if(oh2Buf)go2(oh2Buf);else (loadOh2(ac)||Promise.resolve(null)).then(go2,()=>{});}
   }catch(e){}
 }
 // ney ya ney yerine: kısa, inen 'buuu' sentezi (Türkçe dışındaki diller)
@@ -2713,7 +2722,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610251500';
+const APP_VER='202610251600';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

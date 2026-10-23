@@ -480,6 +480,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.mouse.click(5,5);await sleep(200);
     const r=await p.evaluate(async()=>{const ac=audio();await ac.suspend();const o0=__osc;moveSound(false);await new Promise(r=>setTimeout(r,350));return {st:ac.state,d:__osc-o0};});
     ok('ses: bağlam askıdayken pul sesi bağlamı açıp çaldı',r.st==='running'&&r.d>0,JSON.stringify(r));
+    const k2=await p.evaluate(async()=>{const ac=audio();const b2=await loadOh2(ac);await loadOh(ac);const used=[];const o=ac.createBufferSource.bind(ac);
+      ac.createBufferSource=()=>{const n=o();const st=n.start.bind(n);n.start=(...a)=>{used.push(n.buffer===b2?'oh2':'x');return st(...a);};return n;};
+      ohSound(1);const one=used.filter(x=>x==='oh2').length;ohSound(2);await new Promise(r=>setTimeout(r,50));const two=used.filter(x=>x==='oh2').length;ac.createBufferSource=o;
+      return {yuklendi:!!b2,sure:b2&&+b2.duration.toFixed(2),bir:one,iki:two,eski:used.filter(x=>x==='x').length};});
+    ok('kırık sesi: yeni kayıt yalnız 2. ve sonraki kırıkta, eski sesle birlikte çalar',k2.yuklendi&&k2.bir===0&&k2.iki===1&&k2.eski>=2,JSON.stringify(k2));
     ok('ses testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
