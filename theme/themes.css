@@ -16,6 +16,12 @@ body{background:var(--bg-img),var(--bg);background-attachment:fixed}
 .thg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .thc{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:8px;margin:0!important;border-radius:16px;border:2px solid transparent;text-align:start;min-height:0;font-weight:700;color:#fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .thc svg{display:block;width:100%;height:auto;border-radius:10px}
+/* sinematik tema kartı: 384×1024 görselin yazısız orta bandı (masa sahnesi) kare pencerede; yazılar HTML'den */
+.thpv{position:relative;display:block;border-radius:10px;overflow:hidden}
+.thpv.has{aspect-ratio:1/1}
+.thpv.has svg{position:absolute;inset:0;height:100%;object-fit:cover}
+.thc[aria-pressed=true]::after{z-index:3} /* seçili işareti görselin üstünde kalsın */
+.thpv .thimg{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:50% 65%;display:block}
 .thc b{font-size:15px;line-height:1.1;padding:0 2px}
 .thc small{font-size:11.5px;font-weight:500;opacity:.85;line-height:1.25;padding:0 2px 2px}
 .thc[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent),0 6px 18px rgba(0,0,0,.25)}
@@ -240,7 +246,7 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
   background:linear-gradient(180deg,#fff3a8 0%,#ffd23f 38%,#ff9a1f 70%,#ff6a13 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   -webkit-text-stroke:2px #4a1200;filter:drop-shadow(0 3px 0 #b3123f) drop-shadow(0 7px 10px rgba(0,0,0,.45))}
 #home .logo .lg-t{text-shadow:none}
-#hello{justify-content:center;margin:0!important;font-size:17px}
+#hello{justify-content:center;margin:0!important;font-size:17px;flex-wrap:wrap;row-gap:6px} /* dar ekranda (320px) Değiştir düğmesi alta geçer, taşmaz */
 #hello b{font-weight:800}
 #hello button{border-radius:999px;padding:5px 12px;font-size:13px;border-color:var(--accent);color:var(--fg);background:color-mix(in srgb,var(--accent) 18%,transparent)}
 #home .modes{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}

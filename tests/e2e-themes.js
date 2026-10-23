@@ -511,6 +511,39 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('ses testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
+  /* 5g) sinematik tema kartları (Faz 1): yazısız orta bant, yedek, taşma, çekmece */
+  {
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'neon'}});await p.goto(URL);await sleep(300);
+    await p.evaluate(()=>$('#thHome').scrollIntoView());
+    await p.waitForFunction(()=>[...document.querySelectorAll('#thHome .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
+    const r=await p.evaluate(()=>[...document.querySelectorAll('#thHome .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
+      return {t:c.dataset.t,w:i&&i.naturalWidth,h:i&&i.naturalHeight,fit:cs&&cs.objectFit,pos:cs&&cs.objectPosition,lazy:i&&i.loading,kare:Math.abs(pv.width-pv.height)<1.5,ad:c.querySelector('b').textContent};}));
+    ok('tema kartı: dört temada sinematik görsel yüklendi (384×1024)',r.length===4&&r.every(x=>x.w===384&&x.h===1024),JSON.stringify(r.map(x=>x.t+':'+x.w+'×'+x.h)));
+    ok('tema kartı: yalnızca yazısız orta bant (kare pencere, cover, %65)',r.every(x=>x.fit==='cover'&&x.pos==='50% 65%'&&x.kare),JSON.stringify(r[0]));
+    ok('tema kartı: ad ve açıklama HTML\'den (görselde yazı yok)',r.map(x=>x.ad).join()==='Neon Club,Sunset Pop,Poker Lounge,Street Arcade');
+    ok('tema kartı: görseller tembel yükleniyor (lazy)',r.every(x=>x.lazy==='lazy'));
+    const sel=await p.evaluate(()=>{const c=$('#thHome .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
+    ok('tema kartı: seçili işaret görselin üstünde',sel);
+    await p.click('#thHome .thc[data-t=poker]');await sleep(200);
+    ok('tema kartı: dokununca tema değişip kaydedildi',await p.evaluate(()=>THEME==='poker'&&lsGet('tavla_theme')==='poker'));
+    // CI'daki geniş yedek yazı tipini taklit et (en kötü durum)
+    await p.evaluate(()=>{const st=document.createElement('style');st.id='wideHome';st.textContent='#home,#home *{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);});
+    for(const w of [320,375,390,430]){await p.setViewportSize({width:w,height:740});await sleep(150);
+      ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thHome .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
+    await p.evaluate(()=>$('#wideHome').remove());
+    // oyunda çekmece: kısa ekranda da Kapat'a ulaşılır
+    await p.setViewportSize({width:390,height:664});await p.click('#bGo');await sleep(400);
+    await p.evaluate(()=>themeMenu());await sleep(500);
+    const dr=await p.evaluate(()=>{const k=[...document.querySelectorAll('#thDrawer button')].find(b=>/Kapat/.test(b.textContent));k&&k.scrollIntoView({block:'nearest'});const r=k&&k.getBoundingClientRect();return {k:!!k,ok:!!r&&r.bottom<=innerHeight+1&&r.top>=0,imgs:document.querySelectorAll('#thDrawer .thimg').length};});
+    ok('tema çekmecesi: dört sinematik kart, kısa ekranda Kapat erişilebilir',dr.k&&dr.ok&&dr.imgs===4,JSON.stringify(dr));
+    ok('tema kartı testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // yedek: görseller yüklenemezse kod çizimi önizleme görünür
+    const q=await mkPage(b,{ls:{tavla_snd:'off'}});await q.route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
+    await q.evaluate(()=>$('#thHome').scrollIntoView());await sleep(600);
+    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(()=>!document.querySelector('#thHome .thimg')&&[...document.querySelectorAll('#thHome .thpv svg')].every(s=>s.getBoundingClientRect().height>20)));
+    await q.context().close();
+  }
   /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde son 3 mesaj ve son 3 zar */
   {
     const p=await mkPage(b,{vp:{width:390,height:664},ls:{tavla_snd:'off'}});await p.goto(URL);await sleep(400);

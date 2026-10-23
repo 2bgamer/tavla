@@ -1611,7 +1611,9 @@ function thPrev(k){
   const t=THEMES[k].tk;let p='';
   for(let i=0;i<6;i++){const x=10+i*14;p+=`<polygon points="${x},6 ${x+12},6 ${x+6},28" fill="${i%2?t.triB:t.triA}"/><polygon points="${x},54 ${x+12},54 ${x+6},32" fill="${i%2?t.triA:t.triB}"/>`;}
   const c=(x,y,o)=>`<circle cx="${x}" cy="${y}" r="5.6" fill="${o.g[1]}" stroke="${o.s}" stroke-width="1.2"/>`;
-  return `<svg viewBox="0 0 100 60" aria-hidden="true"><rect width="100" height="60" rx="6" fill="${t.frame}"/><rect x="5" y="4" width="90" height="52" rx="3" fill="${t.field}" stroke="${t.l.s}" stroke-width="1"/>${p}${c(17,48,t.l)}${c(17,37,t.l)}${c(73,12,t.d)}${c(73,23,t.d)}${c(45,48,t.d)}</svg>`;
+  // sinematik kart (theme/themes.js → card): yazısız orta bant kırpılır; yüklenemezse altındaki kod çizimi görünür
+  const cd=THEMES[k].card,img=cd?`<img class="thimg" src="${cd}" alt="" width="384" height="1024" loading="lazy" decoding="async" onerror="this.remove()">`:'';
+  return `<span class="thpv${cd?' has':''}">${img}<svg viewBox="0 0 100 60" aria-hidden="true"><rect width="100" height="60" rx="6" fill="${t.frame}"/><rect x="5" y="4" width="90" height="52" rx="3" fill="${t.field}" stroke="${t.l.s}" stroke-width="1"/>${p}${c(17,48,t.l)}${c(17,37,t.l)}${c(73,12,t.d)}${c(73,23,t.d)}${c(45,48,t.d)}</svg></span>`;
 }
 function thCards(){return `<div class="thg">${Object.keys(THEMES).map(k=>`<button type="button" class="thc" data-t="${k}" aria-pressed="${k===THEME}">${thPrev(k)}<b>${THN[k]}</b><small>${i18('th_'+k)}</small></button>`).join('')}</div>`;}
 function thHomePaint(){const h=$('#thHome');if(h)h.innerHTML=thCards();heroName();}
@@ -2748,7 +2750,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610251800';
+const APP_VER='202610251900';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
