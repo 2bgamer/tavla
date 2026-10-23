@@ -245,7 +245,15 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 #home .mc .chv{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.25);border:1.5px solid rgba(255,255,255,.35)}
 #home .mc .chv .ico{width:18px;height:18px;margin:0}
 #home>*{flex-shrink:0}
-#hero{position:relative;height:clamp(150px,44vw,185px);margin:0;pointer-events:none}
+#hero{position:relative;height:clamp(150px,44vw,185px);margin:0;touch-action:pan-y;cursor:grab}
+#hero .hnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;font-size:30px;line-height:1;display:grid;place-items:center;
+  color:var(--fg);background:color-mix(in srgb,var(--surface) 70%,transparent);border:1.5px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.25)}
+#hero .hp{left:0}#hero .hn{right:0}
+#heroN{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-4px;font-size:14px;letter-spacing:.04em}
+#heroN .hdots{display:flex;gap:6px}#heroN .hdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}#heroN .hdots i.on{background:var(--accent);width:18px;border-radius:4px}
+@keyframes hswl{from{opacity:.2;translate:40px 0}to{opacity:1;translate:0 0}}
+@keyframes hswr{from{opacity:.2;translate:-40px 0}to{opacity:1;translate:0 0}}
+#hero.swl #heroB,#hero.swl .hd{animation:hswl .28s ease-out}#hero.swr #heroB,#hero.swr .hd{animation:hswr .28s ease-out}
 #heroB{position:absolute;left:50%;top:50%;width:min(74%,300px);height:auto;transform:translate(-50%,-50%) perspective(900px) rotateX(56deg) rotateZ(-8deg);transform-origin:50% 50%;filter:drop-shadow(0 18px 14px rgba(0,0,0,.5))}
 .hd{position:absolute;width:34px;height:34px;border-radius:8px;background:#fff;box-shadow:inset -3px -4px 0 rgba(0,0,0,.14),0 8px 14px rgba(0,0,0,.45);
   background-image:radial-gradient(circle at 28% 28%,#141414 3px,transparent 3.5px),radial-gradient(circle at 72% 72%,#141414 3px,transparent 3.5px),radial-gradient(circle at 72% 28%,#141414 3px,transparent 3.5px),radial-gradient(circle at 28% 72%,#141414 3px,transparent 3.5px),radial-gradient(circle at 50% 50%,#141414 3px,transparent 3.5px)}
