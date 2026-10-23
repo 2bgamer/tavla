@@ -526,8 +526,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('tema kartı: seçili işaret görselin üstünde',sel);
     await p.click('#thHome .thc[data-t=poker]');await sleep(200);
     ok('tema kartı: dokununca tema değişip kaydedildi',await p.evaluate(()=>THEME==='poker'&&lsGet('tavla_theme')==='poker'));
+    // CI'daki geniş yedek yazı tipini taklit et (en kötü durum)
+    await p.evaluate(()=>{const st=document.createElement('style');st.id='wideHome';st.textContent='#home,#home *{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);});
     for(const w of [320,375,390,430]){await p.setViewportSize({width:w,height:740});await sleep(150);
       ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thHome .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
+    await p.evaluate(()=>$('#wideHome').remove());
     // oyunda çekmece: kısa ekranda da Kapat'a ulaşılır
     await p.setViewportSize({width:390,height:664});await p.click('#bGo');await sleep(400);
     await p.evaluate(()=>themeMenu());await sleep(500);
