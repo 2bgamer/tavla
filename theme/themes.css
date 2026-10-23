@@ -206,8 +206,12 @@ button.primary{background:var(--pri-bg)}
 #play #top button{min-height:34px;padding:5px 9px}
 #adv{padding:2px 0 3px;gap:2px 6px}
 #adv .asc{padding:1px 10px}#adv .asc b{font-size:19px}
-#play #boardWrap{flex:0 1 auto;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/468;min-height:0}
-#play #chat{flex:1 1 auto;height:auto;min-height:150px}
+/* tahta hiç küçülmez: genişliği doldurur, yüksekliği oranından gelir; ekran yetmezse oyun ekranı kayar */
+#play{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;margin:0 -12px;padding:0 12px} /* kenar taşması kaydırma kutusunun içinde kalsın */#play::-webkit-scrollbar{display:none}
+#play>*{flex-shrink:0}
+#play #boardWrap{flex:none;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/468;min-height:0}
+#play #chat{flex:none;height:auto;min-height:0}
+#play #chat .scr{flex:none;overflow:visible}
 #play.chatmin #chat{flex:none;min-height:0}
 #play.chatmin #chatList,#play.chatmin #histList,#play.chatmin #chatForm{display:none!important}
 #play.chatmin #chatHead{border-bottom:0}
