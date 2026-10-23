@@ -458,6 +458,21 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('davet testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
+  /* 5d) giriş tahtası oklarla/kaydırarak tema seçer; oyun ekranında isim etiketi yok */
+  {
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'neon'}});await p.goto(URL);await sleep(400);
+    await p.click('#heroNext');await sleep(200);
+    ok('giriş tahtası: sonraki ok temayı değiştirip kaydetti',await p.evaluate(()=>THEME==='sunset'&&lsGet('tavla_theme')==='sunset'&&$('#heroN b').textContent==='Sunset Pop'));
+    await p.click('#heroPrev');await p.click('#heroPrev');await sleep(200);
+    ok('giriş tahtası: önceki ok başa sarıyor',await p.evaluate(()=>THEME==='arcade'));
+    const r=await p.evaluate(()=>{const x=$('#hero').getBoundingClientRect();return {x:x.left+x.width/2,y:x.top+x.height/2};});
+    await p.evaluate(({x,y})=>{const h=$('#hero'),ev=(t,cx)=>h.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:cx,clientY:y,pointerId:1}));ev('pointerdown',x+80);ev('pointerup',x-80);},r);await sleep(200);
+    ok('giriş tahtası: sola kaydırınca sonraki tema',await p.evaluate(()=>THEME==='neon'));
+    await p.click('#bGo');await sleep(500);
+    ok('oyun ekranı: tahta üstünde/altında isim etiketi yok, sıra yazısı var',await p.evaluate(()=>!$('#tags .ntg')&&$('#tags').textContent.length>0));
+    ok('tema kaydırma testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
   /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde son 3 mesaj ve son 3 zar */
   {
     const p=await mkPage(b,{vp:{width:390,height:664},ls:{tavla_snd:'off'}});await p.goto(URL);await sleep(400);
