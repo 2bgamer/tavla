@@ -274,8 +274,9 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await B.evaluate(c=>joinRoom(c),code);
     await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
     ok('online: iki oyuncu odada',true,'oda '+code);
-    await A.waitForFunction(()=>G.av&&G.av.k>=0,null,{timeout:6000}).catch(()=>{});
-    ok('online: avatarlar karşıya iletildi',(await A.evaluate(()=>G.av.k))===(await B.evaluate(()=>AV))&&(await B.evaluate(()=>G.av.w))===(await A.evaluate(()=>AV)));
+    await A.waitForFunction(()=>G.av&&G.av.k>=0,null,{timeout:8000}).catch(()=>{});
+    await B.waitForFunction(()=>G.av&&G.av.w>=0,null,{timeout:8000}).catch(()=>{}); // B'nin oda verisini alması WebKit'te gecikebilir
+    ok('online: avatarlar karşıya iletildi',(await A.evaluate(()=>G.av.k))===(await B.evaluate(()=>AV))&&(await B.evaluate(()=>(G.av||{}).w))===(await A.evaluate(()=>AV)));
     ok('online: rakip avatarı üst bölümde',await A.evaluate(()=>$('#avOp').dataset.v===AVATARS[G.av.k]));
     await A.evaluate(()=>startOnline());
     await B.waitForFunction(()=>G.started,null,{timeout:8000});
