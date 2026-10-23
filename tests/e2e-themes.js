@@ -45,6 +45,8 @@ const barCheck=p=>p.evaluate(()=>{
   return {bar:bar.length,btn:!!document.querySelector('#bg .rbig'),cakisma:bar.some(c=>btn.some(x=>hit(c,x))),boardW:Math.round($('#board').getBoundingClientRect().width)};});
 // "ZARINI AT!" yazısı en büyük anında (animasyonun tepe ölçeği) bardaki pullara ve ZAR AT düğmesine değiyor mu
 const banCheck=p=>p.evaluate(async()=>{
+  // CI'daki geniş yedek yazı tipini taklit et (en kötü durum): yazı yine de okunur kalmalı
+  if(!document.getElementById('banWide')){const st=document.createElement('style');st.id='banWide';st.textContent='#dbt{font-family:"DejaVu Sans",Verdana,sans-serif!important;letter-spacing:.06em}';document.head.appendChild(st);}
   showBanner(0,i18('throwBan'),true);await new Promise(r=>setTimeout(r,80));
   const t=$('#dbt'),side=t.classList.contains('side');t.style.animation='none';t.style.opacity='1';t.style.transform=side?'scale(1.1) rotate(-5deg)':'scale(1.28) rotate(-5deg)';
   const R=t.getBoundingClientRect(),bar=$('#bg rect[data-k="bar"]').getBoundingClientRect(),bw=$('#board').getBoundingClientRect();
@@ -53,7 +55,7 @@ const banCheck=p=>p.evaluate(async()=>{
   const hit=(a,b)=>a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1;
   const fs=parseFloat(getComputedStyle(t).fontSize),scale=bw.width/410;
   const out={side,pul:ck.length,pulaDeger:ck.some(c=>hit(R,c)),dugmeyeDeger:btn.some(b=>hit(R,b)),bariKesiyor:side&&R.right>bar.left+1,tahtaIcinde:R.left>=bw.left-1&&R.right<=bw.right+1,
-    ekranPx:Math.round(fs*scale)};
+    ekranPx:Math.round(fs*scale),satir:t.querySelectorAll('tspan').length||1};
   t.style.animation='';t.style.opacity='';t.style.transform='';t.classList.remove('pop');return out;});
 const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m))b[+i]=v;return b;};
 

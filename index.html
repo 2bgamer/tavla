@@ -1870,7 +1870,16 @@ function showBanner(delay,text,gold){
     // yazı (0,0) noktasında, konumu kapsayan grubun translate'i verir: büyütme her tarayıcıda yazının merkezinden olur
     // (Safari SVG yazıda transform-box:fill-box'ı Chromium gibi uygulamıyor). Ortada: en büyüdüğü anda da ZAR AT düğmesine değmesin
     const g=$('#dbtG');if(g)g.setAttribute('transform',side?'translate(119 201)':'translate(218 127)');t.classList.toggle('side',side);
-    t.classList.toggle('gold',!!gold);t.textContent=text;t.style.fontSize='';try{const w=t.getComputedTextLength();if(w>maxW){const fs=parseFloat(getComputedStyle(t).fontSize)||36;t.style.fontSize=(fs*maxW/w).toFixed(1)+'px';}}catch(e){}void t.getBoundingClientRect();t.classList.add('pop');},delay);
+    t.classList.toggle('gold',!!gold);t.textContent=text;t.style.fontSize='';
+    try{const fs=parseFloat(getComputedStyle(t).fontSize)||36,w=t.getComputedTextLength();
+      if(w>maxW){let f=fs*maxW/w;
+        // yarım tahtada tek satır çok küçülecekse (ör. dar ekran, geniş yazı tipi) iki satıra böl: "ZARINI" / "AT!"
+        const ws=text.split(' ');
+        if(side&&f<fs*.72&&ws.length>1){let k=1,best=1e9;for(let i=1;i<ws.length;i++){const d=Math.abs(ws.slice(0,i).join(' ').length-ws.slice(i).join(' ').length);if(d<best){best=d;k=i;}}
+          t.textContent='';[ws.slice(0,k).join(' '),ws.slice(k).join(' ')].forEach((l,i)=>{const sp=document.createElementNS('http://www.w3.org/2000/svg','tspan');sp.setAttribute('x','0');sp.setAttribute('dy',i?'1.05em':'-.52em');sp.textContent=l;t.appendChild(sp);});
+          const lw=Math.max(...[...t.children].map(c=>c.getComputedTextLength()));f=Math.min(fs,fs*maxW/lw);}
+        t.style.fontSize=f.toFixed(1)+'px';}}catch(e){}
+    void t.getBoundingClientRect();t.classList.add('pop');},delay);
 }
 function showDbl(delay){if(!JOKE)return;const hk=G.all[0]===6,D=DBLS();showBanner(delay,hk?i18('hakko'):D[(G.seed>>>0)%D.length],hk);}
 let rafOn=false;
