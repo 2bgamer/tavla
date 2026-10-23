@@ -1070,6 +1070,11 @@ function humanProceed(){
   if(G.over||G.busy||G.turn!==G.me||!G.rolled)return;
   if(G.mode==='online'&&(!G.started||G.endTimer))return;
   const plan=uniquePlan(G.st,G.me,G.dice);
+  // kırık pul girişi zorunlu ve tekse (ör. 2-6, rakibin 6 kapısı kapalı, 2 açık) sormadan gir; kalan zarı oyuncu seçer
+  if(plan===null&&G.st.bar[K(G.me)]>0){
+    const ms=legalMoves(G.st,G.me,G.dice),ent=new Map(ms.map(m=>[m.t+'/'+m.d,m]));
+    if(ms.length&&ms.every(m=>m.f==='bar')&&ent.size===1){autoPlay([ent.values().next().value],i18('onlyOne'));return;}
+  }
   if(plan===null){
     if(G.mode==='local'){G.msg=(G.note||'')+hintText();G.note='';}
     render();return;
@@ -2750,7 +2755,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610251900';
+const APP_VER='202610252000';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

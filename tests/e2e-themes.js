@@ -544,6 +544,27 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(()=>!document.querySelector('#thHome .thimg')&&[...document.querySelectorAll('#thHome .thpv svg')].every(s=>s.getBoundingClientRect().height>20)));
     await q.context().close();
   }
+  /* 5h) kırık pulun tek ve zorunlu girişi sormadan oynanır */
+  {
+    const p=await mkPage(b,{ls:{tavla_snd:'off'}});await p.goto(URL);await sleep(300);await p.click('#bGo');await sleep(500);
+    const set=(b0,bar,dice)=>p.evaluate(([b0,bar,dice])=>{G.run++;G.autoTok++;const b=Array(24).fill(0);for(const [i,v] of Object.entries(b0))b[+i]=v;
+      G.st={b,bar,off:[0,0]};Object.assign(G,{op:0,turn:G.me,rolled:true,all:dice.slice(),dice:dice.slice(),busy:false,auto:false,over:false,sel:null,last:null,hist:[]});render();humanProceed();},[b0,bar,dice]);
+    const me=await p.evaluate(()=>G.me);const E=d=>me===1?24-d:d-1,O=-me;
+    // 2-6: rakibin 6 kapısı kapalı, 2 açık, başka pullar da var (6 için seçenek) → 2'ye otomatik girer, 6'yı oyuncu seçer
+    await set({[E(6)]:2*O,[E(1)]:2*O,[me===1?12:11]:3*me,[me===1?7:16]:3*me,[me===1?5:18]:4*me,[me===1?23:0]:2*me},me===1?[1,0]:[0,1],[2,6]);
+    await p.waitForFunction(()=>!G.auto&&G.st.bar[K(G.me)]===0,null,{timeout:4000}).catch(()=>{});
+    const r=await p.evaluate(e=>({bar:G.st.bar[K(G.me)],giris:G.st.b[e]*G.me,zar:G.dice.slice(),busy:G.busy}),E(2));
+    ok('zorunlu giriş: 2-6, 6 kapalı → kırık pul sormadan 2\'ye girdi, 6 oyuncuda',r.bar===0&&r.giris>=1&&r.zar.join()==='6'&&!r.busy,JSON.stringify(r));
+    // 2-6: iki giriş de açık → sormalı (otomatik oynamamalı)
+    await set({[E(1)]:2*O,[me===1?12:11]:3*me,[me===1?5:18]:4*me},me===1?[1,0]:[0,1],[2,6]);await sleep(1500);
+    ok('zorunlu giriş: iki giriş açıkken oyuncuya sorulur',await p.evaluate(()=>G.st.bar[K(G.me)]===1&&G.dice.length===2));
+    // çift (3-3), iki kırık, yalnız 3 açık → iki pul da girer
+    await set({[E(1)]:2*O,[E(2)]:2*O,[E(4)]:2*O,[E(5)]:2*O,[E(6)]:2*O,[me===1?12:11]:3*me},me===1?[2,0]:[0,2],[3,3,3,3]);
+    await p.waitForFunction(()=>!G.auto&&G.st.bar[K(G.me)]===0,null,{timeout:6000}).catch(()=>{});
+    ok('zorunlu giriş: 3-3 ile iki kırık pul da otomatik girdi',await p.evaluate(()=>G.st.bar[K(G.me)]===0),await p.evaluate(()=>JSON.stringify({bar:G.st.bar,zar:G.dice})));
+    ok('zorunlu giriş testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
   /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde son 3 mesaj ve son 3 zar */
   {
     const p=await mkPage(b,{vp:{width:390,height:664},ls:{tavla_snd:'off'}});await p.goto(URL);await sleep(400);
