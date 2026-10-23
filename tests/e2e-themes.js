@@ -43,6 +43,18 @@ const barCheck=p=>p.evaluate(()=>{
   const btn=[...document.querySelectorAll('#bg .rbig,#bg text.zs')].map(e=>e.getBoundingClientRect());
   const hit=(a,b)=>a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1;
   return {bar:bar.length,btn:!!document.querySelector('#bg .rbig'),cakisma:bar.some(c=>btn.some(x=>hit(c,x))),boardW:Math.round($('#board').getBoundingClientRect().width)};});
+// "ZARINI AT!" yazısı en büyük anında (animasyonun tepe ölçeği) bardaki pullara ve ZAR AT düğmesine değiyor mu
+const banCheck=p=>p.evaluate(async()=>{
+  showBanner(0,i18('throwBan'),true);await new Promise(r=>setTimeout(r,80));
+  const t=$('#dbt'),side=t.classList.contains('side');t.style.animation='none';t.style.opacity='1';t.style.transform=side?'scale(1.1) rotate(-5deg)':'scale(1.28) rotate(-5deg)';
+  const R=t.getBoundingClientRect(),bar=$('#bg rect[data-k="bar"]').getBoundingClientRect(),bw=$('#board').getBoundingClientRect();
+  const ck=[...document.querySelectorAll('#bg use[href="#ckL"],#bg use[href="#ckD"]')].map(u=>u.getBoundingClientRect()).filter(r=>r.width&&Math.abs((r.left+r.right)/2-(bar.left+bar.right)/2)<3);
+  const btn=[...document.querySelectorAll('#bg .rbig')].map(e=>e.getBoundingClientRect());
+  const hit=(a,b)=>a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1;
+  const fs=parseFloat(getComputedStyle(t).fontSize),scale=bw.width/410;
+  const out={side,pul:ck.length,pulaDeger:ck.some(c=>hit(R,c)),dugmeyeDeger:btn.some(b=>hit(R,b)),bariKesiyor:side&&R.right>bar.left+1,tahtaIcinde:R.left>=bw.left-1&&R.right<=bw.right+1,
+    ekranPx:Math.round(fs*scale)};
+  t.style.animation='';t.style.opacity='';t.style.transform='';t.classList.remove('pop');return out;});
 const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m))b[+i]=v;return b;};
 
 (async()=>{
@@ -538,6 +550,13 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok(`[${t}] ZAR AT: sıra rakipteyken düğme yok`,!r.btn,JSON.stringify(r));
     ok(`[${t}] ZAR AT: tahta küçülmedi`,r.boardW===w0,w0+' → '+r.boardW);
     ok(`[${t}] ZAR AT: tahtaya dokununca zar atılıyor`,await (async()=>{await set([0,1]);const bx=await p.evaluate(()=>{const r=$('#board').getBoundingClientRect();return {x:r.left+r.width*.78,y:r.top+r.height*.5};});await p.mouse.click(bx.x,bx.y);await sleep(200);return p.evaluate(()=>G.rolled||G.busy);})());
+    await set([0,0]);let bn=await banCheck(p);
+    ok(`[${t}] ZARINI AT!: bar boşken ortada, ZAR AT düğmesine değmez`,!bn.side&&!bn.dugmeyeDeger&&bn.tahtaIcinde,JSON.stringify(bn));
+    await set([0,1]);bn=await banCheck(p);
+    ok(`[${t}] ZARINI AT!: rakip kırıkken bardaki pula ve düğmeye değmez, bara taşmaz`,bn.side&&bn.pul===1&&!bn.pulaDeger&&!bn.dugmeyeDeger&&!bn.bariKesiyor&&bn.tahtaIcinde,JSON.stringify(bn));
+    await set([2,3]);bn=await banCheck(p);
+    ok(`[${t}] ZARINI AT!: iki taraf kırıkken (2 + 3) hiçbir pula ve düğmeye değmez`,bn.side&&bn.pul===5&&!bn.pulaDeger&&!bn.dugmeyeDeger&&!bn.bariKesiyor&&bn.tahtaIcinde,JSON.stringify(bn));
+    ok(`[${t}] ZARINI AT!: yazı okunur boyutta (ekranda en az 20 px)`,bn.ekranPx>=20,JSON.stringify(bn));
     ok(`[${t}] ZAR AT testinde sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
