@@ -183,9 +183,10 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     for(const t of THEMES){
       await p.click('#bSnd');await p.click('#bTheme2');await p.waitForSelector('#thDrawer:not([hidden])');
       await p.click(`#thDrawer .thc[data-t=${t}]`);await sleep(350);
-      const fill=await p.evaluate(()=>[...document.querySelectorAll('#bg polygon')].map(e=>e.getAttribute('fill')));
-      const exp=await p.evaluate(()=>[TK.triA,TK.triB]);
-      ok(`[${t}] maç ortasında tema: üçgenler tokenla çizildi`,fill.includes(exp[0])&&fill.includes(exp[1]));
+      await p.waitForFunction(t=>document.documentElement.classList.contains('asset')&&THEME===t&&ASSET[t]&&ASSET[t].ok,t,{timeout:5000}).catch(()=>{});await sleep(150);
+      const r=await p.evaluate(()=>{const f=[...document.querySelectorAll('#bg polygon')].map(e=>e.getAttribute('fill'));
+        return {a:f.filter(x=>x==='url(#ptA)').length,b:f.filter(x=>x==='url(#ptB)').length,stopA:(document.querySelector('#ptA stop')||{getAttribute:()=>''}).getAttribute('stop-color'),stopB:(document.querySelector('#ptB stop')||{getAttribute:()=>''}).getAttribute('stop-color'),exp:[TK.triA,TK.triB]};});
+      ok(`[${t}] maç ortasında tema: 24 nokta points.svg degradesiyle çizildi`,r.a===12&&r.b===12&&r.stopA===r.exp[0]&&r.stopB===r.exp[1],JSON.stringify(r));
       ok(`[${t}] zar paleti güncellendi`,await p.evaluate(()=>PAL.one===TK.die.one));
     }
     ok('tema değişimi maç durumunu ve zar tohumunu değiştirmedi',before===await stSnap(p));

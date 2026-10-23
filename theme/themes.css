@@ -306,3 +306,7 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 #home{background:var(--home-bg,none) center top/cover no-repeat}
 /* sohbet başlığı hiçbir yazı tipinde yatay taşmasın: sığmazsa kontroller alt satıra geçer */
 #chatHead{flex-wrap:wrap;row-gap:2px}
+/* sonuç penceresi açıkken slogan pencerenin üstünde kalır */
+#slg.ovr{top:calc(env(safe-area-inset-top,0px) + 90px)}
+/* v2 ZAR AT zemini her temada koyu: etiket açık renk */
+.asset .rbig .rlab{fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2.2px;paint-order:stroke}

@@ -144,3 +144,13 @@ Yeni görseller koda dokunmadan takılır: `theme/themes.js` içinde ilgili tema
 Notlar:
 - Zil düğmesinin oyunda karşılığı yok; şu an "Şimdilik yeni bildirim yok" penceresi açıyor. Bildirim özelliği istenirse ayrıca konuşulmalı.
 - Ses, slogan ve dil ayarları referansta görünmüyor; ⚙ ile açılan "Ayarlar" çekmecesine taşındı.
+
+## 9. Premium Asset v2 (entegre edildi)
+
+`assets/<tema>/` altındaki 36 SVG v2 ile değiştirildi. Önizleme PNG'leri ve referanslar çalışma anına konmadı.
+
+- **Pullar:** v2 `checker-*` diskinin merkezi (48,46) ve yarıçapı 43; motor bunu r = 12,5'e ölçekliyor. Varlığın kendi gölgesi kullanılıyor.
+- **Üçgenler:** `points.svg` içindeki `#pa` / `#pb` degradeleri ve `#pt-a` / `#pt-b` konturu çalışma anında okunup 24 gerçek noktaya uygulanıyor; iç ışık çizgisi de aynı geometriyle çiziliyor. Semboller doğrudan çağrılmıyor.
+- **Katman sırası:** `board-field` → üçgenler → `board-frame` → pullar → zarlar. **Not:** v2 talimatı çerçeveyi pulların üstüne koyuyor. v2 çerçevesi sol toplama kanalını (x = 5–32) ve orta barı (x = 204–232) dolu boyadığı için, üstte çizilirse bardaki kırık pullar ve toplanmış pullar görünmez olur. Bu yüzden çerçeve pulların altında tutuldu. Noktalardaki pullar çerçeveyle kesişmediği için görünüm farkı yok.
+
+**Hâlâ eksik (kendi alternatifi üretilmedi):** sinematik 3B arka planlar (H2), logo (H1), dekoratif 3B masa (H3) ve hareketli parçacıklar.

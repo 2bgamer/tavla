@@ -1579,7 +1579,9 @@ const THEMES=window.TAVLA_THEMES,THN=window.TAVLA_THEME_NAMES; // theme/themes.j
 // tercihi olmayan oyuncu (eski kullanıcılar dahil) Poker Lounge ile açılır: eski ceviz/çuha görünümüne en yakın tema
 let THEME=lsGet('tavla_theme','poker');if(!THEMES[THEME])THEME='poker';
 let TK=THEMES[THEME].tk;
-const tri=(pts,a)=>`<polygon points="${pts}" fill="${a?TK.triA:TK.triB}" stroke="${a?TK.triSA:TK.triSB}" stroke-width="${TK.triW}" stroke-linejoin="round"/>`; // points.svg #pt-a/#pt-b
+const tri=(pts,a)=>{const P=assetOk()&&ASSET[THEME].pts;
+  if(P){const k=a?P.a:P.b;return `<polygon points="${pts}" fill="url(#${a?'ptA':'ptB'})" stroke="${k?k.s:TK.triSA}" stroke-width="${k?k.w:TK.triW}" stroke-linejoin="round"/>`;}
+  return `<polygon points="${pts}" fill="${a?TK.triA:TK.triB}" stroke="${a?TK.triSA:TK.triSB}" stroke-width="${TK.triW}" stroke-linejoin="round"/>`;}; // points.svg #pt-a/#pt-b
 function thPrev(k){
   const t=THEMES[k].tk;let p='';
   for(let i=0;i<6;i++){const x=10+i*14;p+=`<polygon points="${x},6 ${x+12},6 ${x+6},28" fill="${i%2?t.triB:t.triA}"/><polygon points="${x},54 ${x+12},54 ${x+6},32" fill="${i%2?t.triA:t.triB}"/>`;}
@@ -1635,10 +1637,14 @@ function loadAssets(k){
   if(ASSET[k])return ASSET[k].p;
   const A=THEMES[k].a,o=ASSET[k]={ok:false,sym:'',track:''};
   const get=f=>fetch(A+f).then(r=>{if(!r.ok)throw new Error(f);return r.text();});
-  o.p=Promise.all(['checker-light','checker-dark','fx-closed-point','btn-roll','adv-bar-track'].map(f=>get(f+'.svg'))).then(([cl,cd,fx,rb,tr])=>{
+  o.p=Promise.all(['checker-light','checker-dark','fx-closed-point','btn-roll','adv-bar-track','points'].map(f=>get(f+'.svg'))).then(([cl,cd,fx,rb,tr,pt])=>{
     const sy=(id,t)=>{const x=svgInner(t,'a'+k+id);return x?`<symbol id="${id}" viewBox="${x.vb}">${x.inner}</symbol>`:'';};
-    o.sym=sy('ckL',cl)+sy('ckD',cd)+sy('fxC',fx)+sy('rbB',rb);
-    o.track=tr.replace('<svg ','<svg preserveAspectRatio="none" aria-hidden="true" ');
+    // points.svg: #pt-a/#pt-b sembol olarak çağrılmaz; degradeleri ptA/ptB adıyla gerçek noktalara, konturu tri()'ye
+    const gr=id=>{const m=pt.match(new RegExp('<linearGradient id="'+id+'"[\\s\\S]*?</linearGradient>'));return m?m[0].replace('id="'+id+'"','id="'+(id==='pa'?'ptA':'ptB')+'"'):'';};
+    const sk=id=>{const m=pt.match(new RegExp('id="'+id+'"[^>]*stroke="([^"]+)"[^>]*stroke-width="([^"]+)"'));return m?{s:m[1],w:+m[2]}:null;};
+    const ga=gr('pa'),gb=gr('pb');o.pts=ga&&gb?{a:sk('pt-a'),b:sk('pt-b')}:null;
+    o.sym=sy('ckL',cl)+sy('ckD',cd)+sy('fxC',fx)+sy('rbB',rb)+(o.pts?ga+gb:'');
+    const t=svgInner(tr,'a'+k+'trk');o.track=t?`<svg viewBox="${t.vb}" preserveAspectRatio="none" aria-hidden="true">${t.inner}</svg>`:'';
     o.ok=true;[A+'board-field.svg',A+'board-frame.svg',A+'avatar-ring.svg'].forEach(u=>{const i=new Image();i.src=u;});
     if(THEME===k)assetsApply();
   }).catch(()=>{delete ASSET[k];});
@@ -1725,7 +1731,7 @@ function moment(kind,delay,key){
     if(!SLOGAN)return;
     const el=$('#slg');if(!el)return;
     el.className='';el.innerHTML=`<span class="e" aria-hidden="true">${k[0]}</span><span>${i18(k[1])}</span>`;void el.offsetWidth;
-    el.className='on k-'+kind+(SLGANIM&&!RM?'':' still');
+    el.className='on k-'+kind+(SLGANIM&&!RM?'':' still')+($('#overlay').hidden?'':' ovr'); // sonuç penceresi açıksa başlığını kapatmasın
     clearTimeout(slgTm);slgTm=setTimeout(()=>{el.className='';el.textContent='';},1500);
   },delay||0);
   return SLOGAN;
@@ -1847,7 +1853,8 @@ const PX=p=>colX(p<12?p:23-p);
 const PTOP=p=>p>=12;
 function checker(cx,cy,light){
   const sh=`<ellipse cx="${cx+1}" cy="${cy+2.2}" rx="12.8" ry="12.4" fill="#000" opacity="${light?.4:.45}"/>`;
-  if(assetOk()){const r=14.286;return sh+`<use href="#${light?'ckL':'ckD'}" x="${(cx-r).toFixed(2)}" y="${(cy-r).toFixed(2)}" width="${2*r}" height="${2*r}"/>`;}
+  // checker-*.svg (96×96): disk merkezi (48,46), r=43 → r=12.5; gölge varlığın içinde
+  if(assetOk()){const k=12.5/43,w=96*k;return `<use href="#${light?'ckL':'ckD'}" x="${(cx-48*k).toFixed(2)}" y="${(cy-46*k).toFixed(2)}" width="${w.toFixed(2)}" height="${w.toFixed(2)}"/>`;}
   const o=light?TK.l:TK.d;
   return sh+`<circle cx="${cx}" cy="${cy}" r="12.5" fill="url(#${light?'gI':'gB'})" stroke="${o.s}" stroke-width="1.2"/>`+
     `<circle cx="${cx}" cy="${cy}" r="8.4" fill="none" stroke="${o.s}" stroke-opacity=".5" stroke-width="1"/>`+
@@ -2023,6 +2030,7 @@ function render(){
     const x=PX(p),top=PTOP(p),yb=top?8:392,yt=top?178:222;
     const pts=`${x+1},${yb} ${x+27},${yb} ${x+14},${yt}`;
     h+=tri(pts,p%2===0);
+    if(AS)h+=`<polygon points="${x+3},${top?yb+2:yb-2} ${x+25},${top?yb+2:yb-2} ${x+14},${top?yt-8:yt+8}" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width=".6" pointer-events="none"/>`;
     if(dests.has(p))h+=`<polygon class="dest" points="${pts}"/>`;
     if(lastTo.has(p))h+=`<polygon class="lastp" points="${pts}"/>`;
     else if(lastFrom.has(p))h+=`<polygon class="lastf" points="${pts}"/>`;
@@ -2670,7 +2678,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610241400';
+const APP_VER='202610241700';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
