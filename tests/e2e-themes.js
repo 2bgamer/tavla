@@ -128,6 +128,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok('toplama: kanal hedef olarak işaretlendi',await p.evaluate(()=>!!document.querySelector('#bg rect.dest[x="6"]')));
       await press(p,'#bg rect[data-k="off"]');await sleep(500);
       ok('toplama: pul kanala gitti (dokunmatik/tıklama)',await p.evaluate(()=>G.st.off[0]===6&&G.st.b[5]===2),await p.evaluate(()=>JSON.stringify(G.st.off)));
+      // çubuk, pulun kanala uçuş animasyonu bitince çizilir (yavaş makinede 500 ms'yi aşabilir)
+      await p.waitForFunction(()=>document.querySelectorAll('#bg rect[x="8"][y]').length>=6,null,{timeout:3000}).catch(()=>{});
       ok('toplama: kanalda 6 beyaz çubuk',await p.evaluate(()=>document.querySelectorAll('#bg rect[x="8"][y]').length>=6));}
     // tur süresi halkası: yeşil, son 5 sn kırmızı + sayı; diğer avatar pasif
     {await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();render();timerSync();});await sleep(250);
