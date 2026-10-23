@@ -55,6 +55,50 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.context().close();
   }
 
+  /* 1b) giriş ekranı: dört tema × (tema değişimi, oyun başlatma, kayıtlı oyuna devam, mobil) */
+  for(const t of THEMES){
+    const p=await mkPage(b,{ls:{tavla_theme:'poker',tavla_snd:'off'}});await p.goto(URL);await sleep(500);
+    const bg0=await p.evaluate(()=>getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage);
+    await press(p,`#thHome .thc[data-t=${t}]`);await sleep(250);
+    const st=await p.evaluate(()=>({th:document.documentElement.dataset.theme,ls:lsGet('tavla_theme'),bg:getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage,hero:!!document.querySelector('#heroB polygon')}));
+    ok(`[${t}] giriş: tema anında uygulandı ve kaydedildi`,st.th===t&&st.ls===t&&(t==='poker'||st.bg!==bg0)&&st.hero,JSON.stringify({th:st.th,ls:st.ls}));
+    ok(`[${t}] giriş: devam düğmesi kayıt yokken pasif`,await p.evaluate(()=>$('#bCont').disabled));
+    // seçimler motora bağlı: Kolay, 5 set, 30 sn
+    await press(p,'#optCpu [data-grp=lvl] [data-v=easy]');await press(p,'#optCpu [data-grp=tgt] [data-v="5"]');await press(p,'#optCpu [data-grp=tlc] [data-v="30"]');
+    await press(p,'#bGo');await sleep(400);
+    ok(`[${t}] giriş: OYUNU BAŞLAT seçimlerle yerel oyunu açtı`,await p.evaluate(()=>G.mode==='local'&&!$('#play').hidden&&LVL==='easy'&&TARGET===5&&TLC===30&&lsGet('tavla_lvl')==='easy'));
+    // kayıtlı oyuna devam
+    await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:true,all:[5,2],dice:[5,2],busy:false,over:false});G.st=newState();G.st.b[12]=4;G.st.b[7]=4;render();saveCur();});
+    const snap=await p.evaluate(()=>JSON.stringify(G.st));
+    await press(p,'#bBack');await sleep(300);
+    ok(`[${t}] giriş: kayıt varken OYUNA DEVAM ET etkin`,await p.evaluate(()=>!$('#home').hidden&&!$('#bCont').disabled));
+    await press(p,'#bCont');await sleep(400);
+    ok(`[${t}] giriş: OYUNA DEVAM ET aynı oyunu açtı`,await p.evaluate(s=>G.mode==='local'&&JSON.stringify(G.st)===s,snap));
+    await p.evaluate(()=>showHome());await sleep(200);
+    // mobil: üç genişlikte yatay taşma yok, dikey kaydırılabilir, dokunma hedefleri
+    for(const w of [375,390,430]){await p.setViewportSize({width:w,height:w===375?667:w===390?844:932});await sleep(150);
+      const m=await p.evaluate(()=>{const h=$('#home'),r=e=>e.getBoundingClientRect();return {ov:document.scrollingElement.scrollWidth<=innerWidth&&h.scrollWidth<=h.clientWidth+1,
+        go:r($('#bGo')).height,seg:Math.min(...[...document.querySelectorAll('#optCpu .seg button')].map(b=>r(b).height)),ic:r($('#bSet')).height,mc:r($('#mCpu')).height,scroll:h.scrollHeight>h.clientHeight};});
+      ok(`[${t}] giriş ${w}px: yatay taşma yok, hedefler parmağa uygun`,m.ov&&m.go>=56&&m.seg>=40&&m.ic>=44&&m.mc>=88,JSON.stringify(m));
+      if(w===375)ok(`[${t}] giriş 375×667: içerik dikey kaydırılabilir`,m.scroll);}
+    ok(`[${t}] giriş: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
+  {const p=await mkPage(b,{ls:{tavla_target:4,tavla_snd:'off'}});await p.goto(URL);await sleep(400);
+    ok('giriş: eski 4 set tercihi 5 olarak açılır (1/3/5)',await p.evaluate(()=>TARGET===5&&$('#optCpu [data-grp=tgt] .on').dataset.v==='5'));
+    await press(p,'#mOnline');await sleep(150);
+    ok('giriş: Arkadaşınla seçilince oda seçenekleri görünür',await p.evaluate(()=>!$('#optOn').hidden&&$('#optCpu').hidden&&$('#mOnline').classList.contains('on')));
+    ok('giriş: açık oda yokken devam pasif (çok oyunculu)',await p.evaluate(()=>$('#bCont').disabled));
+    ok('giriş: görsel yuvaları (logo/masa) tema dosyasından değiştirilebilir',await p.evaluate(()=>{const t=THEMES[THEME];t.home={logo:'assets/neon/btn-roll.svg',table:'assets/neon/board-field.svg'};heroPaint();
+      const r=!$('#lgImg').hidden&&!$('#heroImg').hidden&&getComputedStyle($('#heroB')).display==='none';delete t.home;heroPaint();return r&&$('#heroImg').hidden&&getComputedStyle($('#heroB')).display!=='none';}));
+    await press(p,'#mCpu');await press(p,'#bSet');await sleep(200);
+    ok('giriş: ⚙ ayarlar çekmecesi ses/slogan/dil ayarlarını açar',await p.evaluate(()=>!$('#setDrawer').hidden&&$('#setDrawer').contains($('#jkIn'))&&$('#setDrawer').contains($('#bLang'))));
+    await p.keyboard.press('Escape');await sleep(100);
+    ok('giriş: çekmece Esc ile kapanır',await p.evaluate(()=>$('#setDrawer').hidden));
+    await press(p,'#bBell');await sleep(150);
+    ok('giriş: zil bildirim penceresini açar',await p.evaluate(()=>!$('#overlay').hidden));
+    await p.context().close();}
+
   /* 2) bilgisayara karşı: olaylar, AI, geri al, tema değişimi */
   {
     const p=await mkPage(b,{ls:{tavla_theme:'poker',tavla_snd:'all'}});await p.goto(URL);await sleep(400);

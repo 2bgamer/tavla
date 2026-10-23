@@ -1,6 +1,7 @@
 /* Tavla Masası: tema parametreleri (yalnızca veri; çizim kodu index.html'de).
    a: Grafik Paketi v1 varlık klasörü (assets/<tema>/): board-field, board-frame, checker-{light,dark}, btn-roll,
       adv-bar-track, avatar-ring, fx-closed-point. Üçgen renkleri points.svg'deki #pt-a / #pt-b stilinden.
+   home (isteğe bağlı): giriş ekranı görsel yuvaları {logo, table, bg}: dosya yolu verilince yedek çizimin yerine geçer.
    tk: varlık yüklenene kadar ve küçük çizimlerde (isim etiketi, toplanan pul) kullanılan renkler. adv: üstünlük barı [oyuncu, rakip]. */
 window.TAVLA_THEMES={
   neon:{c:'#0b0620',a:'assets/neon/',adv:['#21c8ff','#ff2f9a'],tk:{frame:'#150a31',field:'#0d0724',bar:'#1d1042',

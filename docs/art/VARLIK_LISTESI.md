@@ -127,3 +127,20 @@ Freesound indirmek için oturum açmak gerekir. Dosyalar `assets/sfx/src/` klas�
 - sessizlikleri kırpıp seviyeleri eşitleyecek (M4A + OGG)
 - `manifest.json`'u dolduracak
 - atıf gerekiyorsa yardım ekranına yazar ve lisans bilgisini ekleyecek; `src/` klasörü yayına girmeyecek
+
+## 8. Giriş ekranı (onaylı referans) — pakette olmayan görseller
+
+Yerleşim ve tüm işlevler HTML/CSS olarak hazır; aşağıdaki görseller gelene kadar yedek görünüm kullanılıyor. Görseller **ayrı katmanlar** hâlinde gelmeli. Yazı, isim, düğme etiketi ve seçili durum görsele gömülmemeli.
+
+Yeni görseller koda dokunmadan takılır: `theme/themes.js` içinde ilgili temaya `home:{logo:'…', table:'…', bg:'…'}` yazmak yeterli. Verilen yuva görselle değişir, verilmeyen yuvada yedek görünüm kalır.
+
+| # | Dosya | Biçim, ölçü | Yuva | Not |
+|---|---|---|---|---|
+| H1 | `assets/common/logo.webp` (ya da tema başına `assets/<tema>/logo.webp`) | şeffaf, 1080 × 420 | `home.logo` | Taç ve zar detaylı "Tavla Masası" logosu. Görseldeki yazı yalnızca bu logo için kabul edilir; ekran okuyucu metni kodda kalır. Şu an yedek: CSS ile biçimlenmiş metin. |
+| H2 | `assets/<tema>/home-bg.webp` | 1290 × 2796, şeffaf olmayan | `home.bg` | Tema sahnesi: neon şehir, gün batımı plajı, lounge, arcade salonu. Ortası sakin olmalı; paneller üstüne gelecek. |
+| H3 | `assets/<tema>/home-table.webp` | şeffaf, 1170 × 560 | `home.table` | Üç boyutlu dekoratif tavla masası; çay bardağı gibi aksesuarlar dahil. Şu an yedek: paket SVG'leriyle perspektifli tahta. |
+| H4 | `assets/common/icons.svg` | sembol seti, `viewBox 0 0 24 24` | — | Zil, ayarlar, bilgisayar, iki kişi, ok, seviye, set, saat, oynat, yenile, palet. Şu an basit yedek simgeler var. |
+
+Notlar:
+- Zil düğmesinin oyunda karşılığı yok; şu an "Şimdilik yeni bildirim yok" penceresi açıyor. Bildirim özelliği istenirse ayrıca konuşulmalı.
+- Ses, slogan ve dil ayarları referansta görünmüyor; ⚙ ile açılan "Ayarlar" çekmecesine taşındı.
