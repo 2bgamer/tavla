@@ -161,17 +161,10 @@ button.primary{background:var(--pri-bg)}
 @media (prefers-reduced-motion:no-preference){.rbig .rring{animation:rring 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes rring{0%,100%{opacity:.25;transform:scale(.98)}50%{opacity:.7;transform:scale(1.04)}}}
 :root[data-theme=neon] .rbig .rbtn{stroke:#ff9be6}:root[data-theme=arcade] .rbig .rbtn{stroke:#000;stroke-width:3}:root[data-theme=poker] .rbig .rbtn{stroke:#f3d27a}
 
-/* tam kapı + rakip kırık: tema bazında alev / elektrik / ışık */
-.bz{pointer-events:none}
-.bz.fire{animation:bzfire .45s ease-in-out infinite alternate}
-@keyframes bzfire{from{opacity:.55}to{opacity:.95}}
-.bz.light{animation:bzlight 1.3s ease-in-out infinite}
-@keyframes bzlight{0%,100%{opacity:.4}50%{opacity:.9}}
-.bz.elec{animation:bzlight .9s ease-in-out infinite}
-.bz.elec .arc{fill:none;stroke:#e9fdff;stroke-width:1.6;stroke-linejoin:round;stroke-dasharray:7 9;animation:bzarc .35s linear infinite;filter:drop-shadow(0 0 2px #22e4ff)}
-@keyframes bzarc{to{stroke-dashoffset:-32}}
-:root[data-theme=arcade] .bz.elec .arc{stroke:#fff35a;filter:drop-shadow(0 0 2px #ffd400)}
-@media (prefers-reduced-motion:reduce){.bz,.bz .arc{animation:none!important}.bz{opacity:.75}}
+/* tam kapı + rakip kırık: fx-closed-point.svg, sakin nabız */
+.bz{animation:bzpulse 1.6s ease-in-out infinite}
+@keyframes bzpulse{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.bz{animation:none;opacity:.85}}
 
 /* sohbet: mikrofon */
 #bMic{flex:none;min-width:40px;min-height:38px;padding:0 9px;display:grid;place-items:center;color:var(--muted)}
@@ -183,3 +176,42 @@ button.primary{background:var(--pri-bg)}
 #overlay .avb{margin:0;padding:0;min-height:0;aspect-ratio:1;border-radius:50%;overflow:hidden;border:2.5px solid transparent;background:var(--surface)}
 #overlay .avb[aria-checked=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
 :root[data-theme=arcade] #adv .asc b{color:#111}:root[data-theme=arcade] #adv .asc small{color:#333}
+
+/* ---------- Grafik Paketi v1: avatar halkası, tur süresi, bar şeridi ---------- */
+.avw{position:relative;flex:none;width:44px;height:44px;display:grid;place-items:center}
+#adv .avw .av{width:36px;height:36px}
+.asset #adv .avw .av{border:0;box-shadow:none}
+.avw .aring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.avw .aring:not([src]),:root:not(.asset) .avw .aring{display:none}
+.avw .tring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);pointer-events:none;opacity:0}
+.avw .tfg{fill:none;stroke:#22c55e;stroke-width:5;stroke-linecap:round;stroke-dasharray:100 100;transition:stroke-dasharray .12s linear}
+.avw.ton .tring{opacity:1}.avw.ton .aring{opacity:.3}
+.avw.tred .tfg{stroke:#ef4444}
+.avw .tsec{position:absolute;right:-7px;bottom:-5px;min-width:20px;height:18px;padding:0 4px;border-radius:9px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;display:none;place-items:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--bg)}
+.avw.ton .tsec{display:grid}.avw.tred .tsec{background:#ef4444}
+.op .avw .tsec{right:auto;left:-7px}
+.avw.tred .tring{animation:tpulse .8s ease-in-out infinite}
+@keyframes tpulse{50%{filter:drop-shadow(0 0 4px #ef4444)}}
+@media (prefers-reduced-motion:reduce){.avw .tfg{transition:none}.avw.tred .tring{animation:none}}
+#adv .abar{height:16px;background:rgba(0,0,0,.35);overflow:visible}
+.asset #adv .abar{background:none;box-shadow:none}
+#adv .abar .atrk{position:absolute;inset:0;pointer-events:none}
+#adv .abar .atrk svg{display:block;width:100%;height:100%}
+#adv .abar .afill{position:absolute;inset:0;border-radius:6px;overflow:hidden}
+.asset #adv .abar .afill{left:4px;right:4px;top:4px;bottom:4px;border-radius:4px}
+.rbig .rasset{filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+
+/* mobil: tahtaya en geniş alan, kompakt üst bölüm, daraltılabilir sohbet */
+#play #top{padding:0 0 2px;gap:4px}
+#play #top button{min-height:34px;padding:5px 9px}
+#adv{padding:2px 0 3px;gap:2px 6px}
+#adv .asc{padding:1px 10px}#adv .asc b{font-size:19px}
+#play #boardWrap{flex:0 1 auto;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/468;min-height:0}
+#play #chat{flex:1 1 auto;height:auto;min-height:150px}
+#play.chatmin #chat{flex:none;min-height:0}
+#play.chatmin #chatList,#play.chatmin #histList,#play.chatmin #chatForm{display:none!important}
+#play.chatmin #chatHead{border-bottom:0}
+#bFold{flex:none;min-height:34px;min-width:34px;padding:0;border:0;background:transparent;font-size:16px;color:var(--muted)}
+#tb{display:none} /* tahta altındaki eski süre çubuğu: süre avatar halkasında */
+#chatHead.c2 #bFold{min-width:26px}
+#chatHead.c3{gap:2px;padding-left:2px;padding-right:4px}#chatHead.c3 .tab{padding:4px 6px;font-size:12.5px}#chatHead.c3 #ctl{gap:2px}#chatHead.c3 #ctl button{padding:0 5px}
