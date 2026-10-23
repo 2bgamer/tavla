@@ -31,6 +31,7 @@ async function mkPage(b,opts={}){
   return p;
 }
 async function hook(p){await p.evaluate(()=>{const m=moment;window.moment=function(k,d,key){const r=m(k,d,key);__log.push(k+':'+r);return r;};const r=Math.random;Math.random=()=>__dice.length?(__dice.shift()-1)/6+.01:r();});}
+const press=async(p,sel)=>{if(DEV&&DEV.hasTouch)await p.tap(sel);else await p.click(sel);};
 const slgText=p=>p.evaluate(()=>document.getElementById('slg').textContent);
 async function waitSlg(p,txt,ms=4000){try{await p.waitForFunction(t=>document.getElementById('slg').textContent.includes(t),txt,{timeout:ms});return true;}catch(e){return false;}}
 const stSnap=p=>p.evaluate(()=>JSON.stringify({st:G.st,dice:G.dice,all:G.all,seed:G.seed,turn:G.turn,sc:SC,gid:G.gid}));
@@ -58,9 +59,54 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   {
     const p=await mkPage(b,{ls:{tavla_theme:'poker',tavla_snd:'all'}});await p.goto(URL);await sleep(400);
     await hook(p);
+    // Grafik Paketi v1 varlıkları yüklendi; referans PNG'ler çalışma anında istenmez
+    const reqs=[];p.on('request',r=>reqs.push(r.url()));
+    await p.waitForFunction(()=>document.documentElement.classList.contains('asset'),null,{timeout:5000}).catch(()=>{});
+    ok('tema varlıkları yüklendi (pul, efekt, ZAR AT sembolleri)',await p.evaluate(()=>['ckL','ckD','fxC','rbB'].every(id=>document.getElementById(id))));
     // varsayılan: kayıtlı tercih yokken Poker Lounge
     await p.click('#bGo');await sleep(300);
     ok('maç başladı (yerel)',await p.evaluate(()=>G.mode==='local'));
+    ok('tahta zemini ve çerçevesi katmanlarda',await p.evaluate(()=>{const im=[...document.querySelectorAll('#bg image')].map(i=>i.getAttribute('href'));const f=im.findIndex(h=>/board-field\.svg$/.test(h)),r=im.findIndex(h=>/board-frame\.svg$/.test(h));return f===0&&r>f;}));
+    // başlangıç dizilimi: 15+15 pul, 2/5/3/5, referans ekran görüntüsüyle aynı noktalar
+    {await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();opClear();render();});
+      const r=await p.evaluate(()=>{const cnt={};document.querySelectorAll('#bg use[href="#ckL"],#bg use[href="#ckD"]').forEach(u=>{const k=u.getAttribute('href')+'@'+Math.round(+u.getAttribute('x')+14.286);cnt[k]=(cnt[k]||0)+1;});
+        const L=[...document.querySelectorAll('#bg use[href="#ckL"]')].length,D=[...document.querySelectorAll('#bg use[href="#ckD"]')].length;
+        const at=(h,p)=>cnt[h+'@'+(PX(p)+14)]||0;
+        return {L,D,me:[at('#ckL',23),at('#ckL',12),at('#ckL',7),at('#ckL',5)],op:[at('#ckD',0),at('#ckD',11),at('#ckD',16),at('#ckD',18)]};});
+      ok('başlangıç: 15 beyaz + 15 kırmızı pul çizildi',r.L===15&&r.D===15,JSON.stringify(r));
+      ok('başlangıç: beyaz 2/5/3/5 (24, 13, 8, 6. noktalar)',r.me.join()==='2,5,3,5',r.me.join());
+      ok('başlangıç: kırmızı 2/5/3/5 karşılıklı',r.op.join()==='2,5,3,5',r.op.join());}
+    // sol toplama kanalı: dokunarak/tıklayarak pul toplama
+    {await setBoard(p,board({0:2,1:2,3:3,5:3,22:-15}),{all:[6,4],off:[5,0]});
+      await press(p,'#bg rect[data-k="pt"][data-i="5"]');await sleep(150);
+      ok('toplama: kanal hedef olarak işaretlendi',await p.evaluate(()=>!!document.querySelector('#bg rect.dest[x="6"]')));
+      await press(p,'#bg rect[data-k="off"]');await sleep(500);
+      ok('toplama: pul kanala gitti (dokunmatik/tıklama)',await p.evaluate(()=>G.st.off[0]===6&&G.st.b[5]===2),await p.evaluate(()=>JSON.stringify(G.st.off)));
+      ok('toplama: kanalda 6 beyaz çubuk',await p.evaluate(()=>document.querySelectorAll('#bg rect[x="8"][y]').length>=6));}
+    // tur süresi halkası: yeşil, son 5 sn kırmızı + sayı; diğer avatar pasif
+    {await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();render();timerSync();});await sleep(250);
+      const r0=await p.evaluate(()=>({on:$('#avwMe').classList.contains('ton'),red:$('#avwMe').classList.contains('tred'),n:+$('#avwMe .tsec').textContent,op:$('#avwOp').classList.contains('ton')}));
+      ok('süre halkası: tur başında yeşil ve tam süre',r0.on&&!r0.red&&r0.n>=19&&r0.n<=20&&!r0.op,JSON.stringify(r0));
+      await p.evaluate(()=>{G.deadline=Date.now()+4300;});await sleep(250);
+      const r1=await p.evaluate(()=>({red:$('#avwMe').classList.contains('tred'),n:$('#avwMe .tsec').textContent,stroke:getComputedStyle($('#avwMe .tfg')).stroke,op:$('#avwOp').classList.contains('ton')}));
+      ok('süre halkası: son 5 sn kırmızı ve sayı gösteriyor',r1.red&&(r1.n==='4'||r1.n==='5')&&/239, 68, 68/.test(r1.stroke)&&!r1.op,JSON.stringify(r1));
+      await p.evaluate(()=>{G.deadline=Date.now()+3000;document.dispatchEvent(new Event('visibilitychange'));});await sleep(1100);
+      const n2=+await p.evaluate(()=>$('#avwMe .tsec').textContent);
+      ok('süre halkası: arka planda da gerçek süreye göre azalır',n2===2,'kalan='+n2);
+      await p.evaluate(()=>{G.run++;G.turn=-1;G.rolled=false;render();timerSync();});await sleep(200);
+      ok('süre halkası: bilgisayarın sırasında iki halka da pasif',await p.evaluate(()=>!$('#avwMe').classList.contains('ton')&&!$('#avwOp').classList.contains('ton')));
+      await p.evaluate(()=>{G.run++;G.turn=1;render();timerSync();});await sleep(200);
+      ok('süre halkası: yeni turda sıfırlanır',await p.evaluate(()=>+$('#avwMe .tsec').textContent>=19&&!$('#avwMe').classList.contains('tred')));
+      ok('ikinci süre göstergesi yok (tahta altı çubuk ve ⏱ kaldırıldı)',await p.evaluate(()=>getComputedStyle($('#tb')).display==='none'&&!$('#scS').textContent.includes('⏱')));}
+    // sohbet daraltma: tahtaya yer açar, kalıcı
+    {const h0=await p.evaluate(()=>$('#board').getBoundingClientRect().height);
+      await press(p,'#bFold');await sleep(200);
+      const r=await p.evaluate(()=>({min:$('#play').classList.contains('chatmin'),hid:getComputedStyle($('#histList')).display==='none',exp:$('#bFold').getAttribute('aria-expanded'),h:$('#board').getBoundingClientRect().height}));
+      ok('sohbet daraltıldı (aria-expanded=false)',r.min&&r.hid&&r.exp==='false');
+      ok('daraltılınca tahta küçülmedi',r.h>=h0-1,`${h0.toFixed(0)} → ${r.h.toFixed(0)}`);
+      await press(p,'#bFold');await sleep(150);}
+    ok('referans PNG çalışma anında istenmedi',!reqs.some(u=>/references\/|\.png$/.test(u)&&!/icon|apple-touch/.test(u)));
+
     // çift zar
     await p.evaluate(()=>{Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();opClear();render();__dice.push(4,4);doRoll(218,200);});
     ok('çift zar: HOPP! ÇİFTE GELDİ!',await waitSlg(p,'HOPP! ÇİFTE GELDİ!'),await slgText(p));
@@ -160,7 +206,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await setBoard(p,board({0:2,1:2,2:2,3:2,4:2,5:1,8:2,20:2,12:-14}),{all:[3,1],bar:[0,1]});
     await p.evaluate(()=>doHuman({f:8,t:5,d:3}));
     ok('tam kapı + rakip kırık: ÇIKIŞ YOK!',await waitSlg(p,'ÇIKIŞ YOK!'),await slgText(p));
-    ok('tam kapı: iç kapılar temaya göre parlıyor',await p.evaluate(()=>document.querySelectorAll('#bg .bz').length===6&&document.querySelector('#bg .bz').classList.contains(THEMES[THEME].burn)));
+    ok('tam kapı: yalnız kapanan 6 iç kapıda fx-closed-point',await p.evaluate(()=>{const z=[...document.querySelectorAll('#bg .bz')];return z.length===6&&z.every(g=>+g.dataset.p<6&&g.querySelector('use[href="#fxC"]'));}));
     // MARS GELİYOR!: rakip hiç toplamamış ve evine girmemişken ilk pul
     await sleep(2800);
     await setBoard(p,board({0:5,1:5,2:5,12:-15}),{all:[1,2]});
@@ -317,9 +363,19 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     // iPhone klavye: 16px altı yazı tipi yakınlaştırma yapar
     ok('sohbet girişi 16px (iOS yakınlaştırmaz)',await A.evaluate(()=>parseFloat(getComputedStyle($('#chatIn')).fontSize)>=16));
     await A.setViewportSize({width:375,height:380});await A.focus('#chatIn');await sleep(300);
-    const vis=await A.evaluate(()=>{const r=$('#chatIn').getBoundingClientRect();return r.bottom<=innerHeight&&r.top>=0&&document.scrollingElement.scrollWidth<=innerWidth;});
-    ok('kısa ekran (klavye açık benzetimi): giriş görünür, yatay taşma yok',vis);
+    const vis=await A.evaluate(()=>{const r=$('#chatIn').getBoundingClientRect();return {ok:r.bottom<=innerHeight&&r.top>=0&&document.scrollingElement.scrollWidth<=innerWidth,t:Math.round(r.top),b:Math.round(r.bottom),ih:innerHeight,sw:document.scrollingElement.scrollWidth,sy:scrollY,chat:Math.round($('#chat').getBoundingClientRect().top),over:[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+.5&&getComputedStyle(e).position!=='fixed';}).slice(0,6).map(e=>(e.id||e.className.baseVal||e.className||e.tagName)+':'+Math.round(e.getBoundingClientRect().right))};});
+    ok('kısa ekran (klavye açık benzetimi): giriş görünür, yatay taşma yok',vis.ok,JSON.stringify(vis));
     await A.screenshot({path:`${SP}/keyboard-sim.png`});
+    // yeniden bağlanma sonrası süre halkası: sırası gelen tarafta etkin
+    ok('yeniden bağlanma: süre halkası sırası gelen oyuncuda',await B.evaluate(()=>{const mine=G.turn===G.me;return $('#avw'+(mine?'Me':'Op')).classList.contains('ton')&&!$('#avw'+(mine?'Op':'Me')).classList.contains('ton');}));
+    // ikinci oyuncu (kırmızı) kendi ekranından kanala toplar
+    {await A.evaluate(()=>{const b=Array(24).fill(0);Object.assign(b,{0:15});[[23,-2],[22,-3],[18,-3]].forEach(([i,v])=>b[i]=v);G.st={b,bar:[0,0],off:[0,7]};G.turn=-1;G.rolled=true;G.dice=[6,5];G.all=[6,5];
+        pushFields({b:G.st.b,bar:G.st.bar,off:G.st.off,turn:-1,rolled:true,dice:[6,5],all:[6,5],last:null});render();});
+      await B.waitForFunction(()=>G.st.off[1]===7&&G.turn===G.me&&G.rolled,null,{timeout:6000}).catch(()=>{});
+      await B.setViewportSize(DEV?DEV.viewport:{width:390,height:844});await sleep(300);
+      await press(B,'#bg rect[data-k="pt"][data-i="5"]');await sleep(150);await press(B,'#bg rect[data-k="off"]');
+      await A.waitForFunction(()=>G.st.off[1]===8,null,{timeout:6000}).catch(()=>{});
+      ok('online: ikinci oyuncu dokunarak kanala topladı, karşıya ulaştı',await A.evaluate(()=>G.st.off[1]===8),await A.evaluate(()=>JSON.stringify(G.st.off)));}
     // rakip 2 sayıyla çekilir: kazanan tarafta "PES ETTİ!", mars değil; çekilen tarafta slogan yok
     await A.setViewportSize(DEV?DEV.viewport:{width:390,height:844});
     {const na=await A.evaluate(()=>__log.length),nb=await B.evaluate(()=>__log.length);
