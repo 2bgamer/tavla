@@ -2272,7 +2272,7 @@ function chatPaint(){
   const list=$('#chatList');list.textContent='';
   if(!CH.msgs.length){const e=document.createElement('div');e.id='chatEmpty';e.textContent=i18('noMsg');list.appendChild(e);}
   let prev=null;
-  for(const m of CH.msgs){
+  for(const m of CH.msgs.slice(-3)){ /* alt panelde yalnızca son 3 mesaj */
     const me=m.from===TOKEN;
     if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(m.nm)||oppName());list.appendChild(n);prev=m.from;}
     const d=document.createElement('div');d.className='cm '+(me?'me':'them');d.textContent=m.text;list.appendChild(d);}
@@ -2333,8 +2333,9 @@ function histPaint(force){
   const mk=sk(G.me),ok=sk(-G.me),list=$('#histList');
   let h=`<div class="hh"><div>#</div><div>${i18('hYou')}</div><div>${G.mode==='local'?i18('hCpu'):i18('hOpp')}</div></div>`;
   if(!rows.length)h+=`<div class="hempty">${i18('noRoll')}</div>`;
-  rows.forEach((r,i)=>{
-    const cur=i===rows.length-1&&!G.over;
+  const from=Math.max(0,rows.length-3); /* yalnızca son 3 zar */
+  rows.slice(from).forEach((r,j)=>{
+    const i=from+j,cur=i===rows.length-1&&!G.over;
     h+=`<div class="hr${cur?' cur':''}"><div class="n">${i+1}</div>${hcell(r[mk],false,r.o===mk,cur)}${hcell(r[ok],true,r.o===ok,cur)}</div>`;
   });
   list.innerHTML=h;list.scrollTop=list.scrollHeight;
@@ -2690,7 +2691,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610251000';
+const APP_VER='202610251100';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
