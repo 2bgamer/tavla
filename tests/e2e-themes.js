@@ -435,6 +435,27 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('online testlerde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
+  /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{ls:{tavla_snd:'off',tavla_name:''}});
+    await A.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const code=await A.evaluate(()=>G.code),inv=await A.evaluate(()=>inviteURL(G.code));
+    ok('davet: bağlantı oda kodunu taşıyor',inv===URL+'?oda='+code,inv);
+    ok('davet: oda düğmesi bağlantı paylaşımını anlatıyor',await A.evaluate(()=>$('#bChip').title==='Davet bağlantısını paylaş'));
+    await B.goto(inv);await sleep(500);
+    ok('davet: isim sorulmadan odaya girilmedi',await B.evaluate(()=>!G.mode&&!$('#overlay').hidden&&!!$('#nmIn')));
+    await B.fill('#nmIn','DAVETLI');await B.click('#ovOk');
+    await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    ok('davet: arkadaş ikinci koltuğa oturdu',await B.evaluate(c=>G.mode==='online'&&G.code===c&&G.me===-1,code));
+    ok('davet: adres çubuğundaki kod temizlendi',await B.evaluate(()=>!location.search.includes('oda=')));
+    await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000}).catch(()=>{});
+    ok('davet: kurucu rakibi ve adını görüyor',await A.evaluate(()=>!!(G.seats.k&&G.nm&&G.nm.k==='DAVETLI')),await A.evaluate(()=>JSON.stringify(G.nm)));
+    await B.reload();await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    ok('davet: yenileyince aynı odaya geri bağlandı',await B.evaluate(c=>G.mode==='online'&&G.code===c&&G.me===-1,code));
+    ok('davet testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
   /* 6) küçük iPhone (SE) */
   {
     const p=await mkPage(b,{vp:{width:375,height:667},ls:{tavla_theme:'arcade',tavla_snd:'off'}});await p.goto(URL);await sleep(300);
