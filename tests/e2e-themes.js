@@ -470,6 +470,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('giriş tahtası: sola kaydırınca sonraki tema',await p.evaluate(()=>THEME==='neon'));
     await p.click('#bGo');await sleep(500);
     ok('oyun ekranı: tahta üstünde/altında isim etiketi yok, sıra yazısı skor kutusunda',await p.evaluate(()=>!$('#tags .ntg')&&$('#ascS').classList.contains('sira')&&$('#ascS').textContent==='SIRA SENDE'),await p.evaluate(()=>$('#ascS').textContent));
+    ok('bilgisayarın adı BuBi (üst bölüm ve geçmiş başlığı)',await p.evaluate(()=>$('#anOp').textContent==='BuBi'&&$('#histList .hh').textContent.includes('BuBi')),await p.evaluate(()=>$('#anOp').textContent));
     ok('tema kaydırma testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
