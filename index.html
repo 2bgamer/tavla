@@ -1042,6 +1042,10 @@ function doRoll(x,y,sw){
   if(G.mode==='online')pushFields({dice:G.dice,all:G.all,rolled:true,last:null,hl:G.hl,rp:{x:G.rollPos.x,y:G.rollPos.y,s:G.me,sd:G.seed,sw:G.sw||null}});
   render();humanProceed();
 }
+// sağ yarıda ipucu iki satır: yarım tahta genişliğine (~160 birim) okunur boyutta sığsın
+function zsTwo(t,x){const w=t.split(' ');let k=1,best=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<best){best=d;k=i;}}
+  const a=w.slice(0,k).join(' '),b=w.slice(k).join(' '),fs=Math.min(12,300/Math.max(1,a.length,b.length)).toFixed(1);
+  return `<text class="zs" x="${x}" y="246" font-size="${fs}">${a}<tspan x="${x}" dy="1.2em">${b}</tspan></text>`;}
 function centerBtn(){
   if(!G.mode)return null;
   if(G.mode==='local'&&G.over)return null;
@@ -2134,16 +2138,19 @@ function render(){
   }
   h+=`<rect data-k="bar" x="204" y="6" width="28" height="388" fill="transparent"/>`;
   h+=`<rect data-k="off" x="6" y="200" width="26" height="194" fill="transparent"/>`;
+  // Barda kırık pul varsa düğme ve ipucu sağ yarının ortasındaki boş şeride kayar: bardaki pullar kapanmaz.
+  // Düğme yalnızca görünümdür (pointer-events yok); dokunuşlar yine tahtaya gider.
+  const barBusy=mb+ob>0,BX=barBusy?317:218;
   if(cb&&cb.roll){const zb=i18('rollBig'),zs=i18('tapAny');
     const pip=(x,y)=>`<circle cx="${x}" cy="${y}" r="1.25" class="rpp"/>`,die=(x,y,r)=>`<g transform="rotate(${r} ${x+7} ${y+7})"><rect x="${x}" y="${y}" width="14" height="14" rx="3.5" class="rdi"/>${pip(x+4,y+4)}${pip(x+10,y+10)}${pip(x+7,y+7)}</g>`;
-    h+=`<g class="rbig" pointer-events="none">`+(assetOk()?`<use class="rasset" href="#rbB" x="158" y="174" width="120" height="52.4"/>`:`<rect class="rring" x="160" y="168" width="116" height="64" rx="32"/><rect class="rbtn" x="164" y="172" width="108" height="56" rx="28"/>`)+`${die(201,177,-10)}${die(220,177,8)}`+
+    h+=`<g class="rbig${barBusy?' side':''}" pointer-events="none" transform="translate(${BX-218} 0)">`+(assetOk()?`<use class="rasset" href="#rbB" x="158" y="174" width="120" height="52.4"/>`:`<rect class="rring" x="160" y="168" width="116" height="64" rx="32"/><rect class="rbtn" x="164" y="172" width="108" height="56" rx="28"/>`)+`${die(201,177,-10)}${die(220,177,8)}`+
       `<text class="rlab" x="218" y="219" font-size="${Math.min(17,300/Math.max(1,zb.length)).toFixed(1)}">${zb}</text></g>`+
-      `<text class="zs" x="218" y="252" font-size="${Math.min(12,560/Math.max(1,zs.length)).toFixed(1)}">${zs}</text>`;
+      (barBusy?zsTwo(zs,BX):`<text class="zs" x="218" y="252" font-size="${Math.min(12,560/Math.max(1,zs.length)).toFixed(1)}">${zs}</text>`);
   }else if(cb){
-    const w=Math.max(124,cb.label.length*10.5+44),x0=218-w/2;
+    const w=Math.max(124,cb.label.length*10.5+44),x0=(barBusy&&w<=166?BX:218)-w/2;
     h+=`<rect class="rbs" x="${x0}" y="204" width="${w}" height="50" rx="25"/>`;
     h+=`<rect class="rb${cb.en?'':' dis'}" x="${x0}" y="175" width="${w}" height="50" rx="25"/>`;
-    h+=`<text class="rt" x="218" y="206" font-size="${cb.label.length>12?16:19}">${cb.label}</text>`;
+    h+=`<text class="rt" x="${x0+w/2}" y="206" font-size="${cb.label.length>12?16:19}">${cb.label}</text>`;
     if(cb.en)h+=`<rect data-k="roll" x="${x0}" y="175" width="${w}" height="50" rx="25" fill="transparent" style="cursor:pointer"/>`;
   }
   $('#bg').innerHTML=h;
@@ -2722,7 +2729,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610251600';
+const APP_VER='202610251700';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

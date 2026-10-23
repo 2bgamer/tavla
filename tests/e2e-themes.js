@@ -37,6 +37,12 @@ async function waitSlg(p,txt,ms=4000){try{await p.waitForFunction(t=>document.ge
 const stSnap=p=>p.evaluate(()=>JSON.stringify({st:G.st,dice:G.dice,all:G.all,seed:G.seed,turn:G.turn,sc:SC,gid:G.gid}));
 async function setBoard(p,b,o){await p.evaluate(([b,o])=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,over:false,busy:false,auto:false,turn:1,rolled:true,sel:null,hist:[],endTimer:null});
   G.st={b,bar:o.bar||[0,0],off:o.off||[0,0]};G.all=o.all;G.dice=o.all.slice();G.seed=(Math.random()*1e9)|0;G.un={w:3,k:3};render();},[b,o]);}
+// ZAR AT düğmesi/ipucu ile bardaki pullar: çakışma ölçümü
+const barCheck=p=>p.evaluate(()=>{
+  const bar=[...document.querySelectorAll('#bg use[href="#ckL"],#bg use[href="#ckD"],#bg circle.ck')].filter(u=>{const r=u.getBoundingClientRect(),b=$('#bg rect[data-k="bar"]').getBoundingClientRect();return r.width&&Math.abs((r.left+r.right)/2-(b.left+b.right)/2)<3;}).map(u=>u.getBoundingClientRect());
+  const btn=[...document.querySelectorAll('#bg .rbig,#bg text.zs')].map(e=>e.getBoundingClientRect());
+  const hit=(a,b)=>a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1;
+  return {bar:bar.length,btn:!!document.querySelector('#bg .rbig'),cakisma:bar.some(c=>btn.some(x=>hit(c,x))),boardW:Math.round($('#board').getBoundingClientRect().width)};});
 const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m))b[+i]=v;return b;};
 
 (async()=>{
@@ -381,6 +387,9 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>!G.op&&G.turn===1&&!G.opHold,null,{timeout:12000});
     await sleep(800);
     ok('online: açılış zarı sonrası A başlıyor',await B.evaluate(()=>!G.op&&G.turn===1));
+    {const r=await A.evaluate(()=>{const st=JSON.parse(JSON.stringify(G.st));window.__st0=st;G.st.bar=[1,2];render();return 1;}).then(()=>barCheck(A));
+      await A.evaluate(()=>{G.st=window.__st0;render();});
+      ok('online: ZAR AT bardaki kırık pulları kapatmaz',r.btn&&r.bar===3&&!r.cakisma,JSON.stringify(r));}
     await A.evaluate(()=>{__dice.push(4,4);doRoll(218,200);});
     ok('online gönderen: çift zar sloganı',await waitSlg(A,'HOPP! ÇİFTE GELDİ!'));
     await sleep(600);
@@ -507,6 +516,29 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('geçmişte yalnızca son 3 zar',await p.evaluate(()=>{const r=[...document.querySelectorAll('#histList .hr .n')].map(e=>e.textContent);return r.join()==='3,4,5';}));
     ok('sohbette yalnızca son 3 mesaj',await p.evaluate(()=>[...document.querySelectorAll('#chatList .cm')].map(e=>e.textContent).join()==='m3,m4,m5'));
     ok('kısa ekran testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
+  /* 5f) ZAR AT düğmesi bardaki kırık pulları kapatmaz (dört tema, bilgisayara karşı) */
+  for(const t of THEMES){
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:t}});await p.goto(URL);await sleep(300);
+    await p.waitForFunction(()=>document.documentElement.classList.contains('asset'),null,{timeout:6000}).catch(()=>{});
+    await p.click('#bGo');await sleep(400);
+    const w0=await p.evaluate(()=>Math.round($('#board').getBoundingClientRect().width));
+    const set=(bar,ex)=>p.evaluate(([bar,ex])=>{G.run++;const b=Array(24).fill(0);Object.assign(b,{0:2,1:2,2:3,3:2,4:2,5:2,12:2});[[23,-2],[18,-4],[16,-3],[11,-4],[20,-1]].forEach(([i,v])=>b[i]=v);
+      G.st={b,bar,off:[0,0]};Object.assign(G,{op:0,turn:1,rolled:false,dice:[],all:[],busy:false,over:false,sel:null,last:null},ex||{});render();},[bar,ex]);
+    await set([0,0]);let r=await barCheck(p);
+    ok(`[${t}] ZAR AT: bar boşken düğme ortada görünür`,r.btn&&await p.evaluate(()=>!($('#bg .rbig').getAttribute('transform')||'').includes('translate(99')));
+    await set([0,1]);r=await barCheck(p);
+    ok(`[${t}] ZAR AT: rakip kırıkken düğme görünür ama bardaki pulu kapatmaz`,r.btn&&r.bar===1&&!r.cakisma,JSON.stringify(r));
+    await set([2,3]);r=await barCheck(p);
+    ok(`[${t}] ZAR AT: iki taraf kırıkken (2 + 3) hiçbir pul kapanmaz`,r.btn&&r.bar===5&&!r.cakisma,JSON.stringify(r));
+    await set([2,3],{rolled:true,all:[6,4],dice:[6,4],seed:4242});r=await barCheck(p);
+    ok(`[${t}] ZAR AT: zar atılınca düğme kaybolur, 5 kırık pulun hepsi görünür`,!r.btn&&r.bar===5,JSON.stringify(r));
+    await set([0,1],{turn:-1});r=await barCheck(p);
+    ok(`[${t}] ZAR AT: sıra rakipteyken düğme yok`,!r.btn,JSON.stringify(r));
+    ok(`[${t}] ZAR AT: tahta küçülmedi`,r.boardW===w0,w0+' → '+r.boardW);
+    ok(`[${t}] ZAR AT: tahtaya dokununca zar atılıyor`,await (async()=>{await set([0,1]);const bx=await p.evaluate(()=>{const r=$('#board').getBoundingClientRect();return {x:r.left+r.width*.78,y:r.top+r.height*.5};});await p.mouse.click(bx.x,bx.y);await sleep(200);return p.evaluate(()=>G.rolled||G.busy);})());
+    ok(`[${t}] ZAR AT testinde sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
   /* 6) küçük iPhone (SE) */
