@@ -2596,6 +2596,8 @@ $('#chatForm').addEventListener('submit',async e=>{
   catch(err){i.value=t;flash(i18('sendFail'),3000);}
 });
 $('#chatIn').addEventListener('blur',()=>{try{window.scrollTo(0,0);}catch(e){}});
+// oyun ekranı kendi içinde kaydığı için yazarken giriş kutusunun tamamını görünür alana getir (klavye açılınca bir kez daha)
+$('#chatIn').addEventListener('focus',()=>{const f=()=>{try{$('#chatForm').scrollIntoView({block:'end'});}catch(e){}};f();setTimeout(f,250);});
 
 $('#bName').onclick=()=>askName(false);
 refreshHome();
