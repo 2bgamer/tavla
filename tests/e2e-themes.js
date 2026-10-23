@@ -406,6 +406,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-3-chat.png`});}
     // iPhone klavye: 16px altı yazı tipi yakınlaştırma yapar
     ok('sohbet girişi 16px (iOS yakınlaştırmaz)',await A.evaluate(()=>parseFloat(getComputedStyle($('#chatIn')).fontSize)>=16));
+    // CI'daki geniş yedek yazı tiplerini taklit et: başlık yine de taşmamalı
+    await A.evaluate(()=>{const st=document.createElement('style');st.id='wideFont';st.textContent='#chatHead,#chatHead *{font-family:"DejaVu Sans",Verdana,sans-serif!important;letter-spacing:.06em!important}';document.head.appendChild(st);});
     await A.setViewportSize({width:375,height:380});await A.focus('#chatIn');await sleep(300);
     const vis=await A.evaluate(()=>{const r=$('#chatIn').getBoundingClientRect();return {ok:r.bottom<=innerHeight&&r.top>=0&&document.scrollingElement.scrollWidth<=innerWidth,t:Math.round(r.top),b:Math.round(r.bottom),ih:innerHeight,sw:document.scrollingElement.scrollWidth,sy:scrollY,chat:Math.round($('#chat').getBoundingClientRect().top),over:[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+.5&&getComputedStyle(e).position!=='fixed';}).slice(0,6).map(e=>(e.id||e.className.baseVal||e.className||e.tagName)+':'+Math.round(e.getBoundingClientRect().right))};});
     ok('kısa ekran (klavye açık benzetimi): giriş görünür, yatay taşma yok',vis.ok,JSON.stringify(vis));

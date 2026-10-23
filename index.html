@@ -2166,12 +2166,15 @@ let headKey='';
 // sohbet başlığı sığmazsa: önce sekme boşluklarını daralt, sonra Çekil/Geri Al'ı simgeye indir
 function fitHead(){const h=$('#chatHead');if(!h)return;
   const k=[LANG,innerWidth,G.mode,$('#tChat').hidden,$('#rxBtn').hidden,$('#bUndo').dataset.n].join('|');if(k===headKey)return;headKey=k;
-  h.classList.remove('c1','c2','c3');const br=$('#bRes'),bu=$('#bUndo');
+  h.classList.remove('c1','c2','c3');h.style.flexWrap='nowrap';/* tek satırda ölç; kaydırma yalnız son çare */
+  const br=$('#bRes'),bu=$('#bUndo');
   if(br)br.textContent=i18('resignBtn');bu.textContent=i18('undo')+' '+(bu.dataset.n||'');
-  if(h.scrollWidth<=h.clientWidth+1)return;
-  h.classList.add('c1');if(h.scrollWidth<=h.clientWidth+1)return;
+  const fits=()=>h.scrollWidth<=h.clientWidth+1,done=()=>{h.style.flexWrap='';};
+  if(fits())return done();
+  h.classList.add('c1');if(fits())return done();
   h.classList.add('c2');if(br)br.textContent='🏳️';bu.textContent='↶ '+(bu.dataset.n||'');
-  if(h.scrollWidth>h.clientWidth+1)h.classList.add('c3');}
+  if(!fits())h.classList.add('c3');done();}
+addEventListener('resize',()=>{headKey='';fitHead();});
 let fitKey='';
 function fitScore(){const e=$('#scT');if(!e)return;const k=e.textContent+'|'+innerWidth;if(k===fitKey)return;fitKey=k;
   e.style.fontSize='';let fs=13;while(e.scrollWidth>e.clientWidth+1&&fs>9){fs-=.5;e.style.fontSize=fs+'px';}}

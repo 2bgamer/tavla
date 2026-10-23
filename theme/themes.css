@@ -304,3 +304,5 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 #heroImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 #hero.img #heroB,#hero.img .hd{display:none}
 #home{background:var(--home-bg,none) center top/cover no-repeat}
+/* sohbet başlığı hiçbir yazı tipinde yatay taşmasın: sığmazsa kontroller alt satıra geçer */
+#chatHead{flex-wrap:wrap;row-gap:2px}
