@@ -1701,6 +1701,7 @@ function advPaint(){
   $('#anMe').textContent=myName();$('#anOp').textContent=oppName();
   $('#ascT').textContent=online?`${G.score[myKey()]||0} – ${G.score[oppKey()]||0}`:`${SC.you} – ${SC.cpu}`;
   const T=curTarget(),sr=siraText(),as=$('#ascS');as.textContent=sr||(T>0?i18('toN',{n:T}):'');as.classList.toggle('sira',!!sr); // set hedefi üst çubukta da yazıyor
+  fitName($('#anMe'));fitName($('#anOp')); // skor kutusu yazısı değişince ad alanı da değişir
   a.classList.toggle('nowp',!WPON);
   a.querySelector('.abar').setAttribute('aria-label',i18('advA',{a:myName(),p:$('#pcMe').textContent}));
 }
@@ -2197,6 +2198,9 @@ function fitHead(){const h=$('#chatHead');if(!h)return;
   if(!fits())h.classList.add('c3');done();}
 addEventListener('resize',()=>{headKey='';fitHead();});
 let fitKey='';
+// üst bölümdeki oyuncu adı: sığmazsa yazıyı en fazla 11px'e kadar küçült (kesilmesin)
+function fitName(e){if(!e)return;const k=e.textContent+'|'+innerWidth+'|'+$('#ascS').textContent;if(e.dataset.fk===k)return;e.dataset.fk=k;
+  e.style.fontSize='';let fs=parseFloat(getComputedStyle(e).fontSize)||15;while(e.scrollWidth>e.clientWidth+1&&fs>11){fs-=.5;e.style.fontSize=fs+'px';}}
 function fitScore(){const e=$('#scT');if(!e)return;const k=e.textContent+'|'+innerWidth;if(k===fitKey)return;fitKey=k;
   e.style.fontSize='';let fs=13;while(e.scrollWidth>e.clientWidth+1&&fs>9){fs-=.5;e.style.fontSize=fs+'px';}}
 function subText(){

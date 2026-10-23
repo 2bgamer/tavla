@@ -490,6 +490,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('kısa ekran: tahta yanlarda en fazla 6px boşluk bırakıyor',bw.l<=6&&bw.r<=6,JSON.stringify(bw));
     ok('kısa ekran: tahta yüksekliğe göre küçülmedi',Math.abs(bw.h-bw.w*406/410)<2,JSON.stringify(bw));
     ok('kısa ekran (390×664): üst bölüm, tahta ve alt panel kaydırmadan tek ekrana sığıyor',await p.evaluate(()=>{const pl=$('#play');return pl.scrollHeight<=pl.clientHeight+1;}),await p.evaluate(()=>$('#play').scrollHeight+'/'+$('#play').clientHeight));
+    // CI'daki geniş yedek yazı tiplerini taklit et: rakip adı yine de kesilmemeli
+    await p.evaluate(()=>{const st=document.createElement('style');st.textContent='#adv,#adv *{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);$('#anOp').dataset.fk='';$('#anMe').dataset.fk='';});
     await p.evaluate(()=>{G.turn=-G.me;render();});
     ok('sıra rakipteyken yazı skor kutusunda ve üst bölüm taşmıyor',await p.evaluate(()=>{const a=$('#adv');return $('#ascS').textContent==='SIRA RAKİPTE'&&$('#anOp').scrollWidth<=$('#anOp').clientWidth+1&&a.scrollWidth<=a.clientWidth+1&&document.scrollingElement.scrollWidth<=innerWidth;}),await p.evaluate(()=>$('#ascS').textContent));
     await p.evaluate(()=>{G.turn=G.me;render();});
