@@ -14,7 +14,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function mkPage(b,opts={}){
   const base=DEV?Object.assign({},DEV):{viewport:{width:390,height:844},deviceScaleFactor:2};
   if(opts.vp)base.viewport=opts.vp;
-  const ctx=await b.newContext(Object.assign(base,{reducedMotion:opts.rm||'no-preference'}));
+  const ctx=await b.newContext(Object.assign(base,{reducedMotion:opts.rm||'no-preference'},opts.noSW?{serviceWorkers:'block'}:{}));
   const p=await ctx.newPage();p.errs=[];
   p.on('pageerror',e=>p.errs.push(e.message));
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.fulfill({status:200,contentType:'text/css',body:''}));
@@ -84,7 +84,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     // kapı alma: 5 → 2 (2'de tek pulum var), temas sürüyor
     await setBoard(p,board({2:1,5:2,20:12,1:-2,22:-13}),{all:[3,6]});
     await p.evaluate(()=>doHuman({f:5,t:2,d:3}));
-    ok('kapı alma: KAPI GİBİ!',await waitSlg(p,'KAPI GİBİ!'),await slgText(p));
+    ok('kapı alma: DUVAR ÖRÜLDÜ!',await waitSlg(p,'DUVAR ÖRÜLDÜ!'),await slgText(p));
     // tema değişimi maç ortasında: durum değişmez (oyuncu hamle beklerken)
     await sleep(500);await setBoard(p,board({7:3,12:2,20:10,1:-2,22:-13}),{all:[2,5]});
     const before=await stSnap(p);
@@ -126,7 +126,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
     await setBoard(p,board({0:1,12:-12}),{all:[1,2],off:[14,3]});
     await p.evaluate(()=>doHuman({f:0,t:'off',d:1}));
-    ok('galibiyet: İŞTE BU!',await waitSlg(p,'İŞTE BU!',5000),await slgText(p));
+    ok('galibiyet: TEBRİKLER!',await waitSlg(p,'TEBRİKLER!',5000),await slgText(p));
     // sonuç türleri: 2 sayılık çekilme mars sayılmaz, teklif ayrı, yenilgide slogan yok
     for(const [why,pts,txt] of [['resign',2,'PES ETTİ!'],['offer',1,'SAYI CEBİMDE!']]){
       await sleep(1800);
@@ -143,6 +143,35 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await setBoard(p,board({0:1,12:-15}),{all:[1,2],off:[5,0]});
     {const n=await p.evaluate(()=>__log.length);await p.evaluate(()=>gameOver(-1));await sleep(2200);
       const lg=await p.evaluate(n=>__log.slice(n),n);ok('yenilgide slogan yok',!lg.length&&!(await slgText(p)).trim(),lg.join(','));}
+    // üstünlük: zar atınca değişmez, tamamlanan taş hamlesinden sonra değişir
+    await sleep(1800);
+    await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
+    await setBoard(p,board({0:2,5:5,7:3,12:5,23:-2,18:-5,16:-3,11:-5}),{all:[1,2]});
+    await p.evaluate(()=>{G.rolled=false;G.dice=[];G.all=[];render();});await sleep(900);
+    const w0=await p.evaluate(()=>WP.to);
+    await p.evaluate(()=>{__dice.push(6,5);doRoll(218,200);});await sleep(1200);
+    ok('üstünlük: zar atıldığında değişmedi',await p.evaluate(w=>WP.to===w,w0));
+    await p.evaluate(()=>{const ms=legalMoves(G.st,1,G.dice);doHuman(ms.find(m=>m.f===12)||ms[0]);});await sleep(900);
+    const w1=await p.evaluate(()=>WP.to);
+    ok('üstünlük: taş hamlesinden sonra güncellendi',w1!==w0,`${w0.toFixed(3)} → ${w1.toFixed(3)}`);
+    ok('üstünlük barı yüzdeyle eşleşiyor',await p.evaluate(()=>{const pm=G.me===1?WP.p:1-WP.p;return Math.abs(parseFloat($('#abMe').style.width)-pm*100)<.6&&$('#pcMe').textContent.includes(String(Math.round(pm*100)));}));
+    // ÇIKIŞ YOK!: rakip kırıkken altı iç kapı kapanır
+    await sleep(1800);
+    await setBoard(p,board({0:2,1:2,2:2,3:2,4:2,5:1,8:2,20:2,12:-14}),{all:[3,1],bar:[0,1]});
+    await p.evaluate(()=>doHuman({f:8,t:5,d:3}));
+    ok('tam kapı + rakip kırık: ÇIKIŞ YOK!',await waitSlg(p,'ÇIKIŞ YOK!'),await slgText(p));
+    ok('tam kapı: iç kapılar temaya göre parlıyor',await p.evaluate(()=>document.querySelectorAll('#bg .bz').length===6&&document.querySelector('#bg .bz').classList.contains(THEMES[THEME].burn)));
+    // MARS GELİYOR!: rakip hiç toplamamış ve evine girmemişken ilk pul
+    await sleep(2800);
+    await setBoard(p,board({0:5,1:5,2:5,12:-15}),{all:[1,2]});
+    await p.evaluate(()=>doHuman({f:0,t:'off',d:1}));
+    ok('mars riski: MARS GELİYOR!',await waitSlg(p,'MARS GELİYOR!'),await slgText(p));
+    // OYUN DÖNDÜ!: tur başına göre ≥15 puan
+    await sleep(2800);
+    await setBoard(p,board({7:2,12:3,20:10,1:-2,22:-13}),{all:[2,1]});
+    await p.evaluate(()=>{G.dice=[2];G.advStart=myAdv()-.3;doHuman(legalMoves(G.st,1,G.dice)[0]);});
+    ok('büyük üstünlük değişimi: OYUN DÖNDÜ!',await waitSlg(p,'OYUN DÖNDÜ!'),await slgText(p));
+    ok('üst bölümde iki avatar ve skor',await p.evaluate(()=>!!($('#avMe svg')&&$('#avOp svg'))&&/\d+ – \d+/.test($('#ascT').textContent)));
     // yeni maç
     await p.evaluate(()=>{$('#overlay').hidden=true;SC={you:0,cpu:0};startLocal();});await sleep(300);
     ok('yeni maç başladı',await p.evaluate(()=>G.mode==='local'&&!G.over));
@@ -187,7 +216,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok('efekt seviyesi ses yoluna uygulanıyor (%35)',vol);
     }
     await p.evaluate(()=>{setSnd('off');moment('win',0,'k1');});
-    ok('ses kapalıyken de slogan yazısı görünür',await waitSlg(p,'İŞTE BU!'));
+    ok('ses kapalıyken de slogan yazısı görünür',await waitSlg(p,'TEBRİKLER!'));
     await sleep(1700);
     await p.evaluate(()=>{setSlgAnim(false);moment('win',0,'k3');});await sleep(80);
     ok('slogan animasyonu kapalı: sade görünüm',await p.evaluate(()=>$('#slg').classList.contains('still')&&getComputedStyle($('#slg')).animationName==='slgfade'));
@@ -204,6 +233,19 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('menüden seviye değişimi ana ekrana yansıdı',await p.evaluate(()=>FXVOL===.6&&$('#fxV').value==='60'&&lsGet('tavla_fxv')===.6));
     ok('ayar menüsü ekranda kalıyor',await p.evaluate(()=>{const r=$('#sndPop').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}));
     await p.context().close();
+    {const pf=await mkPage(b,{ls:{tavla_snd:'all'},noSW:true});
+      const wav=(()=>{const n=2205,buf=Buffer.alloc(44+n*2);buf.write('RIFF',0);buf.writeUInt32LE(36+n*2,4);buf.write('WAVEfmt ',8);buf.writeUInt32LE(16,16);buf.writeUInt16LE(1,20);buf.writeUInt16LE(1,22);buf.writeUInt32LE(22050,24);buf.writeUInt32LE(44100,28);buf.writeUInt16LE(2,32);buf.writeUInt16LE(16,34);buf.write('data',36);buf.writeUInt32LE(n*2,40);return buf;})();
+      await pf.context().route(/assets\/sfx\/manifest\.json/,r=>r.fulfill({contentType:'application/json',body:JSON.stringify({checker:['t1.wav','t2.wav'],dice:['t1.wav'],hit:[]})}));
+      await pf.context().route(/assets\/sfx\/t\d\.wav/,r=>r.fulfill({contentType:'audio/wav',body:wav}));
+      await pf.goto(URL);await sleep(300);await pf.mouse.click(5,5);
+      const fr=await pf.evaluate(async()=>{audio();await new Promise(r=>setTimeout(r,500));if(!AC||AC.state!=='running')return null;await TavlaFoley.load(AC);
+        const B0=AudioBufferSourceNode.prototype.start;let n=0;AudioBufferSourceNode.prototype.start=function(...a){n++;return B0.apply(this,a);};
+        moveSound(false);moveSound(false);await new Promise(r=>setTimeout(r,120));moveSound(false);
+        return {has:TavlaFoley.has('checker'),hit:TavlaFoley.has('hit'),n};});
+      if(!fr)skip('kayıtlı ses yükleyicisi',`${BR} başsız modunda ses bağlamı başlamadı`);
+      else{ok('kayıtlı pul sesi yüklendi ve çalındı (eksik tür sentezde kalır)',fr.has&&!fr.hit&&fr.n>=1,JSON.stringify(fr));
+        ok('aynı anda iki pul sesi bindirilmedi',fr.n===2,'çalınan='+fr.n);}
+      await pf.context().close();}
     const p5=await mkPage(b,{ls:{tavla_snd:'game'}});await p5.goto(URL);await sleep(300);
     ok('eski "Pul ve zar" tercihi: efekt sesleri kapalı başlar',await p5.evaluate(()=>FXON===false));
     await p5.context().close();
@@ -232,6 +274,9 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await B.evaluate(c=>joinRoom(c),code);
     await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
     ok('online: iki oyuncu odada',true,'oda '+code);
+    await A.waitForFunction(()=>G.av&&G.av.k>=0,null,{timeout:6000}).catch(()=>{});
+    ok('online: avatarlar karşıya iletildi',(await A.evaluate(()=>G.av.k))===(await B.evaluate(()=>AV))&&(await B.evaluate(()=>G.av.w))===(await A.evaluate(()=>AV)));
+    ok('online: rakip avatarı üst bölümde',await A.evaluate(()=>$('#avOp').dataset.v===AVATARS[G.av.k]));
     await A.evaluate(()=>startOnline());
     await B.waitForFunction(()=>G.started,null,{timeout:8000});
     await A.evaluate(()=>{__dice.push(6);opThrowOnline();});
@@ -248,6 +293,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await B.waitForFunction(()=>G.turn===-1,null,{timeout:8000}).catch(()=>{});
     const sa=await A.evaluate(()=>JSON.stringify(G.st)),sb=await B.evaluate(()=>JSON.stringify(G.st));
     ok('online: hamleler karşıya aynen ulaştı',sa===sb);
+    ok('sohbette mikrofon düğmesi',await A.isVisible('#bMic'));
     // sohbet
     await A.fill('#chatIn','Selam, iyi oyunlar!');await A.click('#chatForm button[type=submit]');
     await B.waitForFunction(()=>$('#chatList').textContent.includes('Selam, iyi oyunlar!'),null,{timeout:6000}).catch(()=>{});
@@ -289,7 +335,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('iPhone SE: ana ekranda yatay taşma yok',await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1));
     await p.click('#bGo');await sleep(400);
     ok('iPhone SE: üst çubuk sığıyor',await p.evaluate(()=>{const r=$('#bNew').getBoundingClientRect();return r.right<=innerWidth;}));
-    ok('iPhone SE: skor yazısı kesilmeden sığıyor',await p.evaluate(()=>{const e=$('#scT');return e.scrollWidth<=e.clientWidth+1;}));
+    ok('iPhone SE: üst bölüm (avatar, yüzde, skor) sığıyor',await p.evaluate(()=>{const a=$('#adv');return a.scrollWidth<=a.clientWidth+1&&$('#ascT').getBoundingClientRect().width>0&&$('#avMe svg')&&$('#avOp svg');}));
+    ok('iPhone SE: tahta görünür yükseklikte',await p.evaluate(()=>$('#board').getBoundingClientRect().height>=300));
     await p.screenshot({path:`${SP}/se-game.png`});
     await p.setViewportSize({width:430,height:932});await sleep(200);
     ok('geniş ekran (430px): üst çubukta 🎨 görünür ve çekmeceyi açar',await p.isVisible('#bTheme'));

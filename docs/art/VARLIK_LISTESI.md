@@ -85,12 +85,45 @@ Zar ve pul sesleri şu an fiziksel sentezle üretiliyor ve tahtadaki çarpmalara
 
 Konseptteki başlık ve slogan stili için tema başına bir görüntü yazı tipi gerekiyor. Şu an kullanılanlar: Exo 2 (Neon), Fredoka (Sunset), Playfair Display (Poker), Bungee (Arcade). Konseptle uyuşmayan varsa Google Fonts adıyla bildirilmeli; Türkçe karakter (ğ, ı, İ, ş) desteği şart.
 
-## 6. Onay gereken kararlar (kodlamadan önce)
+## 6. Kararlar (proje sahibi onayladı) ve uygulama durumu
 
-1. **Pul renkleri:** konseptte dört temada da beyaz ve kırmızı pul var. Şu an temalar farklı (neon pembe, sunset mor, poker siyah, arcade siyah). Konsepte mi dönülsün?
-2. **"ZAR AT" düğmesi:** konseptte tahtanın altında büyük bir düğme var. Şu an zar, tahtanın ortasındaki düğmeyle ya da tahtaya dokunarak atılıyor. Düğme eklenip tahtaya dokunarak atma korunabilir.
-3. **Slogan metinleri:** konseptte "DUVAR ÖRÜLDÜ!" (şu an "KAPI GİBİ!") ve "TEBRİKLER!" (şu an "İŞTE BU!") var. Ayrıca "ÇIKIŞ YOK!", "MARS GELİYOR!" ve "OYUN DÖNDÜ!" yeni. Konseptteki metinler mi kullanılsın?
-4. **Mikrofon simgesi:** sesli mesaj özelliği yok. Simge kaldırılsın mı, yoksa ileride eklenecek bir özellik mi?
-5. **Avatarlar:** oyuncu avatarını nereden seçecek (ana ekran)? Çevrim içi oyunda avatarın karşıya iletilmesi için oda verisine küçük bir `av` alanı eklenmesi gerekir. Bu oyun mantığını etkilemez.
-6. **Üstünlük yüzdesi:** mevcut sinir ağı kazanma olasılığı (`wpRaw`) kullanılacak ve her tamamlanan taş hamlesinden sonra yeniden hesaplanacak (zar atıldığında değil). Tur ortasındaki ara hamlelerde değer yaklaşık olur. "Büyük değişim" eşiği için öneri: tek turda ±15 puan.
-7. **Sahne arka planları (T1):** sohbet paneli açıkken tahtanın arkasında kalacak. Okunurluk için koyu bir örtü eklenmesi gerekebilir.
+| # | Karar | Durum |
+|---|---|---|
+| 1 | Pullar dört temada beyaz ve kırmızı | Uygulandı (`theme/themes.js`, `tk.l` / `tk.d`) |
+| 2 | Büyük "ZAR AT" düğmesi tahtanın ortasında; tahtaya dokunarak atma ve kaydırarak yön verme korunur | Uygulandı. Düğme yalnızca görünümdür, dokunuşlar tahtaya gider. `btn-roll.svg` gelince değişecek. |
+| 3 | Konseptteki slogan metinleri | Uygulandı: DUVAR ÖRÜLDÜ!, TEBRİKLER!, ÇIKIŞ YOK!, MARS GELİYOR!, OYUN DÖNDÜ! |
+| 4 | Mikrofon simgesi kalır, sesle yazma için | Uygulandı (Web Speech API; desteklemeyen tarayıcıda uyarı) |
+| 5 | Şimdilik 6 çizgi avatar, isim girerken seçilir | Uygulandı (`assets/avatars.js`; online oda verisinde `av` alanı). ChatGPT avatarları (C1) gelince değişecek. |
+| 6 | Büyük üstünlük değişimi eşiği tek turda ±15 puan | Uygulandı ("OYUN DÖNDÜ!") |
+
+Geçici (varlıklar gelince değişecek) çizimler:
+- üstünlük barı (T9)
+- ZAR AT düğmesi (T11)
+- tam kapı efekti (T10; şu an SVG gradyan ve elektrik çizgisi)
+- avatarlar (C1)
+
+Konum ve davranışlar kesinleşti; varlıklar aynı yerlere oturacak.
+
+## 7. Kayıtlı zar ve pul sesleri (foley)
+
+Altyapı hazır (`audio/foley.js`, `assets/sfx/manifest.json`):
+- **Zar:** her çarpma, zar animasyonundaki gerçek çarpma anında çalar.
+- **Pul:** her taş hamlesinde çalar; kırmada varsa ayrı `hit` örneği kullanılır.
+- **Doğallık:** her çalışta başka bir örnek seçilir, ±%6 ton ve ±%15 seviye farkı uygulanır.
+- **Üst üste binme:** aynı türden iki ses arasında en az 45 ms (zar) / 80 ms (pul) bırakılır.
+- **Yedek:** liste boşken oyun mevcut sentez sesleriyle çalışır.
+
+**Kaynaklar indirilemedi:** bu geliştirme ortamının ağ politikası `freesound.org` ve `pixabay.com` adreslerini engelliyor. Lisanslar da bu yüzden doğrulanamadı. Uydurma ses dosyası eklenmedi. Elle yapılması gerekenler:
+
+| Kaynak | Kullanım | Yükle | Lisans kontrolü |
+|---|---|---|---|
+| freesound.org/people/andresix/sounds/347807 | zar | `assets/sfx/src/dice-andresix-347807.<uzantı>` | Sayfadaki lisans: CC0 ise sorun yok; CC BY ise uygulamada yazar adı gösterilmeli; **CC BY-NC ise ticari kullanım yok** |
+| freesound.org/people/WiseOldHooter/sounds/725015 | zar | `assets/sfx/src/dice-wiseoldhooter-725015.<uzantı>` | aynı |
+| pixabay.com/…/chess-pieces-hitting-wooden-board-99336 | pul | `assets/sfx/src/checker-pixabay-99336.mp3` | Pixabay İçerik Lisansı: ücretsiz, atıf gerekmez; sesin tek başına yeniden dağıtımı yasak, uygulama içinde kullanımı serbest |
+| pixabay.com/…/board-game-taps-and-clatter-58212 | pul, kırma | `assets/sfx/src/checker-pixabay-58212.mp3` | aynı |
+
+Freesound indirmek için oturum açmak gerekir. Dosyalar `assets/sfx/src/` klasörüne yüklenince (ya da sohbete eklenince) Claude Code şunları yapacak:
+- `ffmpeg` ile 6–10 kısa zar çarpması, 6–8 pul sesi ve 3–4 kırma sesi kesecek
+- sessizlikleri kırpıp seviyeleri eşitleyecek (M4A + OGG)
+- `manifest.json`'u dolduracak
+- atıf gerekiyorsa yardım ekranına yazar ve lisans bilgisini ekleyecek; `src/` klasörü yayına girmeyecek
