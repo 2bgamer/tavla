@@ -132,6 +132,13 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     // varsayılan: kayıtlı tercih yokken Poker Lounge
     await p.click('#bGo');await sleep(300);
     ok('maç başladı (yerel)',await p.evaluate(()=>G.mode==='local'));
+    {const r=await p.evaluate(async()=>{const f0=$('#bgField image'),r0=$('#bgFrame image');for(let i=0;i<20;i++){render();await new Promise(r=>requestAnimationFrame(r));}
+        const same=$('#bgField image')===f0&&$('#bgFrame image')===r0;
+        // sıra: zemin → üçgenler → çerçeve → pullar
+        const kids=[...$('#bg').children].map(e=>e.id),pts=$('#bgPts polygon'),ck=$('#bgTop use[href="#ckL"],#bgTop use[href="#ckD"]');
+        return {same,f0:!!f0,r0:!!r0,kids:kids.join(),pts:!!pts,ck:!!ck};});
+      ok('tahta: zemin ve çerçeve 20 yeniden çizimde aynı öğe (yanıp sönmez)',r.same&&r.f0&&r.r0,JSON.stringify(r));
+      ok('tahta: katman sırası zemin → üçgenler → çerçeve → pullar',r.kids==='bgField,bgPts,bgFrame,bgTop'&&r.pts&&r.ck,JSON.stringify(r));}
     ok('tahta zemini ve çerçevesi katmanlarda',await p.evaluate(()=>{const im=[...document.querySelectorAll('#bg image')].map(i=>i.getAttribute('href'));const f=im.findIndex(h=>/board-field\.svg$/.test(h)),r=im.findIndex(h=>/board-frame\.svg$/.test(h));return f===0&&r>f;}));
     // başlangıç dizilimi: 15+15 pul, 2/5/3/5, referans ekran görüntüsüyle aynı noktalar
     {await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();opClear();render();});
@@ -211,6 +218,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok(`[${t}] maç ortasında tema: 24 nokta points.svg degradesiyle çizildi`,r.a===12&&r.b===12&&r.stopA===r.exp[0]&&r.stopB===r.exp[1],JSON.stringify(r));
       ok(`[${t}] zar paleti güncellendi`,await p.evaluate(()=>PAL.one===TK.die.one));
     }
+    ok('tema değişince tahta zemini ve çerçevesi yeni temanın dosyası',await p.evaluate(()=>{const a=THEMES[THEME].a;return $('#bgField image').getAttribute('href')===a+'board-field.svg'&&$('#bgFrame image').getAttribute('href')===a+'board-frame.svg';}));
     ok('tema değişimi maç durumunu ve zar tohumunu değiştirmedi',before===await stSnap(p));
     ok('çekmece kapandı',await p.evaluate(()=>$('#thDrawer').hidden));
     // kalıcılık

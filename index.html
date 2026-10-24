@@ -297,7 +297,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 <radialGradient id="gB" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#b3544a"/><stop offset=".5" stop-color="#6e2722"/><stop offset="1" stop-color="#34100e"/></radialGradient>
 <pattern id="txGrid" width="23" height="23" patternUnits="userSpaceOnUse"><path d="M23 0H0V23" fill="none" stroke="#22e4ff" stroke-opacity=".14" stroke-width="1"/></pattern><pattern id="txSun" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="14" fill="#ffd2ad" opacity=".35"/></pattern><pattern id="txFelt" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 4L4 0" stroke="#000" stroke-opacity=".14" stroke-width=".6"/><path d="M0 0L4 4" stroke="#fff" stroke-opacity=".04" stroke-width=".6"/></pattern><pattern id="txDots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="4.5" cy="4.5" r="1.7" fill="#fff" fill-opacity=".16"/></pattern>
 
-<g id="thdefs"></g></defs><g id="bg"></g><g id="mvl" pointer-events="none"></g><g id="opl" pointer-events="none"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><g id="dbtG" transform="translate(218 127)"><text id="dbt" x="0" y="0" dominant-baseline="central"></text></g></g></svg><div id="fl"></div></div>
+<g id="thdefs"></g></defs><g id="bg"><g id="bgField" pointer-events="none"></g><g id="bgPts"></g><g id="bgFrame" pointer-events="none"></g><g id="bgTop"></g></g><g id="mvl" pointer-events="none"></g><g id="opl" pointer-events="none"></g><g id="dl" pointer-events="none"></g><g id="tb" pointer-events="none"><rect id="tbg" x="205" y="403" width="0" height="7" rx="3.5" fill="#ff9b2f" opacity=".95"/><rect id="tbc" x="205" y="404.5" width="0" height="4" rx="2" fill="#ff9b2f"/></g><g id="tags" pointer-events="none"></g><g id="dbg" pointer-events="none"><g id="dbtG" transform="translate(218 127)"><text id="dbt" x="0" y="0" dominant-baseline="central"></text></g></g></svg><div id="fl"></div></div>
     <div id="undoRow"><button id="bSnd" data-ia="sndT" aria-label="Ses">🔊</button><span id="pipc" data-it="pipTitle" title="Toplamaya kalan mesafe (pul sayımı)"></span><span class="cnt" id="undoCnt">3x</span><button id="bUndo">Geri Al</button></div>
     <div id="chat">
       <div id="chatHead"><button type="button" id="bFold" data-ia="foldT" aria-label="Sohbeti daralt" aria-expanded="true" aria-controls="chat">▾</button>
@@ -2058,6 +2058,15 @@ function msgText(){
   if(G.turn===G.me)return G.rolled?hintText():i18('yourRoll');
   return G.rolled?i18('oppPlays'):i18('oppRoll');
 }
+// katmanı yalnızca içeriği değiştiyse yaz (gereksiz DOM yenilemesi yok)
+function setLayer(sel,html){const e=$(sel);if(e&&e.__h!==html){e.__h=html;e.innerHTML=html;}}
+// tahta zemini ve çerçevesi: yalnızca tema ya da varlık durumu değişince yazılır. Her render'da yeni <image> oluşturmak
+// Safari'de görselin bir an boş çizilmesine, çerçeve çizgilerinin yanıp sönmesine yol açıyordu.
+function boardLayers(AS,AD){
+  const f=AS?`<image href="${AD}board-field.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
+  const r=AS?`<image href="${AD}board-frame.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
+  setLayer('#bgField',f);setLayer('#bgFrame',r);
+}
 function render(){
   if(!G.mode)return;
   const st=G.st,me=G.me,online=G.mode==='online';
@@ -2070,8 +2079,8 @@ function render(){
   const cb=centerBtn();
   let h='';
   const AS=assetOk(),AD=THEMES[THEME].a;
-  if(AS)h+=`<image href="${AD}board-field.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none" pointer-events="none"/>`;
-  else{h+=`<rect x="0" y="0" width="410" height="400" rx="10" fill="${TK.frame}"/><rect x="34" y="6" width="368" height="388" rx="4" fill="${TK.field}"/>`;
+  boardLayers(AS,AD); // zemin ve çerçeve kalıcı katmanda: her render'da yeniden oluşturulmaz (Safari'de yanıp sönme)
+  if(!AS){h+=`<rect x="0" y="0" width="410" height="400" rx="10" fill="${TK.frame}"/><rect x="34" y="6" width="368" height="388" rx="4" fill="${TK.field}"/>`;
     h+=`<rect x="204" y="6" width="28" height="388" fill="${TK.bar}"/><rect x="6" y="6" width="26" height="388" rx="3" fill="${TK.bar}"/>`;}
   const lastTo=new Set(),lastFrom=new Set();let lastOff=false;
   (Array.isArray(G.last)?G.last:[]).forEach(e=>{
@@ -2088,7 +2097,7 @@ function render(){
     if(lastTo.has(p))h+=`<polygon class="lastp" points="${pts}"/>`;
     else if(lastFrom.has(p))h+=`<polygon class="lastf" points="${pts}"/>`;
   }
-  if(AS)h+=`<image href="${AD}board-frame.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none" pointer-events="none"/>`;
+  const hPts=h;h=''; // üçgenler zemin ile çerçeve arasında; kalan her şey çerçevenin üstünde
   // tam kapı + rakip kırık: yalnız kapanan 6 iç kapıya fx-closed-point (üst sıradakiler dikey çevrilir)
   { const X=[1,-1].find(x=>doorsClosed(st,-x));
     if(X)for(let q=0;q<6;q++){const p=X===me?q:23-q,x=PX(p),top=PTOP(p);
@@ -2179,7 +2188,7 @@ function render(){
     h+=`<text class="rt" x="${x0+w/2}" y="206" font-size="${cb.label.length>12?16:19}">${cb.label}</text>`;
     if(cb.en)h+=`<rect data-k="roll" x="${x0}" y="175" width="${w}" height="50" rx="25" fill="transparent" style="cursor:pointer"/>`;
   }
-  $('#bg').innerHTML=h;
+  setLayer('#bgPts',hPts);setLayer('#bgTop',h);
 
   const key=G.turn+':'+G.all.join(',');
   if(G.all.length&&G.poseKey!==key){
@@ -2755,7 +2764,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610252000';
+const APP_VER='202610252100';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
