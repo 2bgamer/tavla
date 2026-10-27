@@ -767,6 +767,40 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('online çekilme/seri testlerinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
+  /* 7c) arkadaşla: A zorunlu hamleleri kendiliğinden oynarken B çekilir → yeni sette fazla pul/eksik pul kalmamalı */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_target:5}}),B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await B.goto(URL);await sleep(500);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
+    await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
+    await A.evaluate(()=>startOnline());
+    await B.waitForFunction(()=>G.started,null,{timeout:8000});
+    await A.waitForFunction(()=>!G.op&&!G.opHold&&G.started,null,{timeout:20000}).catch(()=>{});
+    await B.waitForFunction(()=>!G.op,null,{timeout:8000}).catch(()=>{});
+    // iki taraf da topluyor; A'nın 2-2'si zorunlu (dört pul toplanır), B topladığı için 1 sayıyla sormadan çekilebilir
+    await A.evaluate(()=>{const b=Array(24).fill(0);b[1]=6;b[22]=-6;G.st={b,bar:[0,0],off:[9,9]};
+      Object.assign(G,{turn:1,rolled:true,dice:[2,2,2,2],all:[2,2,2,2],busy:false,auto:false,endTimer:null,hist:[],sel:null,cd:null});
+      pushFields({b:G.st.b,bar:G.st.bar,off:G.st.off,turn:1,rolled:true,dice:G.dice,all:G.all,last:null});render();});
+    await B.waitForFunction(()=>G.st.off[1]===9&&G.rolled,null,{timeout:6000}).catch(()=>{});
+    // eşzamanlı yazım: A'nın sayacı B'ninkinden ileride (A'nın yazımları B'nin çekilmesiyle çakışır)
+    await A.evaluate(()=>{G.rev+=20;humanProceed();});
+    ok('online: A zorunlu hamleleri kendiliğinden oynuyor',await A.evaluate(()=>G.auto));
+    await B.evaluate(()=>offerOne());
+    await A.waitForFunction(()=>G.over,null,{timeout:4000}).catch(()=>{});
+    ok('online: A otomatik oynarken B çekildi, A tarafında set bitti',await A.evaluate(()=>G.over&&G.result&&G.result.winner===1&&G.result.pts===1));
+    await A.waitForFunction(()=>G.gid>=2&&!G.over&&G.started,null,{timeout:8000}).catch(()=>{});
+    await B.waitForFunction(()=>G.gid>=2&&!G.over&&G.started,null,{timeout:8000}).catch(()=>{});
+    await sleep(1500); // eski setin kalan otomatik hamlelerine yetecek süre
+    const fresh=pg=>pg.evaluate(()=>{const n=newState(),s=G.st,cnt=x=>s.b.reduce((t,v)=>t+(v*x>0?v*x:0),0)+s.bar[K(x)]+s.off[K(x)];
+      return JSON.stringify({gid:G.gid,w:cnt(1),k:cnt(-1),off:s.off,same:stKey(s)===stKey(n)||G.rolled});});
+    const fa=await fresh(A),fb=await fresh(B);
+    const okSt=f=>{const o=JSON.parse(f);return o.gid>=2&&o.w===15&&o.k===15&&o.off[0]===0&&o.off[1]===0&&o.same;};
+    ok('online çekilme sonrası yeni set: iki tarafta da 15’er pul, toplanmış pul yok',okSt(fa)&&okSt(fb),fa+' '+fb);
+    ok('online çekilme sonrası yeni set: iki tarafın tahtası aynı',await A.evaluate(()=>stKey(G.st))===await B.evaluate(()=>stKey(G.st)));
+    ok('online çekilme sonrası testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);

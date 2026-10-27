@@ -1132,13 +1132,13 @@ function humanProceed(){
   autoPlay(plan);
 }
 function autoPlay(seq,why){
-  G.busy=true;G.auto=true;G.sel=null;const tok=++G.autoTok;
+  G.busy=true;G.auto=true;G.sel=null;const tok=++G.autoTok,gid=G.gid;
   const txt=why||i18('onlyOne');
   if(why)flash(txt,2200);
   render();
   let i=0;
   const step=()=>{
-    if(G.autoTok!==tok||G.over)return;
+    if(G.autoTok!==tok||G.over||G.gid!==gid)return;
     if(i>=seq.length){G.auto=false;afterHumanMove();return;}
     const m=seq[i++],me=G.me;
     moveEvents(G.st,me,m);
@@ -1256,13 +1256,17 @@ function openingNote(){
 function onRoom(snap){
   if(G.mode!=='online'||!snap.exists)return;
   if(pending||writing){lateSnap=snap;return;}
-  const d=snap.data();
-  if(G.loaded&&(d.rev||0)<=G.rev)return;
+  const d=snap.data(),gid=d.gid||0;
+  // rev iki istemcide ayrı sayılır: rakibin sırasında çekilmede iki taraf aynı anda yazınca rakibin rev'i bizimkinden büyük olmayabilir.
+  // yeni set ve set sonu bu yüzden rev'e bakılmadan alınır; yoksa eski setin hamleleri yeni tahtaya uygulanır
+  const must=gid>(G.gid||0)||(!!d.over&&!G.over&&gid===G.gid);
+  if(G.loaded&&!must&&(d.rev||0)<=G.rev)return;
   G.loaded=true;G.rev=d.rev||0;
   applyRoom(d);
-  const gid=d.gid||0;
-  G.hist=[];G.sel=null;if(!G.endTimer&&!G.auto&&!G.opAnim)G.busy=false;
   const fresh=gid!==G.gid;
+  // yeni set: önceki setten kalan otomatik hamle ve sıra bitirme zamanlayıcıları iptal
+  if(fresh){G.autoTok++;G.endTok++;G.endTimer=null;G.auto=false;}
+  G.hist=[];G.sel=null;if(!G.endTimer&&!G.auto&&!G.opAnim)G.busy=false;
   G.gid=gid;
   if(fresh&&d.started&&!d.over&&!d.rolled&&!(d.last&&d.last.length))setIntro();
   else if(d.started&&!d.over){const o=G.open||[0,0],sh=G.opShown||[0,0];
@@ -2831,7 +2835,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610271200';
+const APP_VER='202610271400';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
