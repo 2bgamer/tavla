@@ -1,5 +1,5 @@
 /* ---------- TEST MODU: gizli admin girişi + elle zar seçimi ----------
-   Giriş: oyuncu adı kutusuna BURAK ve PIN birlikte yazılır (ör. BURAK4826). Görünen ad yalnız BURAK olur.
+   Giriş: oyuncu adı kutusuna BURAK ve PIN birlikte yazılır (ör. BURAK31). Görünen ad yalnız BURAK olur.
    Admin, kendi ve rakibinin (bilgisayar ya da online arkadaş) sıradaki zarını seçebilir.
    Elle seçilen zar iki ekranda da "TEST MODU" etiketiyle görünür; gizli değildir.
 
@@ -10,7 +10,7 @@
    index.html içindeki "window.TESTADM" kancaları dosya yokken hiçbir şey yapmaz (grep TESTADM ile bulunup silinebilir). */
 (function(){
   'use strict';
-  const ADMIN='BURAK',PIN_H=693328734; // PIN'in kendisi değil, ADMIN+PIN özeti (FNV-1a)
+  const ADMIN='BURAK',PIN_H=2698340926; // PIN'in kendisi değil, ADMIN+PIN özeti (FNV-1a)
   const hash=s=>{let h=2166136261;for(const c of s){h^=c.codePointAt(0);h=Math.imul(h,16777619)>>>0;}return h;};
   let on=lsGet('tavla_adm',false)===true;
   const q={};                    // yerel sıradaki zarlar: q[1] beyaz, q[-1] siyah
@@ -96,7 +96,7 @@
   window.TESTADM={
     // ad kutusu: "BURAK"+PIN admin girişi yapar, görünen ad BURAK kalır; başka bir ad admin modunu kapatır
     name(v){
-      const m=/^(.*?)\s*(\d{3,})$/.exec(v||'');
+      const m=/^(.*?)\s*(\d{2,})$/.exec(v||'');
       if(m&&m[1]===ADMIN&&hash(ADMIN+m[2])===PIN_H){on=true;lsSet('tavla_adm',true);flash('🧪 Test modu açık: zarları sağ alttaki düğmeden seçebilirsin',4000);return ADMIN;}
       if(on&&v&&v!==ADMIN){on=false;lsSet('tavla_adm',false);}
       return v;
@@ -125,4 +125,6 @@
   // ana ekrana dönüş render() çağırmaz: #play gizlenip açıldıkça düğmeyi güncelle
   const pl=document.getElementById('play');
   if(pl&&window.MutationObserver)new MutationObserver(paint).observe(pl,{attributes:true,attributeFilter:['hidden']});
+  // sayfa açılırken kaldığı oyun bu dosya yüklenmeden önce çizilir; sıradaki render'ı (ör. zar atışı) beklemeden düğmeyi göster
+  paint();
 })();

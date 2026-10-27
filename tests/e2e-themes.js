@@ -821,18 +821,18 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');
         ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
       }
-      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak4826');await press(p,'#ovOk');
+      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');
       ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'));
       await press(p,'#mCpu');await press(p,'#bGo');
       await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
-      await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});render();});
+      await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,opHold:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});opClear();render();});
       ok(`[${t}] test modu: zar düğmesi görünür`,await p.isVisible('#taBtn'));
       await press(p,'#taBtn');await pick(p,'me',6,5);await pick(p,'op',3,3);
       await p.screenshot({path:`${OUT}/${t}-8-test-zar-secimi.png`});
       await press(p,'#taSheet .ok');
       ok(`[${t}] test modu: bekleyen zarlar düğmede`,(await p.textContent('#taBtn')).includes('6-5 / 3-3'),await p.textContent('#taBtn'));
       await p.evaluate(()=>doRoll(218,200));await sleep(1400);
-      ok(`[${t}] test modu: benim zarım seçilen 6-5`,await p.evaluate(()=>G.all.join()==='6,5'));
+      ok(`[${t}] test modu: benim zarım seçilen 6-5`,await p.evaluate(()=>G.all.join()==='6,5'),await p.evaluate(()=>JSON.stringify({a:G.all,r:G.rolled,b:G.busy,cd:cdOn(),oh:opHeld()})));
       ok(`[${t}] test modu: TEST etiketi görünür`,await tagOn(p));
       await p.screenshot({path:`${OUT}/${t}-8-test-etiketi.png`});
       await p.evaluate(()=>{G.dice=[];endTurn();});
@@ -851,6 +851,10 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.evaluate(()=>showHome());await sleep(200);
         ok('test modu: ana ekranda düğme gizli',!(await p.isVisible('#taBtn')));
         await p.evaluate(()=>{const o=$('#bCont');if(o&&!o.disabled)o.click();});await sleep(800);
+        // sayfa yenilenince (ör. güncelleme sonrası) kaldığı oyun açılır: düğme zar atmayı beklemeden görünür
+        await p.evaluate(()=>{G.over=false;G.busy=false;G.turn=1;G.rolled=false;G.dice=[];G.all=[];saveCur();});
+        await p.reload();await p.waitForFunction(()=>G.mode==='local',null,{timeout:8000}).catch(()=>{});await sleep(400);
+        ok('test modu: sayfa yenilenince düğme hemen görünür',await p.evaluate(()=>TESTADM.on)&&await p.isVisible('#taBtn'));
         await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');
         ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
       }
