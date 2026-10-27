@@ -1970,17 +1970,93 @@ function checker(cx,cy,light){
     `<circle cx="${cx}" cy="${cy}" r="8.4" fill="none" stroke="${o.s}" stroke-opacity=".5" stroke-width="1"/>`+
     `<ellipse cx="${cx-4.2}" cy="${cy-5.2}" rx="5.2" ry="2.8" fill="#fff" opacity=".5" transform="rotate(-35 ${cx-4.2} ${cy-5.2})"/>`;
 }
-/* ---------- kazanma olasılığı: her el başında, sıradaki oyuncuya göre sinir ağıyla ---------- */
+/* ---------- kazanma olasılığı ----------
+   Kontakt varken: sinir ağı. Yarışta (pullar artık karşılaşmıyor): her tarafın bitirmek için gereken atış sayısı dağılımından.
+   Tüm pullar evdeyse dağılım kesindir (tek taraflı toplama tablosu, arka planda bir kez hesaplanır); değilse etkin pip sayısıyla normal yaklaşım.
+   Sırası gelen zar avantajıyla değerlendirilir; zar atılınca değer değişmez, ilk pul oynanınca kalan zarla en iyi devamı esas alınır. */
+const BOL=32;let BOD=null,BOW=null;
+function boMake(){ // 6 haneye dağılmış pulların her dizilişi için, ortalama atışı en aza indiren oyunla atış sayısı dağılımı
+  const L=32,BI=new Map(),BD=[],BM=[],RL=[];
+  for(let a=1;a<=6;a++)for(let b=a;b<=6;b++)RL.push([a,b,a===b?1:2]);
+  const step=(k,d,out)=>{ // konum: hane başına 4 bit
+    if(!k){out.push(0);return;}
+    let hi=5;while(!((k>>(4*hi))&15))hi--;
+    for(let i=0;i<=hi;i++){if(!((k>>(4*i))&15))continue;
+      if(i>=d)out.push(k-(1<<(4*i))+(1<<(4*(i-d))));else if(i===d-1||i===hi)out.push(k-(1<<(4*i)));}
+  };
+  const seqs=(k,ds)=>{let cur=[k];for(const d of ds){const nx=[];for(const x of cur)step(x,d,nx);cur=nx.length>1?[...new Set(nx)]:nx;}return cur;};
+  const idx=k=>{
+    let j=BI.get(k);if(j!==undefined)return j;
+    const d=new Float64Array(L);
+    if(!k)d[0]=1;else for(const [a,b,w] of RL){
+      const ks=a===b?seqs(k,[a,a,a,a]):seqs(k,[a,b]).concat(seqs(k,[b,a]));
+      let bj=-1,bm=1e9;for(const x of ks){const i=idx(x);if(BM[i]<bm){bm=BM[i];bj=i;}}
+      const c=BD[bj];for(let n=0;n<L-1;n++)d[n+1]+=c[n]*w/36;
+    }
+    let m=0;for(let n=0;n<L;n++)m+=n*d[n];
+    j=BD.length;BD.push(d);BM.push(m);BI.set(k,j);return j;
+  };
+  return {L,BI,BD,idx};
+}
+function boWork(){ // Web Worker: ≤15 pulluk tüm tabloyu bir kez hesaplar (~3 sn)
+  const T=boMake();
+  for(let k=0;k<1<<24;k++){let n=0;for(let i=0;i<6;i++)n+=(k>>(4*i))&15;if(n<=15)T.idx(k);}
+  const keys=new Int32Array(T.BD.length),dist=new Float32Array(T.BD.length*T.L);
+  for(const [k,j] of T.BI){keys[j]=k;dist.set(T.BD[j],j*T.L);}
+  postMessage({keys,dist},[keys.buffer,dist.buffer]);
+}
+let BOS=null; // tablo gelene kadar az pullu dizilişler ana iş parçacığında anında hesaplanır
+function boStart(){
+  if(BOD||BOW)return;
+  try{
+    BOW=new Worker(URL.createObjectURL(new Blob(['const boMake='+boMake+';('+boWork+')()'],{type:'text/javascript'})));
+    BOW.onmessage=e=>{const {keys,dist}=e.data,m=new Map();for(let i=0;i<keys.length;i++)m.set(keys[i],i);
+      BOD={m,dist};BOS=null;BOW.terminate();WP.key+='*';if(G.mode)wpCalc();}; // tablo hazır: yaklaşık değer kesin değerle değişsin
+    BOW.onerror=()=>{BOW=-1;};
+  }catch(e){BOW=-1;}
+}
+const PHI=z=>{const t=1/(1+.2316419*Math.abs(z)),p=.3989423*Math.exp(-z*z/2)*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p;};
+function raceDist(st,s){ // s tarafı bitirmek için kaç atış ister (sıra kendisindeyken sayılır)
+  const c=[0,0,0,0,0,0];let pips=st.bar[K(s)]*25,home=!st.bar[K(s)];
+  for(let p=0;p<24;p++){const v=st.b[IDX(s,p)]*s;if(v<=0)continue;pips+=v*(p+1);if(p<6)c[p]=v;else home=false;}
+  if(!pips)return [1];
+  if(home){const key=c.reduce((k,v,j)=>k+v*(1<<(4*j)),0);
+    if(BOD){const i=BOD.m.get(key);if(i!==undefined)return BOD.dist.subarray(i*BOL,(i+1)*BOL);}
+    else if(c.reduce((a,v)=>a+v,0)<=6){BOS=BOS||boMake();return BOS.BD[BOS.idx(key)];}}
+  // etkin pip: pip + ortalama israf + evdeki kötü dağılım cezaları; varyans/atış simülasyonla ayarlandı
+  const epc=pips+7+2*Math.max(0,c[0]-1)+Math.max(0,c[1]-1)+Math.max(0,c[2]-3)+(c[3]?0:1)+(c[4]?0:1)+(c[5]?0:1);
+  const mu=epc/8.1667,sd=Math.sqrt(.022*epc),n=Math.ceil(mu+6*sd)+2,d=new Float64Array(n);
+  let prev=0;for(let i=1;i<n;i++){const c1=PHI((i+.5-mu)/sd);d[i]=c1-prev;prev=c1;}d[n-1]+=1-prev;
+  return d;
+}
+function raceWin(st,s){ // sıra s'de, zar atılmamış: s'nin kazanma olasılığı = P(s'nin atış sayısı ≤ rakibinki)
+  if(contact(st))return null;
+  boStart();
+  const A=raceDist(st,s),B=raceDist(st,-s);let p=0,cum=0;
+  for(let n=0;n<A.length;n++){p+=A[n]*(1-cum);if(n<B.length)cum+=B[n];}
+  return Math.min(1,Math.max(0,p));
+}
+function winOnRoll(st,s){
+  if(st.off[K(s)]===15)return 1;if(st.off[K(-s)]===15)return 0;
+  const r=raceWin(st,s);if(r!==null)return r;
+  if(typeof NNET==='undefined'||!NNET)return .5;
+  nnEval(st,-s);return Math.min(.99,Math.max(.01,1-NNET.y[0])); // kontakt varken oyun bitmeden kesinlik yok
+}
+function winDice(st,s,dice){ // sıra s'de, zarlar (kalanlar) belli: en iyi oyundan sonraki olasılık
+  let best=0;
+  for(const f of finals(st,s,dice,600)){const v=f.st.off[K(s)]===15?1:1-winOnRoll(f.st,-s);if(v>best)best=v;if(best===1)break;}
+  return best;
+}
 const WP={key:'',p:.5,from:.5,to:.5,t0:0,raf:0,flash:0};
 function wpRaw(){ // beyaz (1) tarafın kazanma olasılığı
   const st=G.st;if(!st)return .5;
   if(st.off[K(1)]===15)return 1;if(st.off[K(-1)]===15)return 0;
   if(G.over&&G.result)return G.result.winner===1?1:0;
-  if(G.op||typeof NNET==='undefined'||!NNET)return .5;
-  try{const mv=G.rolled?G.turn:-G.turn;nnEval(st,mv);const w=NNET.y[0];return mv===1?w:1-w;}catch(e){return .5;} // mv: son hamleyi yapan taraf
+  if(G.op)return .5;
+  try{const s=G.turn,d=G.dice||[],p=G.rolled&&d.length<(G.all||[]).length?winDice(st,s,d):winOnRoll(st,s);return s===1?p:1-p;}catch(e){return .5;}
 }
 function wpCalc(){
-  const k=[G.run,G.gid,G.mode,G.op?1:0,G.over?1:0,G.st&&stKey(G.st)].join(':'); // yalnızca tahta değişince
+  const k=[G.run,G.gid,G.mode,G.op?1:0,G.over?1:0,G.st&&stKey(G.st),G.turn,G.rolled?(G.dice||[]).join(''):'-'].join(':'); // tahta, sıra ya da zar değişince
   if(k===WP.key)return;const first=!WP.key||WP.key.split(':').slice(0,3).join()!==k.split(':').slice(0,3).join();WP.key=k;
   const p=wpRaw();
   if(first){WP.p=WP.from=WP.to=p;wpPaint();return;}
@@ -1989,13 +2065,14 @@ function wpCalc(){
 }
 function wpTick(){const u=Math.min(1,(performance.now()-WP.t0)/700),e=1-Math.pow(1-u,3);WP.p=WP.from+(WP.to-WP.from)*e;wpPaint();WP.raf=u<1?requestAnimationFrame(wpTick):0;}
 let wpFmt=null,wpFmtL='';
+const wpR=v=>v>1-1e-9?1:v<1e-9?0:Math.min(.99,Math.max(.01,Math.round(v*100)/100)); // kesinleşmeden %0/%100 gösterme
 function pct(v){try{if(wpFmtL!==LANG){wpFmt=new Intl.NumberFormat(LANG,{style:'percent',maximumFractionDigits:0});wpFmtL=LANG;}return wpFmt.format(v);}catch(e){return Math.round(v*100)+'%';}}
 function wpPaint(){
   const pm=G.me===1?WP.p:1-WP.p,po=1-pm,fl=performance.now()-WP.flash<900;
-  {const a=$('#adv');if(a){$('#abMe').style.width=(pm*100).toFixed(2)+'%';$('#pcMe').textContent=pct(Math.round(pm*100)/100);$('#pcOp').textContent=pct(Math.round(po*100)/100);
+  {const a=$('#adv');if(a){$('#abMe').style.width=(pm*100).toFixed(2)+'%';$('#pcMe').textContent=pct(wpR(pm));$('#pcOp').textContent=pct(wpR(po));
     a.classList.toggle('fl',fl);a.classList.toggle('lead',pm>.5);}}
   [['wpM',pm],['wpO',po]].forEach(([id,v])=>{const g=document.getElementById(id);if(!g)return;
-    const r=Math.round(v*100)/100;g.querySelector('text').textContent=pct(r);
+    const r=wpR(v);g.querySelector('text').textContent=pct(r);
     g.classList.toggle('hi',v>.5||(v===.5&&id==='wpM'));g.classList.toggle('fl',fl);});
 }
 function tagsPaint(){
@@ -2835,7 +2912,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610271400';
+const APP_VER='202610271430';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
