@@ -216,18 +216,27 @@ button.primary{background:var(--pri-bg)}
 #play{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;margin:0 -12px;padding:0 12px} /* kenar taşması kaydırma kutusunun içinde kalsın */#play::-webkit-scrollbar{display:none}
 #play>*{flex-shrink:0}
 #play #boardWrap{flex:none;width:calc(100% + 24px);margin:0 -12px;aspect-ratio:410/406;min-height:0}
-/* alt panel sabit yükseklikte (son 3 satır sığar); uzun ekranda kalan boşluğu doldurur */
-#play #chat{flex:none;height:156px;min-height:0}
-#play #chat .scr{flex:1 1 auto;overflow:hidden}
-#play .hh{padding:4px 0 2px;font-size:11px}
-#play .hr{height:29px}#play .hr .c svg{width:21px;height:21px}#play .hr .n{font-size:13px}
+/* alt panel: tahtanın çerçevesiyle aynı genişlikte (sağdan soldan hizalı); listede 3 satır görünür,
+   eskiler sağdaki ▲ ▼ düğmeleriyle ya da parmakla kaydırılarak okunur */
+#play #chat{flex:none;height:auto;min-height:0;margin-left:-12px;margin-right:-12px}
+#chatBody{flex:none;height:112px;min-height:0;display:flex}
+#chatBody>.scr{flex:1 1 auto;min-width:0;overflow-y:auto;scrollbar-width:none}
+#chatBody>.scr::-webkit-scrollbar{display:none}
+#scb{flex:none;width:36px;display:flex;flex-direction:column;gap:4px;padding:5px 5px 5px 0}
+#scb button{flex:1;min-height:0;padding:0;border-radius:9px;font-size:13px;line-height:1;color:var(--fg)}
+#scb button:disabled{opacity:.3}
+#play .hh{padding:4px 0 2px;font-size:12px;height:22px;box-sizing:border-box}
+#play .hr{height:30px}#play .hr .c svg{width:24px;height:24px}#play .hr .n{font-size:14px}
 #play .hempty{padding:8px 4px}
-#play #chatList{padding:2px 8px;gap:2px;justify-content:flex-end}
+#play #histList{padding:0 4px 0 10px}
+/* sohbet: satır aralığı 34px, kutu tam 3 satır: her kaydırma konumunda yarım mesaj görünmez */
+#play #chatList{padding:0 8px 0 10px;gap:0;height:102px;align-self:center}
+#play #chatList::before{content:'';flex:1 0 0} /* az mesajda alta yaslı; taşınca en üst mesaja da kaydırılabilir */
 #play .cmn{display:none}
-#play .cm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 9px;font-size:13px;line-height:1.25;flex:none}
+#play .cm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px;margin:2px 0;font-size:15px;line-height:28px;height:30px;box-sizing:border-box;flex:none}
 #play #chatForm{padding:4px 8px}#play #chatForm input,#play #chatForm button{min-height:34px}
 #play.chatmin #chat{flex:none;min-height:0}
-#play.chatmin #chatList,#play.chatmin #histList,#play.chatmin #chatForm{display:none!important}
+#play.chatmin #chatBody,#play.chatmin #chatList,#play.chatmin #histList,#play.chatmin #chatForm{display:none!important}
 #play.chatmin #chatHead{border-bottom:0}
 #bFold{flex:none;min-height:34px;min-width:34px;padding:0;border:0;background:transparent;font-size:16px;color:var(--muted)}
 #tb{display:none} /* tahta altındaki eski süre çubuğu: süre avatar halkasında */
