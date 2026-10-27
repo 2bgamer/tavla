@@ -801,6 +801,76 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('online çekilme sonrası testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
+  /* 8) TEST MODU (test-admin.js): gizli admin girişi + elle zar seçimi; rakip ekranında TEST etiketi */
+  {
+    const tagOn=p=>p.evaluate(()=>{const t=document.getElementById('taTag');return !!t&&!t.hidden&&t.getBoundingClientRect().width>0;});
+    const pick=async(p,side,a,b2)=>{const sd=side==='me'?'.sd:nth-of-type(1)':'.sd:nth-of-type(2)';
+      await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
+    for(const t of THEMES){
+      const p=await mkPage(b,{name:'AHMET',ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
+      if(t==='neon'){
+        await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');
+        ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
+      }
+      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak4826');await press(p,'#ovOk');
+      ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'));
+      await press(p,'#mCpu');await press(p,'#bGo');
+      await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
+      await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});render();});
+      ok(`[${t}] test modu: zar düğmesi görünür`,await p.isVisible('#taBtn'));
+      await press(p,'#taBtn');await pick(p,'me',6,5);await pick(p,'op',3,3);
+      await p.screenshot({path:`${OUT}/${t}-8-test-zar-secimi.png`});
+      await press(p,'#taSheet .ok');
+      ok(`[${t}] test modu: bekleyen zarlar düğmede`,(await p.textContent('#taBtn')).includes('6-5 / 3-3'),await p.textContent('#taBtn'));
+      await p.evaluate(()=>doRoll(218,200));await sleep(1400);
+      ok(`[${t}] test modu: benim zarım seçilen 6-5`,await p.evaluate(()=>G.all.join()==='6,5'));
+      ok(`[${t}] test modu: TEST etiketi görünür`,await tagOn(p));
+      await p.screenshot({path:`${OUT}/${t}-8-test-etiketi.png`});
+      await p.evaluate(()=>{G.dice=[];endTurn();});
+      await p.waitForFunction(()=>G.turn===-1&&G.rolled,null,{timeout:6000}).catch(()=>{});
+      ok(`[${t}] test modu: bilgisayarın zarı seçilen 3-3`,await p.evaluate(()=>G.all.join()==='3,3,3,3'));
+      if(t==='neon'){
+        await p.waitForFunction(()=>G.turn===1,null,{timeout:12000}).catch(()=>{});
+        await p.evaluate(()=>{if(!G.rolled)doRoll(218,200);});await sleep(300);
+        ok('test modu: seçim bir kez kullanılır, sonraki atışta etiket yok',await p.evaluate(()=>G.rolled)&&!(await tagOn(p)));
+        await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');
+        ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
+      }
+      ok(`[${t}] test modu yerel: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
+      await p.context().close();
+    }
+    // online: admin (A) rakibinin (B) zarını seçer; B'nin ekranında etiket görünür, oda alanı temizlenir
+    const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_adm:true,tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
+    await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
+    await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
+    await A.evaluate(()=>startOnline());
+    await B.waitForFunction(()=>G.started,null,{timeout:8000});
+    await A.evaluate(()=>{__dice.push(6);opThrowOnline();});
+    await B.waitForFunction(()=>G.op&&G.turn===G.me,null,{timeout:8000});
+    await B.evaluate(()=>{__dice.push(2);opThrowOnline();});
+    await A.waitForFunction(()=>!G.op&&G.turn===1&&!G.opHold,null,{timeout:12000});
+    await sleep(800);
+    ok('test modu online: rakipte zar düğmesi yok',!(await B.isVisible('#taBtn')));
+    await press(A,'#taBtn');await pick(A,'op',2,1);await press(A,'#taSheet .ok');
+    await B.waitForFunction(()=>true,null,{timeout:100});await sleep(800);
+    await A.evaluate(()=>doRoll(218,200));await sleep(600);
+    ok('test modu online: admin kendi zarını seçmedi, etiket yok',!(await tagOn(A))&&!(await tagOn(B)));
+    await A.evaluate(()=>{G.dice=[];endTurnOnline();});
+    await B.waitForFunction(()=>G.turn===-1&&!G.rolled,null,{timeout:8000}).catch(()=>{});
+    await sleep(400);
+    await B.evaluate(()=>doRoll(218,200));
+    await A.waitForFunction(()=>G.turn===-1&&G.rolled,null,{timeout:8000}).catch(()=>{});
+    await sleep(1400);
+    ok('test modu online: rakibin zarı adminin seçtiği 2-1',await B.evaluate(()=>G.all.join()==='2,1')&&await A.evaluate(()=>G.all.join()==='2,1'));
+    ok('test modu online: rakip ekranında TEST etiketi',await tagOn(B));
+    ok('test modu online: admin ekranında da TEST etiketi',await tagOn(A));
+    for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await sleep(300);await B.screenshot({path:`${OUT}/${t}-8-test-etiketi-rakip.png`});}
+    ok('test modu online: seçim kullanıldı, odadaki alan temizlendi',!(await A.textContent('#taBtn')).includes('2-1'),await A.textContent('#taBtn'));
+    ok('test modu online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);
