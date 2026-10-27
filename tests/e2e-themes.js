@@ -227,7 +227,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await hook(p);
     // normal tur + AI turu (bilgisayarın olayları slogan üretmez)
     await p.evaluate(()=>{startLocal();});await sleep(300);
-    await p.evaluate(()=>{Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();opClear();render();__dice.push(6,5,3,1);doRoll(218,200);});
+    await p.evaluate(()=>{G.run++;Object.assign(G,{op:0,turn:1,rolled:false,busy:false,over:false});G.st=newState();opClear();render();__dice.push(6,5,3,1);doRoll(218,200);});
     await sleep(2500);
     const n0=await p.evaluate(()=>__log.length);
     // oyuncu: ilk uygun hamlelerle oynar
@@ -573,7 +573,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('zorunlu giriş testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
-  /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde son 3 mesaj ve son 3 zar */
+  /* 5c) kısa Safari ekranı: tahta tam genişlik, alt panelde 3 satır (eskiler ▲ ▼ ile), panel tahtayla hizalı */
   {
     const p=await mkPage(b,{vp:{width:390,height:664},ls:{tavla_snd:'off'}});await p.goto(URL);await sleep(400);
     await p.click('#bGo');await sleep(500);
@@ -589,8 +589,23 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('kısa ekran: alt panele kaydırarak ulaşılıyor',await p.evaluate(()=>{const pl=$('#play');pl.scrollTop=9999;const r=$('#chat').getBoundingClientRect();return r.bottom<=innerHeight+1;}));
     await p.evaluate(()=>{G.hl=[1,2,3,4,5].map(i=>({w:[i,1],k:[i,2]}));histPaint(true);
       CH.msgs=[1,2,3,4,5].map(i=>({from:i%2?TOKEN:'x',nm:'ALI',text:'m'+i,t:i}));chatPaint();});
-    ok('geçmişte yalnızca son 3 zar',await p.evaluate(()=>{const r=[...document.querySelectorAll('#histList .hr .n')].map(e=>e.textContent);return r.join()==='3,4,5';}));
-    ok('sohbette yalnızca son 3 mesaj',await p.evaluate(()=>[...document.querySelectorAll('#chatList .cm')].map(e=>e.textContent).join()==='m3,m4,m5'));
+    // listede tamamen görünen satırlar
+    const vis=sel=>p.evaluate(sel=>{const l=sel.startsWith('#chat')?$('#chatList'):$('#histList'),L=l.getBoundingClientRect();
+      return [...l.querySelectorAll(sel.split(' ').pop())].filter(e=>{const r=e.getBoundingClientRect();return r.height&&r.top>=L.top-1&&r.bottom<=L.bottom+1;}).map(e=>e.querySelector('.n')?e.querySelector('.n').textContent:e.textContent).join();},sel);
+    ok('geçmiş: 3 satır görünür, en son zar altta',await vis('#histList .hr')==='3,4,5',await vis('#histList .hr'));
+    ok('geçmiş: eski zarlar ▲ ile görülür, ▼ ile geri dönülür',await (async()=>{const up0=await p.evaluate(()=>!$('#scUp').disabled&&$('#scDn').disabled);
+      await p.click('#scUp');await sleep(150);const a=await vis('#histList .hr');await p.click('#scUp');await sleep(150);const b2=await vis('#histList .hr');
+      const top=await p.evaluate(()=>$('#scUp').disabled);await p.click('#scDn');await p.click('#scDn');await sleep(150);const c=await vis('#histList .hr');
+      return up0&&a==='2,3,4'&&b2==='1,2,3'&&top&&c==='3,4,5';})());
+    await p.evaluate(()=>setTab('c'));await sleep(100);
+    ok('sohbet: 3 mesaj görünür, en yenisi altta',await vis('#chatList .cm')==='m3,m4,m5',await vis('#chatList .cm'));
+    await p.click('#scUp');await sleep(150);
+    ok('sohbet: ▲ ile önceki mesaj görünür',await vis('#chatList .cm')==='m2,m3,m4',await vis('#chatList .cm'));
+    await p.evaluate(()=>{CH.msgs=CH.msgs.concat([{from:'x',nm:'ALI',text:'m6',t:6}]);chatPaint();});await sleep(100);
+    ok('sohbet: yeni mesaj gelince en alta iner',await vis('#chatList .cm')==='m4,m5,m6',await vis('#chatList .cm'));
+    ok('sohbet yazısı büyük (≥15px) ve panel tahtayla sağdan soldan hizalı',await p.evaluate(()=>{const b=$('#board').getBoundingClientRect(),c=$('#chat').getBoundingClientRect();
+      return parseFloat(getComputedStyle($('#chatList .cm')).fontSize)>=15&&Math.abs(b.left-c.left)<=1&&Math.abs(b.right-c.right)<=1;}),await p.evaluate(()=>JSON.stringify([$('#board').getBoundingClientRect().left,$('#chat').getBoundingClientRect().left])));
+    await p.evaluate(()=>setTab('h'));
     ok('kısa ekran testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
@@ -639,6 +654,118 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('çekmece Esc ile kapanır',await (async()=>{await p.keyboard.press('Escape');await sleep(100);return p.evaluate(()=>$('#thDrawer').hidden);})());
     await p.click('#bSnd');await sleep(150);await p.screenshot({path:`${SP}/settings-pop.png`});
     await p.context().close();
+  }
+  /* 7) set başı geri sayım, istenen anda çekilme, seri atış (bilgisayara karşı) */
+  {
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_tlc:0}});await p.goto(URL);await sleep(300);
+    await p.click('#bGo');await sleep(150);
+    ok('geri sayım: set başında 3 görünür, ZAR AT yok',await p.evaluate(()=>cdOn()&&$('#cdl .cdt').textContent==='3'&&!document.querySelector('#bg .rbig')));
+    await p.waitForFunction(()=>$('#cdl .cdt')&&$('#cdl .cdt').textContent==='1',null,{timeout:4000}).catch(()=>{});
+    ok('geri sayım: 3 → 2 → 1',await p.evaluate(()=>$('#cdl .cdt')&&$('#cdl .cdt').textContent==='1'));
+    await p.waitForFunction(()=>(G.openN||[0,0])[0]>0,null,{timeout:4000}).catch(()=>{});
+    ok('geri sayım bitince açılış zarı dokunmadan atıldı',await p.evaluate(()=>!cdOn()&&!$('#cdl').innerHTML&&G.openN[0]>0));
+    await p.waitForFunction(()=>!G.op&&!G.busy,null,{timeout:12000}).catch(()=>{});
+    ok('açılış zarları kendiliğinden bitti, set başladı',await p.evaluate(()=>!G.op));
+    // sonraki set: kazanan başlar, geri sayımdan sonra zarı kendiliğinden atılır
+    await p.evaluate(()=>{G.run++;G.prevW=1;SC={you:1,cpu:0};startLocal();});await sleep(300);
+    ok('sonraki set: geri sayım var, zar henüz atılmadı',await p.evaluate(()=>cdOn()&&!G.rolled&&G.turn===1));
+    await p.waitForFunction(()=>G.rolled,null,{timeout:5000}).catch(()=>{});
+    ok('sonraki set: geri sayım sonrası zar kendiliğinden atıldı',await p.evaluate(()=>G.rolled&&G.all.length>=2&&G.turn===1));
+    // bilgisayarın sırasında çekilme (2 sayı): oyun hemen biter, bilgisayar sonra taş oynamaz, skor bir kez yazılır
+    await setBoard(p,board({0:2,5:5,7:3,12:5,23:-2,18:-5,16:-3,11:-5}),{all:[1,2]});
+    await p.evaluate(()=>{SC={you:0,cpu:0};G.turn=-1;G.rolled=false;G.dice=[];G.all=[];G.busy=false;aiTurn();});await sleep(1200);
+    ok('çekilme: bilgisayarın sırasında da yapılabilir',await p.evaluate(()=>G.turn===-1&&canResign()));
+    await p.evaluate(()=>{resignMenu();});
+    ok('çekilme menüsü: 1 sayı teklifi ve 2 sayı seçeneği',await p.evaluate(()=>!!($('#ovOk')&&$('#ovR2'))));
+    await p.click('#ovR2');
+    const b0=await p.evaluate(()=>JSON.stringify(G.st));await sleep(2500);
+    ok('çekilme sonrası bilgisayar taş oynamadı',await p.evaluate(b=>G.over?JSON.stringify(G.st)===b:true,b0));
+    ok('çekilme skoru bir kez yazıldı (2 sayı)',await p.evaluate(()=>SC.cpu===2&&SC.you===0),await p.evaluate(()=>JSON.stringify(SC)));
+    await p.evaluate(()=>gameOver(-1,2,'resign'));
+    ok('ikinci bitiş çağrısı skoru tekrar yazmaz',await p.evaluate(()=>SC.cpu===2));
+    await p.waitForFunction(()=>!G.over,null,{timeout:6000}).catch(()=>{});
+    ok('çekilme sonrası yeni set kendiliğinden başladı',await p.evaluate(()=>!G.over&&G.mode==='local'));
+    // pul toplarken 1 sayıyla çekilme: rakibe sorulmaz, mars olmaz, hemen yeni sete geçilir
+    await sleep(3500);
+    await setBoard(p,board({0:3,1:4,2:3,12:-15}),{all:[1,2],off:[5,0]});
+    await p.evaluate(()=>{SC={you:0,cpu:0};G.rolled=false;G.dice=[];G.all=[];render();resignMenu();});
+    ok('toplarken: menüde "1 sayı ver" var, 2 sayı seçeneği yok',await p.evaluate(()=>!$('#ovR2')&&$('#ovOk').textContent.includes(i18('give1'))&&$('#ovOk').textContent.includes(i18('give1B'))));
+    const t0=Date.now();await p.click('#ovOk');
+    ok('toplarken: çekilme sormadan bitti, 1 sayı',await p.evaluate(()=>G.over&&G.result.pts===1&&G.result.why==='offer'&&!G.result.mars&&SC.cpu===1));
+    await p.waitForFunction(()=>!G.over,null,{timeout:5000}).catch(()=>{});
+    ok('toplarken: yeni sete hemen geçildi (≤ 2,5 sn)',await p.evaluate(()=>!G.over)&&Date.now()-t0<=2500,(Date.now()-t0)+' ms');
+    // teklif hakkı bitince 1 sayı teklifi pasif
+    await sleep(3500);
+    await setBoard(p,board({0:2,5:5,7:3,12:5,23:-2,18:-5,16:-3,11:-5}),{all:[1,2],off:[1,1]});
+    await p.evaluate(()=>{G.st.off=[0,1];G.st.b[0]=3;G.offN={w:0,k:3};resignMenu();});
+    ok('3 teklif hakkı bitince "1 sayı teklif et" pasif',await p.evaluate(()=>$('#ovOk').disabled&&$('#ovOk').textContent.includes(i18('offer1'))));
+    await p.evaluate(()=>{$('#overlay').hidden=true;});
+    // seri atış: bilgisayar kırık ve kapılar kapalı → oyuncu bildirimsiz ve beklemeden üst üste oynar
+    await setBoard(p,board({0:2,1:2,2:2,3:2,4:2,5:2,8:3,12:-14}),{all:[2,1],bar:[0,1]});
+    await hook(p);
+    await p.evaluate(()=>{G.ser=null;G.flash='';window.__fl=[];const f0=flash;flash=function(t,ms){__fl.push(t);return f0(t,ms);};});
+    const tm=[];
+    for(let k=0;k<3;k++){
+      await p.evaluate(()=>{if(G.turn!==1||G.busy)return;if(!G.rolled){__dice.push(2,1);doRoll(218,200);}});
+      await p.waitForFunction(()=>G.rolled&&!G.busy&&G.dice.length,null,{timeout:4000}).catch(()=>{});
+      await p.evaluate(()=>{const m=()=>legalMoves(G.st,1,G.dice);while(G.dice.length&&m().length&&!G.busy){const x=m().find(q=>q.f===8)||m()[0];doHuman(x);}});
+      const s0=Date.now();await p.waitForFunction(()=>G.turn===1&&!G.rolled&&!G.busy,null,{timeout:4000}).catch(()=>{});tm.push(Date.now()-s0);
+      await p.evaluate(()=>{G.st.b[8]=3;G.st.b[7]=0;G.st.b[6]=0;G.st.b[5]=2;render();});
+      tm.push(await p.evaluate(()=>__fl.splice(0).join('|')));
+    }
+    ok('seri atış: sıra beklemeden yine oyuncuda (her tur < 1,2 sn)',tm.filter((x,i)=>i%2===0).every(x=>x<1200),JSON.stringify(tm));
+    ok('seri atış: her turda bildirim çıkmıyor (yalnızca ilk turda bir kez)',tm.filter((x,i)=>i%2===1).slice(1).every(x=>!x)&&await p.evaluate(()=>G.ser&&G.ser.n>=3),JSON.stringify(tm));
+    ok('çekilme/seri testlerinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
+  /* 7b) arkadaşla: geri sayım + kendiliğinden açılış, rakibin sırasında teklif, seri atış, rakibin sırasında çekilme */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_target:5}}),B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
+    await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
+    await A.evaluate(()=>startOnline());
+    await B.waitForFunction(()=>G.started,null,{timeout:8000});
+    ok('online geri sayım: iki tarafta da 3-2-1',await A.evaluate(()=>cdOn())&&await B.evaluate(()=>cdOn()));
+    await A.waitForFunction(()=>!G.op&&!G.opHold&&G.started,null,{timeout:20000}).catch(()=>{});
+    await B.waitForFunction(()=>!G.op,null,{timeout:8000}).catch(()=>{});
+    ok('online: açılış zarları dokunmadan atıldı, set başladı',await A.evaluate(()=>!G.op&&G.openN[0]>0&&G.openN[1]>0)&&await B.evaluate(()=>!G.op),await A.evaluate(()=>JSON.stringify({op:G.op,o:G.open,n:G.openN})));
+    // tahta: A (beyaz) 1 pul topladı, B toplamadı → B'nin 1 sayı teklifi A'ya sorulur
+    const setSt=(pg,o)=>pg.evaluate(o=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(o.b))b[+i]=v;G.st={b,bar:o.bar||[0,0],off:o.off||[0,0]};
+      Object.assign(G,{turn:o.turn,rolled:!!o.all,dice:(o.all||[]).slice(),all:(o.all||[]).slice(),busy:false,auto:false,endTimer:null,hist:[],sel:null});
+      pushFields({b:G.st.b,bar:G.st.bar,off:G.st.off,turn:G.turn,rolled:G.rolled,dice:G.dice,all:G.all,last:null});render();},o);
+    await setSt(A,{b:{0:2,5:5,7:3,12:4,23:-2,18:-5,16:-3,11:-5},off:[1,0],turn:1});
+    await B.waitForFunction(()=>G.st.off[0]===1,null,{timeout:6000}).catch(()=>{});
+    ok('online: rakibin sırasında çekilme yapılabilir',await B.evaluate(()=>G.turn!==G.me&&canResign()));
+    await B.evaluate(()=>{resignMenu();});
+    ok('online: toplamamışken 1 sayı teklifi (kalan hak 3) ve 2 sayı seçeneği',await B.evaluate(()=>!$('#ovOk').disabled&&$('#ovOk').textContent.includes('3')&&!!$('#ovR2')));
+    await B.click('#ovOk');
+    await A.waitForFunction(()=>!$('#overlay').hidden&&$('#ovRej'),null,{timeout:6000}).catch(()=>{});
+    ok('online: teklif rakibe soruldu',await A.evaluate(()=>!$('#overlay').hidden&&!!$('#ovRej')));
+    await A.click('#ovRej');
+    await B.waitForFunction(()=>!G.offer,null,{timeout:6000}).catch(()=>{});
+    ok('online: reddedilen teklif hakkı düştü (2 kaldı), oyun sürüyor',await B.evaluate(()=>G.offN.k===2&&!G.over&&canResign()));
+    // seri atış: B kırık, A'nın kapıları kapalı → A sırasını bitirince sıra B'ye geçmeden yine A'da
+    await sleep(600);
+    await setSt(A,{b:{0:2,1:2,2:2,3:2,4:2,5:2,8:3,12:-14},bar:[0,1],turn:1,all:[2,1]});
+    await B.waitForFunction(()=>G.st.bar[1]===1,null,{timeout:6000}).catch(()=>{});
+    await A.evaluate(()=>{doHuman({f:8,t:6,d:2});doHuman({f:8,t:7,d:1});});
+    const t0=Date.now();await A.waitForFunction(()=>G.turn===1&&!G.rolled&&!G.busy,null,{timeout:4000}).catch(()=>{});
+    ok('online seri atış: sıra beklemeden yine A’da (< 1,2 sn)',Date.now()-t0<1200&&await A.evaluate(()=>G.turn===1&&!G.rolled),(Date.now()-t0)+' ms');
+    await B.waitForFunction(()=>G.turn===1&&!G.rolled,null,{timeout:6000}).catch(()=>{});
+    ok('online seri atış: B tarafında sıra A’da, bir kez bilgi notu',await B.evaluate(()=>G.turn===1&&G.ser&&G.ser.n===1));
+    // B, A'nın sırasında 2 sayıyla çekilir: oyun iki tarafta da biter
+    await B.evaluate(()=>{resignMenu();});await B.click('#ovR2');
+    await A.waitForFunction(()=>G.over,null,{timeout:6000}).catch(()=>{});
+    ok('online: rakibin sırasında çekilme iki tarafta oyunu bitirdi (2 sayı)',await A.evaluate(()=>G.over&&G.result.pts===2&&G.result.why==='resign'&&G.score.w===2));
+    // yeni set: kazanan (A) geri sayımdan sonra zarını dokunmadan atar
+    await A.waitForFunction(()=>!G.over&&G.started&&G.gid>=2,null,{timeout:8000}).catch(()=>{});
+    ok('online yeni set: geri sayım',await A.evaluate(()=>cdOn()));
+    await A.waitForFunction(()=>G.rolled,null,{timeout:6000}).catch(()=>{});
+    ok('online yeni set: kazanan A’nın zarı kendiliğinden atıldı',await A.evaluate(()=>G.rolled&&G.turn===1));
+    ok('online çekilme/seri testlerinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
   }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);

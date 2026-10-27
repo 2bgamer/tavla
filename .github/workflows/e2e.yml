@@ -11,7 +11,7 @@ jobs:
   e2e:
     name: ${{ matrix.name }}
     runs-on: ubuntu-24.04 # Playwright 1.56 ubuntu-latest (26.04) üzerinde tarayıcı kuramıyor
-    timeout-minutes: 20
+    timeout-minutes: 45 # WebKit sistem paketleri (apt) bazen çok yavaş iniyor; 20 dk testler başlamadan doluyordu
     strategy:
       fail-fast: false
       matrix:
