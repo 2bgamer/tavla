@@ -898,12 +898,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_lvl:'hard',tavla_xp:{v:1,xp:495,g:0,w:0}}});await p.goto(URL);await sleep(400);
     ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHome').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHome').textContent+' '+$('#xpTxt').textContent));
     await p.click('#bGo');await sleep(800);
-    ok('xp: oyunda kendi level rozetim',await p.evaluate(()=>$('#lvMe').textContent==='Lv 5'&&$('#lvOp').textContent===''));
+    ok('xp: oyunda kendi level rozetim',await p.evaluate(()=>$('#lvMe').textContent==='Level 5'&&$('#lvOp').textContent===''));
     await p.evaluate(()=>{G.st.off[0]=15;gameOver(1);});await sleep(1500);
     const r=await p.evaluate(()=>({xp:XP.xp,g:XP.g,w:XP.w,html:$('#overlay').innerHTML,lv:$('#lvMe').textContent}));
     ok('xp: Usta + mars kazanma 30 XP',r.xp===525&&r.g===1&&r.w===1,JSON.stringify({xp:r.xp,g:r.g,w:r.w}));
     ok('xp: sonuç ekranında kazanç ve level atlama',r.html.includes('+30 XP')&&r.html.includes('Level atladın! Artık Level 6'));
-    ok('xp: rozet yeni leveli gösteriyor',r.lv==='Lv 6',r.lv);
+    ok('xp: rozet yeni leveli gösteriyor',r.lv==='Level 6',r.lv);
     await p.evaluate(()=>showResult(false));await sleep(200);
     ok('xp: aynı set iki kez sayılmadı',await p.evaluate(()=>XP.xp===525&&JSON.parse(localStorage.getItem('tavla_xp')).xp===525));
     ok('xp: kaybedip çekilen oyuncuya puan yok',await p.evaluate(()=>xpGain({winner:-1,why:'resign'},false,true,3)===0&&xpGain({winner:-1,why:''},false,true,3)===5&&xpGain({winner:1,mars:false},true,true,3)===38));
@@ -920,7 +920,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>G.lv&&G.lv.k>0,null,{timeout:8000}).catch(()=>{});
     await B.waitForFunction(()=>G.lv&&G.lv.w>0,null,{timeout:8000}).catch(()=>{});
     await sleep(300);
-    ok('xp online: rakibin leveli iki ekranda',await A.evaluate(()=>$('#lvOp').textContent==='Lv 1')&&await B.evaluate(()=>$('#lvOp').textContent==='Lv 6'),await A.evaluate(()=>$('#lvOp').textContent)+' / '+await B.evaluate(()=>$('#lvOp').textContent));
+    ok('xp online: rakibin leveli iki ekranda',await A.evaluate(()=>$('#lvOp').textContent==='Level 1')&&await B.evaluate(()=>$('#lvOp').textContent==='Level 6'),await A.evaluate(()=>$('#lvOp').textContent)+' / '+await B.evaluate(()=>$('#lvOp').textContent));
     await A.evaluate(()=>startOnline());await B.waitForFunction(()=>G.started,null,{timeout:8000}).catch(()=>{});
     await A.evaluate(()=>{G.st.off[0]=15;gameOver(1);});
     await B.waitForFunction(()=>G.over,null,{timeout:8000}).catch(()=>{});await sleep(1500);
