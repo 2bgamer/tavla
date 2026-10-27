@@ -278,6 +278,15 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const w1=await p.evaluate(()=>WP.to);
     ok('üstünlük: taş hamlesinden sonra güncellendi',w1!==w0,`${w0.toFixed(3)} → ${w1.toFixed(3)}`);
     ok('üstünlük barı yüzdeyle eşleşiyor',await p.evaluate(()=>{const pm=G.me===1?WP.p:1-WP.p;return Math.abs(parseFloat($('#abMe').style.width)-pm*100)<.6&&$('#pcMe').textContent.includes(String(Math.round(pm*100)));}));
+    // gerçekçi olasılık: toplamada kesin değer, yarışta sıra avantajı, kontakt varken %1–99 aralığı
+    {const r=await p.evaluate(()=>{const mk=(w,k,off=[0,0])=>{const b=Array(24).fill(0);for(const [q,c] of w)b[IDX(1,q)]+=c;for(const [q,c] of k)b[IDX(-1,q)]-=c;return {b,bar:[0,0],off};};
+      return {a:winOnRoll(mk([[0,1]],[[0,1]],[14,14]),1),b:winOnRoll(mk([[5,1]],[[0,1]],[14,14]),1),c:winOnRoll(mk([[1,2]],[[0,1]],[13,14]),1),
+        d:winOnRoll(mk([[10,4],[8,3],[5,4],[3,4]],[[10,4],[8,3],[5,4],[3,4]]),1),e:winOnRoll(newState(),1)};});
+      ok('olasılık: 1’e 1 toplamada sırası gelen %100',Math.abs(r.a-1)<1e-9,JSON.stringify(r));
+      ok('olasılık: 6 hanede tek pul, rakip 1 hanede: %75',Math.abs(r.b-.75)<1e-9);
+      ok('olasılık: 2 hanede iki pul, rakip 1 hanede: 26/36 (1 gelmezse ya da çift gelirse)',Math.abs(r.c-26/36)<1e-6,r.c.toFixed(4));
+      ok('olasılık: eşit yarışta sırası gelen %55–65',r.d>.55&&r.d<.65,r.d.toFixed(3));
+      ok('olasılık: açılışta %40–60',r.e>.4&&r.e<.6,r.e.toFixed(3));}
     // ÇIKIŞ YOK!: rakip kırıkken altı iç kapı kapanır
     await sleep(1800);
     await setBoard(p,board({0:2,1:2,2:2,3:2,4:2,5:1,8:2,20:2,12:-14}),{all:[3,1],bar:[0,1]});
