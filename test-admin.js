@@ -79,10 +79,10 @@
   }
 
   function paint(){
-    // düğme #play içinde: ana ekrana dönülünce bölümle birlikte gizlenir
+    // düğme body'de: #play kaydırılabilir bir kutu, iOS Safari içindeki sabit (fixed) öğeyi kaydırınca kırpıp kaybedebiliyor
     let b=document.getElementById('taBtn');
-    const show=on&&!!G.mode;
-    if(show&&!b){b=document.createElement('button');b.id='taBtn';b.type='button';b.setAttribute('aria-label','Test modu: zar seç');b.onclick=openSheet;document.getElementById('play').appendChild(b);}
+    const pl=document.getElementById('play'),show=on&&!!G.mode&&!!pl&&!pl.hidden;
+    if(show&&!b){b=document.createElement('button');b.id='taBtn';b.type='button';b.setAttribute('aria-label','Test modu: zar seç');b.onclick=openSheet;document.body.appendChild(b);}
     if(b){b.hidden=!show;
       if(show){const m=pend(G.me),o=pend(-G.me);b.textContent='🎲 TEST'+(m||o?' · '+(m?m.join('-'):'–')+' / '+(o?o.join('-'):'–'):'');}}
     const w=document.getElementById('boardWrap');if(!w)return;
@@ -122,4 +122,7 @@
     paint,
     get on(){return on;}
   };
+  // ana ekrana dönüş render() çağırmaz: #play gizlenip açıldıkça düğmeyi güncelle
+  const pl=document.getElementById('play');
+  if(pl&&window.MutationObserver)new MutationObserver(paint).observe(pl,{attributes:true,attributeFilter:['hidden']});
 })();

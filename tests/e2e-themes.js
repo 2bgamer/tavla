@@ -842,6 +842,15 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.waitForFunction(()=>G.turn===1,null,{timeout:12000}).catch(()=>{});
         await p.evaluate(()=>{if(!G.rolled)doRoll(218,200);});await sleep(300);
         ok('test modu: seçim bir kez kullanılır, sonraki atışta etiket yok',await p.evaluate(()=>G.rolled)&&!(await tagOn(p)));
+        // set bitip yeni set başlayınca ve oyun alanı kaydırılınca düğme ekranda kalır (iOS'ta kaydırılan kutu içinde kayboluyordu)
+        await p.evaluate(()=>gameOver(1));await sleep(2500);await p.evaluate(()=>{const o=$('#ovOk');if(o)o.click();});
+        await p.waitForFunction(()=>!G.over,null,{timeout:8000}).catch(()=>{});
+        await p.evaluate(()=>{const pl=$('#play');pl.scrollTop=pl.scrollHeight;});await sleep(200);
+        ok('test modu: yeni sette ve kaydırınca düğme görünür, üstünde başka öğe yok',await p.evaluate(()=>{const b=$('#taBtn'),r=b.getBoundingClientRect();
+          return b.parentNode===document.body&&!b.hidden&&r.bottom<=innerHeight&&document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)===b;}));
+        await p.evaluate(()=>showHome());await sleep(200);
+        ok('test modu: ana ekranda düğme gizli',!(await p.isVisible('#taBtn')));
+        await p.evaluate(()=>{const o=$('#bCont');if(o&&!o.disabled)o.click();});await sleep(800);
         await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');
         ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
       }
