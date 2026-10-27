@@ -1009,9 +1009,10 @@ function aiTurn(){
   later(()=>{
     if(G.over||G.mode!=='local'||G.turn!==-1)return;
     if(!G.rolled){
-      const a=r6(),b=r6();G.all=a===b?[a,a,a,a]:[a,b];G.dice=G.all.slice();G.rolled=true;
+      const fz=window.TESTADM&&TESTADM.take(-1),a=fz?fz[0]:r6(),b=fz?fz[1]:r6();G.all=a===b?[a,a,a,a]:[a,b];G.dice=G.all.slice();G.rolled=true;
       G.hl=logRoll(-1,[a,b]);
       G.rollPos={x:110+Math.random()*216,y:70+Math.random()*260};G.seed=(Math.random()*1e9)|0;G.flip=false;G.sw=null;
+      if(window.TESTADM)TESTADM.rolled(fz);
     }
     const seq=chooseSeq(G.st,-1,G.dice,LVL);G.last=[];
     G.msg=seq.length?i18('cpuPlay'):i18('cpuNoMove');
@@ -1079,13 +1080,14 @@ function doRoll(x,y,sw){
   if(G.over||G.busy||G.turn!==G.me||G.rolled||opHeld()||cdOn())return;
   if(G.mode==='online'&&!G.started)return;
   if(G.op){if(G.mode==='local')opThrowLocal(G.me);else opThrowOnline();return;}
-  const a=r6(),b=r6();
+  const fz=window.TESTADM&&TESTADM.take(G.me),a=fz?fz[0]:r6(),b=fz?fz[1]:r6(); // TESTADM: test modunda elle seçilen zar
   G.all=a===b?[a,a,a,a]:[a,b];G.dice=G.all.slice();G.rolled=true;G.hist=[];G.last=null;G.sel=null;
   G.hl=logRoll(G.me,[a,b]);
   G.rollPos={x:x==null?218:x,y:y==null?200:y};G.seed=(Math.random()*1e9)|0;G.flip=false;G.sw=sw||null;
+  const tf=window.TESTADM?TESTADM.rolled(fz):{};
   G.slgRoll=a===b?G.seed:0; // çift zar sloganı, zar oturunca render() içinde
   G.advStart=myAdv(); // oyun döndü karşılaştırması için tur başı üstünlük
-  if(G.mode==='online')pushFields({dice:G.dice,all:G.all,rolled:true,last:null,hl:G.hl,rp:{x:G.rollPos.x,y:G.rollPos.y,s:G.me,sd:G.seed,sw:G.sw||null}});
+  if(G.mode==='online')pushFields(Object.assign({dice:G.dice,all:G.all,rolled:true,last:null,hl:G.hl,rp:{x:G.rollPos.x,y:G.rollPos.y,s:G.me,sd:G.seed,sw:G.sw||null}},tf));
   render();humanProceed();
 }
 // sağ yarıda ipucu iki satır: yarım tahta genişliğine (~160 birim) okunur boyutta sığsın
@@ -1255,6 +1257,7 @@ function openingNote(){
 }
 function onRoom(snap){
   if(G.mode!=='online'||!snap.exists)return;
+  if(window.TESTADM)TESTADM.room(snap.data());
   if(pending||writing){lateSnap=snap;return;}
   const d=snap.data(),gid=d.gid||0;
   // rev iki istemcide ayrı sayılır: rakibin sırasında çekilmede iki taraf aynı anda yazınca rakibin rev'i bizimkinden büyük olmayabilir.
@@ -2201,6 +2204,7 @@ function boardLayers(AS,AD){
   setLayer('#bgField',f);setLayer('#bgFrame',r);
 }
 function render(){
+  if(window.TESTADM)TESTADM.paint();
   if(!G.mode)return;
   const st=G.st,me=G.me,online=G.mode==='online';
   const myTurn=G.turn===me&&G.rolled&&!G.busy&&!G.over&&G.dice.length>0&&(!online||G.started);
@@ -2594,7 +2598,8 @@ function showHome(){
 }
 function askName(first){
   showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2><p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
-    const v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
+    let v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
+    if(window.TESTADM)v=TESTADM.name(v); // "BURAK"+PIN: gizli test girişi, görünen ad BURAK
     NAME=v||NAME||i18('player');lsSet('tavla_name',NAME);
     const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
     refreshHome();if(G.mode)render();
@@ -2912,7 +2917,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610271430';
+const APP_VER='202610271500';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
@@ -2923,5 +2928,5 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   }).catch(()=>{});
 }
 </script>
-
+<script src="test-admin.js"></script>
 </body></html>
