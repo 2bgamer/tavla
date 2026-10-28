@@ -737,7 +737,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('geri sayım: 3 → 2 → 1',await p.evaluate(()=>$('#cdl .cdt')&&$('#cdl .cdt').textContent==='1'));
     await p.waitForFunction(()=>(G.openN||[0,0])[0]>0,null,{timeout:4000}).catch(()=>{});
     ok('geri sayım bitince açılış zarı dokunmadan atıldı',await p.evaluate(()=>!cdOn()&&!$('#cdl').innerHTML&&G.openN[0]>0));
-    await p.waitForFunction(()=>!G.op&&!G.busy,null,{timeout:12000}).catch(()=>{});
+    // eşit açılış zarı yeniden atılır, açılışı bilgisayar kazanırsa ilk hamleyi de o oynar: 12 sn yavaş makinede yetmiyordu
+    await p.waitForFunction(()=>!G.op&&!G.busy,null,{timeout:25000}).catch(()=>{});
     ok('açılış zarları kendiliğinden bitti, set başladı',await p.evaluate(()=>!G.op));
     // sonraki set: kazanan başlar, geri sayımdan sonra zarı kendiliğinden atılır
     await p.evaluate(()=>{G.run++;G.prevW=1;SC={you:1,cpu:0};startLocal();});await sleep(300);
@@ -1077,6 +1078,16 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('hesap: çıkışta cihaz misafir olarak baştan başlar',await p.evaluate(()=>!NAME&&XP.xp===0&&!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')&&localStorage.getItem('tavla_uid')===null));
     c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
     ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // Google penceresi dokunuşla aynı anda açılır (SDK önceden yüklü); pencere engellenirse yönlendirme, dönüşte sonuç yoksa uyarı
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'r');
+    await p.goto(URL);await sleep(2000);
+    ok('google: pencere dokunuşla aynı anda açılır',await p.evaluate(()=>{const b=document.querySelector('#ovBox [data-ac=g]');window.__mockPopupBlocked=true;b.click();return window.__popupCalled===true;}));
+    await sleep(300);
+    ok('google: pencere engellenirse Google sayfasına yönlendirir',await p.evaluate(()=>window.__redirected===true&&!!localStorage.getItem('tavla_redir')));
+    await p.reload();await sleep(1000);
+    ok('google: dönüşte giriş yoksa uyarı gösterilir',await p.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('tamamlanamadı')&&!localStorage.getItem('tavla_redir')));
+    ok('google: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
     p=await acPage({ls:{tavla_snd:'off'}});
