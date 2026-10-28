@@ -1,7 +1,7 @@
 /* ---------- TEST MODU: gizli admin girişi + elle zar seçimi ----------
    Giriş: oyuncu adı kutusuna BURAK ve PIN birlikte yazılır (ör. BURAK31). Görünen ad yalnız BURAK olur.
    Admin, kendi ve rakibinin (bilgisayar ya da online arkadaş) sıradaki zarını seçebilir.
-   Elle seçilen zar iki ekranda da "TEST MODU" etiketiyle görünür; gizli değildir.
+   Test modu sağ alttaki 🧪 simgesiyle görünür: online odada rakibin ekranında da sürekli durur, gizli değildir.
 
    MAĞAZAYA GÖNDERMEDEN ÖNCE KALDIRMA:
      1) bu dosyayı sil
@@ -15,17 +15,18 @@
   let on=lsGet('tavla_adm',false)===true;
   const q={};                    // yerel sıradaki zarlar: q[1] beyaz, q[-1] siyah
   const room={w:null,k:null};    // online: odaya yazılmış bekleyen zarlar (admW/admK)
-  let used=null,tmSeed=0,hit=false;        // used: bu atışta odadan alınan koltuk; tmSeed: elle seçilen atışın tohumu
+  let used=null,tmSeed=0,hit=false,roomAdm=null; // roomAdm: odada test modu açık olan koltuk (admOn)        // used: bu atışta odadan alınan koltuk; tmSeed: elle seçilen atışın tohumu
   const sk=s=>s===1?'w':'k',fld=k=>'adm'+k.toUpperCase();
   const okPair=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isInteger(v)&&v>=1&&v<=6);
   const seatName=s=>s===G.me?myName():oppName();
 
   const css=document.createElement('style');
   css.textContent=`
-#taBtn{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:40;height:40px;min-width:40px;padding:0 12px;border-radius:20px;
-  border:2px dashed #ffb300;background:#1b1408;color:#ffd54f;font:800 13px/1 system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.4)}
-#taTag{position:absolute;left:50%;top:0;transform:translate(-50%,-55%);z-index:5;pointer-events:none;white-space:nowrap;
-  background:#ffb300;color:#1b1408;font:800 11px/1 system-ui,sans-serif;letter-spacing:.02em;padding:5px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+#taBtn,#taIco{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:40;height:44px;min-width:44px;padding:0 10px;border-radius:22px;box-sizing:border-box;
+  display:flex;align-items:center;justify-content:center;gap:4px;border:2px dashed #ffb300;background:#1b1408;color:#ffd54f;font:800 13px/1 system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+#taBtn[hidden],#taIco[hidden]{display:none}
+#taBtn .i,#taIco .i{font-size:20px;line-height:1}
+#taIco{pointer-events:none;opacity:.92}
 #taSheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
 #taSheet .in{width:100%;max-width:420px;background:#1b1408;color:#fff3d6;border:2px dashed #ffb300;border-bottom:0;border-radius:18px 18px 0 0;
   padding:14px 16px max(14px,env(safe-area-inset-bottom,0px));font:14px/1.4 system-ui,sans-serif;box-sizing:border-box}
@@ -59,7 +60,7 @@
     const side=s=>`<div class="sd" data-s="${s}"><b>${s===G.me?'Benim':'Rakibin'} sıradaki zarı · ${String(seatName(s)).replace(/[<&>]/g,'')}</b>
       ${[0,1].map(i=>`<div class="row" data-i="${i}">${[1,2,3,4,5,6].map(v=>`<button type="button" data-v="${v}" aria-pressed="${sel[s][i]===v}">${v}</button>`).join('')}</div>`).join('')}
       <button type="button" class="rnd">Rastgele (seçimi kaldır)</button></div>`;
-    el.innerHTML=`<div class="in"><h3>🧪 Test modu · zar seçimi</h3><p>Seçilen zar o tarafın bir sonraki atışında gelir. İki ekranda da "TEST MODU" etiketi görünür.</p>
+    el.innerHTML=`<div class="in"><h3>🧪 Test modu · zar seçimi</h3><p>Seçilen zar o tarafın bir sonraki atışında gelir. Online odada rakibin ekranında da sağ altta 🧪 simgesi durur.</p>
       ${side(G.me)}${side(-G.me)}
       <div class="act"><button type="button" class="no">Vazgeç</button><button type="button" class="ok">Kaydet</button></div>
       <button type="button" class="out">Admin modundan çık</button></div>`;
@@ -74,7 +75,8 @@
       [G.me,-G.me].forEach(s=>{const p=okPair(sel[s])?sel[s]:null,o=pend(s);if(JSON.stringify(p)!==JSON.stringify(o||null))setPend(s,p);});
       close();
     };
-    el.querySelector('.out').onclick=()=>{on=false;lsSet('tavla_adm',false);[1,-1].forEach(s=>delete q[s]);close();};
+    el.querySelector('.out').onclick=()=>{on=false;lsSet('tavla_adm',false);[1,-1].forEach(s=>delete q[s]);
+      if(G.mode==='online'&&ROOM&&roomAdm===myKey()){roomAdm=null;ROOM.update({admOn:null}).catch(()=>{});}close();};
     document.body.appendChild(el);
   }
 
@@ -84,20 +86,21 @@
     const pl=document.getElementById('play'),show=on&&!!G.mode&&!!pl&&!pl.hidden;
     if(show&&!b){b=document.createElement('button');b.id='taBtn';b.type='button';b.setAttribute('aria-label','Test modu: zar seç');b.onclick=openSheet;document.body.appendChild(b);}
     if(b){b.hidden=!show;
-      if(show){const m=pend(G.me),o=pend(-G.me);b.textContent='🎲 TEST'+(m||o?' · '+(m?m.join('-'):'–')+' / '+(o?o.join('-'):'–'):'');}}
-    const w=document.getElementById('boardWrap');if(!w)return;
-    let t=document.getElementById('taTag');
-    const tag=!!G.mode&&G.rolled&&!!tmSeed&&G.seed===tmSeed;
-    if(tag&&!t){t=document.createElement('div');t.id='taTag';t.setAttribute('role','status');t.textContent='🧪 TEST MODU · zarlar elle seçildi';
-      if(getComputedStyle(w).position==='static')w.style.position='relative';w.appendChild(t);}
-    if(t)t.hidden=!tag;
+      if(show){const m=pend(G.me),o=pend(-G.me);b.innerHTML='<span class="i">🧪</span>'+(m||o?(m?m.join('-'):'–')+' / '+(o?o.join('-'):'–'):'');}}
+    // online: test modu açık olduğunu odaya bildir; rakip bunu sağ altta sabit simge olarak görür
+    if(show&&G.mode==='online'&&ROOM&&G.loaded&&roomAdm!==myKey()){roomAdm=myKey();ROOM.update({admOn:roomAdm}).catch(()=>{roomAdm=null;});}
+    let ic=document.getElementById('taIco');
+    const ico=!show&&G.mode==='online'&&!!pl&&!pl.hidden&&!!roomAdm&&roomAdm!==myKey();
+    if(ico&&!ic){ic=document.createElement('div');ic.id='taIco';ic.setAttribute('role','img');ic.setAttribute('aria-label','Test modu açık');ic.title='Test modu açık: rakip zarları elle seçebilir';
+      ic.innerHTML='<span class="i">🧪</span>';document.body.appendChild(ic);}
+    if(ic)ic.hidden=!ico;
   }
 
   window.TESTADM={
     // ad kutusu: "BURAK"+PIN admin girişi yapar, görünen ad BURAK kalır; başka bir ad admin modunu kapatır
     name(v){
       const m=/^(.*?)\s*(\d{2,})$/.exec(v||'');
-      if(m&&m[1]===ADMIN&&hash(ADMIN+m[2])===PIN_H){on=true;lsSet('tavla_adm',true);flash('🧪 Test modu açık: zarları sağ alttaki düğmeden seçebilirsin',4000);return ADMIN;}
+      if(m&&m[1]===ADMIN&&hash(ADMIN+m[2])===PIN_H){on=true;lsSet('tavla_adm',true);return ADMIN;}
       if(on&&v&&v!==ADMIN){on=false;lsSet('tavla_adm',false);}
       return v;
     },
@@ -115,8 +118,10 @@
       const f={tm:fz?G.seed:null};if(used){f[fld(used)]=null;used=null;}
       return f;
     },
-    // her oda anlık görüntüsünde (rev'e bakılmadan): bekleyen zarlar ve son atışın test etiketi
+    // her oda anlık görüntüsünde (rev'e bakılmadan): bekleyen zarlar, test modu açık koltuk, son atış elle mi seçildi
     room(d){
+      const ra=d.admOn==='w'||d.admOn==='k'?d.admOn:null;
+      if(ra!==roomAdm){roomAdm=ra;setTimeout(paint,0);} // admOn rev'siz yazılır: onRoom render etmeyebilir
       room.w=okPair(d.admW)?d.admW:null;room.k=okPair(d.admK)?d.admK:null;
       if(d.rolled)tmSeed=d.tm|0;else tmSeed=0;
       if(tmSeed)hit=true;
