@@ -843,9 +843,9 @@ Object.assign(I18N.en,{roomsT:'Rooms · waiting for an opponent',rmNone:'No room
 Object.assign(I18N.en,{lvS:'Level {n}',lvL:'Level {n}',xpOf:'{a}/{b} XP',xpGain:'+{p} XP',xpNone:'No XP change this match',xpLoss:'−{p} XP',xpTest:'Test mode: this match does not count',lvDown:'Level down: Level {n}',lvUp:'Level up! You are now Level {n}',ttlUp:'New title: {t}',
   ttl:['Rookie','Beginner','Enthusiast','Café Player','Dice Master','Prime Builder','Gammon Hunter','Board Wolf','Café Legend','Grandmaster','Backgammon Sultan']});
 // Rakip Zar modu metinleri (diğer diller İngilizceye düşer)
-Object.assign(I18N.tr,{gmode:'Oyun modu',gmClassic:'Klasik',gmRz:'Rakip Zar',rzTag:'🎲 Rakip Zar',rzNote:'Zarını rakibin seçer (5 saniyesi var). Bu modda XP yok, sadece eğlence.',xpRz:'Rakip Zar: eğlence modu, XP yok',
+Object.assign(I18N.tr,{gmode:'Oyun modu',gmClassic:'Klasik',gmRz:'Rakip Zar',rzTag:'🎲 Rakip Zar',rzNote:'Zarını rakibin seçer (5 saniyesi var, çift seçemez). Bu modda XP yok, sadece eğlence.',xpRz:'Rakip Zar: eğlence modu, XP yok',
   rzWait:'🎲 {n} seçiyor… {s}',rzPickT:'{n} için zar seç',rzOk:'Tamam',rzGot:'{n} senin için {d} seçti',rzLate:'{n} zar seçmedi, zar rastgele atıldı',rzSent:'Zar gönderildi: {d}',rzMiss:'Süre doldu, zar rastgele atılacak'});
-Object.assign(I18N.en,{gmode:'Game mode',gmClassic:'Classic',gmRz:'Opponent Dice',rzTag:'🎲 Opponent Dice',rzNote:'Your opponent picks your dice (5 seconds). No XP in this mode, just for fun.',xpRz:'Opponent Dice: fun mode, no XP',
+Object.assign(I18N.en,{gmode:'Game mode',gmClassic:'Classic',gmRz:'Opponent Dice',rzTag:'🎲 Opponent Dice',rzNote:'Your opponent picks your dice (5 seconds, no doubles). No XP in this mode, just for fun.',xpRz:'Opponent Dice: fun mode, no XP',
   rzWait:'🎲 {n} is picking… {s}',rzPickT:'Pick dice for {n}',rzOk:'OK',rzGot:'{n} picked {d} for you',rzLate:'{n} did not pick, dice rolled at random',rzSent:'Dice sent: {d}',rzMiss:'Time is up, dice will be random'});
 const LANGS=/*LANGS*/[["tr","Türkçe","Turkish"],["en","English","English"],["de","Deutsch","German"],["fr","Français","French"],["es","Español","Spanish"],["pt","Português","Portuguese"],["it","Italiano","Italian"],["nl","Nederlands","Dutch"],["pl","Polski","Polish"],["ro","Română","Romanian"],["hu","Magyar","Hungarian"],["cs","Čeština","Czech"],["sv","Svenska","Swedish"],["el","Ελληνικά","Greek"],["bg","Български","Bulgarian"],["sr","Српски","Serbian"],["hr","Hrvatski","Croatian"],["uk","Українська","Ukrainian"],["ru","Русский","Russian"],["az","Azərbaycanca","Azerbaijani"],["uz","Oʻzbekcha","Uzbek"],["kk","Қазақша","Kazakh"],["ar","العربية","Arabic"],["fa","فارسی","Persian"],["he","עברית","Hebrew"],["ku","Kurdî","Kurdish"],["ka","ქართული","Georgian"],["hy","Հայերեն","Armenian"],["hi","हिन्दी","Hindi"],["bn","বাংলা","Bengali"],["ur","اردو","Urdu"],["id","Bahasa Indonesia","Indonesian"],["ms","Bahasa Melayu","Malay"],["th","ไทย","Thai"],["vi","Tiếng Việt","Vietnamese"],["tl","Filipino","Filipino"],["zh","中文","Chinese"],["ja","日本語","Japanese"],["ko","한국어","Korean"],["sw","Kiswahili","Swahili"]];
 const RTL=['ar','fa','he','ur'];
@@ -3130,7 +3130,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281800';
+const APP_VER='202610281810';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

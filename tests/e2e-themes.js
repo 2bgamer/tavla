@@ -1167,10 +1167,9 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('rakip zar: rakibe 5 sn\'lik zar seçme penceresi açıldı',await B.evaluate(()=>!!$('#rzSheet')&&+$('#rzSheet .rzc').textContent<=5&&document.querySelectorAll('#rzSheet .row button').length===12&&$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
     ok('rakip zar: sırası gelen bekliyor, ZAR AT kapalı ve atılamaz',await A.evaluate(()=>{doRoll(218,200);const c=centerBtn();return !G.rolled&&c&&!c.en&&c.label.includes('seçiyor');}),await A.evaluate(()=>JSON.stringify(centerBtn())));
     ok('rakip zar: seçen tarafta pencere yok',await A.evaluate(()=>!$('#rzSheet')));
-    await press(B,'#rzSheet .row[data-i="0"] [data-v="6"]');await press(B,'#rzSheet .row[data-i="1"] [data-v="5"]');
-    for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await A.evaluate(k=>applyTheme(k,false),t);await sleep(150);
-      await B.screenshot({path:`${OUT}/${t}-11-rakip-zar-secim.png`});await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-bekleme.png`});}
-    await B.evaluate(()=>applyTheme('poker',false));
+    await press(B,'#rzSheet .row[data-i="0"] [data-v="6"]');
+    ok('rakip zar: çift zar seçilemez (öbür sırada 6 kapalı)',await B.evaluate(()=>{const x=$('#rzSheet .row[data-i="1"] [data-v="6"]');x.click();return x.disabled&&x.getAttribute('aria-pressed')==='false'&&$('#rzSheet .ok').disabled;}));
+    await press(B,'#rzSheet .row[data-i="1"] [data-v="5"]');
     ok('rakip zar: iki zar seçilince Tamam açılır',await B.evaluate(()=>!$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
     await press(B,'#rzSheet .ok');
     await A.waitForFunction(()=>G.rolled,null,{timeout:6000}).catch(()=>{});
@@ -1182,6 +1181,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>!!document.getElementById('rzSheet'),null,{timeout:6000}).catch(()=>{});
     ok('rakip zar: sıra değişince diğer tarafa pencere açıldı',await A.evaluate(()=>!!$('#rzSheet'))&&await B.evaluate(()=>!G.rolled&&!$('#rzSheet')));
     const t0=Date.now();
+    // görüntüler bu pencerede: seçim yapılmadan süre dolacak (ilk pencerede Tamam'ı geciktirmesin)
+    await press(A,'#rzSheet .row[data-i="0"] [data-v="6"]');
+    for(const t of THEMES){await A.evaluate(k=>applyTheme(k,false),t);await B.evaluate(k=>applyTheme(k,false),t);await sleep(120);
+      await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-secim.png`});await B.screenshot({path:`${OUT}/${t}-11-rakip-zar-bekleme.png`});}
+    await A.evaluate(()=>applyTheme('poker',false));await B.evaluate(()=>applyTheme('poker',false));
     await A.waitForFunction(()=>!document.getElementById('rzSheet'),null,{timeout:8000}).catch(()=>{});
     const shut=Date.now()-t0;
     await B.waitForFunction(()=>G.rolled,null,{timeout:8000}).catch(()=>{});

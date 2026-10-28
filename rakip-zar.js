@@ -1,13 +1,13 @@
 /* ---------- RAKİP ZAR: ikinci oyun modu (yalnız online oda) ----------
    Oda kurulurken "Oyun modu: Rakip Zar" seçilirse odaya rz:1 yazılır. Bu odada her atışta zarı rakip seçer:
-   sırası gelen oyuncunun rakibine 5 sn'lik seçim penceresi açılır, Tamam'a basınca seçim odaya pk={k,d} yazılır
+   sırası gelen oyuncunun rakibine 5 sn'lik seçim penceresi açılır (çift zar seçilemez), Tamam'a basınca seçim odaya pk={k,d} yazılır
    (k: atışın anahtarı set:sıra:atış sayısı, d: iki zar). Sırası gelen oyuncunun zarı bu değerlerle kendiliğinden atılır.
    5 sn içinde seçilmezse zar normal rastgele atılır. Açılış zarı (kim başlar) her zaman rastgeledir.
    Bu modda XP kazanılmaz ve kaybedilmez (index.html xpAward). */
 (function(){
   'use strict';
   const PICK_MS=5000,GRACE=900; // GRACE: seçimin ağdan gelmesi için atan tarafın ek beklemesi
-  const okPair=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isInteger(v)&&v>=1&&v<=6);
+  const okPair=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isInteger(v)&&v>=1&&v<=6)&&p[0]!==p[1]; // çift zar seçilemez
   let pk=null;   // odadaki son seçim
   let win=null;  // açık atış penceresi {key,mine,t0,go,free,taken,miss}
   let sheet=null,sel=[0,0],lastSec=-1;
@@ -36,6 +36,7 @@
 #rzSheet .row button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 #rzSheet .ok{display:block;width:100%;height:46px;margin-top:4px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);font:800 16px system-ui,sans-serif}
 #rzSheet .ok:disabled{opacity:.45}
+#rzSheet .row button:disabled{opacity:.25}
 :root[data-theme=arcade] #home .og .rzn{color:#111}
 :root[data-theme=arcade] #rzSheet .row button:not([aria-pressed=true]){background:#fff;color:#111;border-color:#000}`;
   document.head.appendChild(css);
@@ -64,8 +65,9 @@
       ${[0,1].map(i=>`<div class="row" data-i="${i}">${[1,2,3,4,5,6].map(v=>`<button type="button" data-v="${v}" aria-label="${v}" aria-pressed="false">${face(v)}</button>`).join('')}</div>`).join('')}
       <button type="button" class="ok" disabled>${escH(i18('rzOk'))}</button></div>`;
     el.querySelectorAll('.row button').forEach(b=>b.onclick=()=>{
-      const i=+b.closest('.row').dataset.i;sel[i]=+b.dataset.v;
-      el.querySelectorAll('.row').forEach(r=>{const j=+r.dataset.i;r.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(sel[j]===+x.dataset.v)));});
+      const i=+b.closest('.row').dataset.i;if(b.disabled)return;sel[i]=+b.dataset.v;
+      // çift zar seçilemez: bir sırada seçilen değer öbür sırada kapanır
+      el.querySelectorAll('.row').forEach(r=>{const j=+r.dataset.i;r.querySelectorAll('button').forEach(x=>{const v=+x.dataset.v;x.setAttribute('aria-pressed',String(sel[j]===v));x.disabled=sel[1-j]===v;});});
       el.querySelector('.ok').disabled=!okPair(sel);
     });
     el.querySelector('.ok').onclick=send;
