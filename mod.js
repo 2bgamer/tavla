@@ -40,6 +40,8 @@
   const t=(k,p)=>{addI18n();return i18(k,p);};
 
   /* ---------- onay: 13 yaş, kullanım şartları, gizlilik ---------- */
+  // iOS uygulamasında yeni pencere açılmaz: belge aynı görünümde açılır (belgede oyuna dönüş bağlantısı var)
+  const TGT=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()?'_self':'_blank';
   const TERMS_V=1,trPage=()=>/^tr/.test(typeof LANG==='string'?LANG:'tr');
   const docURL=f=>f+'.html'+(trPage()?'':'#en');
   const agreed=()=>(+lsGet('tavla_terms',0)||0)>=TERMS_V;
@@ -49,7 +51,7 @@
     if(agreed()){if(next)next();return;}
     if(pend){if(next)pend.push(next);return;}
     pend=next?[next]:[];
-    const a=`<a href="${docURL('sartlar')}" target="_blank" rel="noopener">${escH(t('tmTerms'))}</a>`,p=`<a href="${docURL('gizlilik')}" target="_blank" rel="noopener">${escH(t('tmPriv'))}</a>`;
+    const a=`<a href="${docURL('sartlar')}" target="${TGT}" rel="noopener">${escH(t('tmTerms'))}</a>`,p=`<a href="${docURL('gizlilik')}" target="${TGT}" rel="noopener">${escH(t('tmPriv'))}</a>`;
     showOverlay(`<h2>${escH(t('tmT'))}</h2><p>${escH(t('tmP'))}</p><p class="tmA">${escH(t('tmA',{t:'\u0001',p:'\u0002'})).replace('\u0001',a).replace('\u0002',p)}</p><button class="primary" id="ovOk">${escH(t('tmOk'))}</button>`,()=>{
       lsSet('tavla_terms',TERMS_V);const q=pend||[];pend=null;q.forEach(f=>{try{f();}catch(e){}});
     });
@@ -140,7 +142,7 @@
     // Ayarlar'ın en altında belgelere bağlantı
     const sh=$('#setDrawer .sheet');
     if(sh&&!$('#tmLinks')){const d=document.createElement('p');d.id='tmLinks';d.className='tmL';
-      d.innerHTML=`<a href="${docURL('sartlar')}" target="_blank" rel="noopener">${escH(t('tmTerms'))}</a><a href="${docURL('gizlilik')}" target="_blank" rel="noopener">${escH(t('tmPriv'))}</a>`;sh.appendChild(d);}
+      d.innerHTML=`<a href="${docURL('sartlar')}" target="${TGT}" rel="noopener">${escH(t('tmTerms'))}</a><a href="${docURL('gizlilik')}" target="${TGT}" rel="noopener">${escH(t('tmPriv'))}</a>`;sh.appendChild(d);}
     // online'da rakibin adına ya da avatarına dokununca da şikayet et / engelle
     const op=document.querySelector('#play .ap.op');
     if(op){op.style.cursor='pointer';op.addEventListener('click',()=>{

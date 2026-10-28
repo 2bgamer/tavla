@@ -10,6 +10,7 @@ const A={currentUser:u,onAuthStateChanged(c){cbs.push(c);setTimeout(()=>c(u),30)
  async signInWithRedirect(){window.__redirected=true;},async getRedirectResult(){return null;},async sendSignInLinkToEmail(e){window.__sent=e;},
  isSignInWithEmailLink:h=>/oobCode=/.test(h),async signInWithEmailLink(e){set({uid:'m1',email:e,providerData:[{providerId:'password'}]});},
  async signInAnonymously(){window.__anonCalled=(window.__anonCalled||0)+1;set({uid:'anon'+Math.random().toString(36).slice(2,10),isAnonymous:true,providerData:[]});return {user:u};},
+ async signInWithCredential(c){window.__credSignIn=c;const ap=c&&c.providerId==='apple.com';set({uid:window.__mockUid||'u1',email:'burak@gmail.com',displayName:'Burak Bilgin',providerData:[{providerId:ap?'apple.com':'google.com'}]});return {user:u};},
  async signOut(){set(null);}};
-const auth=()=>A;auth.GoogleAuthProvider=class{constructor(){this.providerId='google.com';}setCustomParameters(){}};auth.OAuthProvider=class{constructor(id){this.providerId=id;}addScope(){}};
+const auth=()=>A;auth.GoogleAuthProvider=class{constructor(){this.providerId='google.com';}setCustomParameters(){}};auth.GoogleAuthProvider.credential=(idToken)=>({providerId:'google.com',idToken});auth.OAuthProvider=class{constructor(id){this.providerId=id;}addScope(){}credential(o){return Object.assign({providerId:this.providerId},o);}};
 window.firebase={apps:[],initializeApp(){this.apps.push(1);},auth};})();

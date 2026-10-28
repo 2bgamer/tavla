@@ -784,7 +784,11 @@ function booSound(delay){
       o.connect(g);g.connect(lp);o.start(t0+dt);o.stop(t0+dt+1.05);});
   }catch(e){}
 }
+// iOS uygulamasında (Capacitor) dokunsal titreşim; web'de bir şey yapmaz
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+function haptic(s){if(!NATIVE)return;try{Capacitor.Plugins.Haptics.impact({style:s});}catch(e){}}
 function moveSound(hit){
+  haptic(hit?'MEDIUM':'LIGHT');
   try{if(MUTE)return;const ac=audio();if(!ac)return;if(ac.state!=='running'){acRetry(()=>moveSound(hit));return;}
     const t=ac.currentTime+.01,F=window.TavlaFoley;
     if(F&&F.play(ac,MASTER,hit&&F.has('hit')?'hit':'checker',t,hit?1:.8,.08))return;thump(t,hit?.24:.11,hit?520:880,hit?.09:.045);}catch(e){}
@@ -2537,7 +2541,7 @@ function render(){
       else if(G.all.length===4){const dl=Math.round(G.sim.dur*1000*.8);if(!(G.slgRoll===G.seed&&G.turn===G.me&&moment('double',dl,'d'+G.mode+':'+G.gid+':'+G.seed)))showDbl(dl);}
     }
     G.anim={t0:G.restoring?performance.now()-1e7:performance.now(),dur:RM||G.restoring?1:Math.round(G.sim.dur*1000)+HOLD+GLIDE};
-    if(!G.restoring)rollSound(G.sim);startAnim();
+    if(!G.restoring){rollSound(G.sim);haptic('HEAVY');}startAnim();
   }else if(!G.all.length)G.poseKey='';
   drawDice(performance.now());cdPaint();
 
@@ -3032,6 +3036,7 @@ $('#chatIn').addEventListener('focus',()=>{const f=()=>{try{$('#chatForm').scrol
 $('#bName').onclick=()=>askName(false);
 if(window.ACCT)ACCT.init();
 if(window.MOD)MOD.init();
+if(NATIVE)$('#bMic').style.display='none'; // iOS uygulamasında sesle yazma yok (WKWebView'de güvenilir değil, izin metni gerekmez)
 refreshHome();
 // ilk açılışta önce 13 yaş ve şartlar onayı, sonra ad/giriş (davetle ya da kaldığı odaya girme de onayı bekler)
 if(window.MOD&&!MOD.agreed())MOD.consent(()=>{if(!NAME)askName(true);});
@@ -3138,7 +3143,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610282100';
+const APP_VER='202610282200';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

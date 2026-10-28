@@ -189,18 +189,28 @@
   /* ---------- giriş yolları ---------- */
   function err(e){
     const c=(e&&e.code)||'';
-    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'||c==='auth/user-cancelled')return;
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'||c==='auth/user-cancelled'||/cancel/i.test((e&&e.message)||''))return;
     const m=c==='auth/network-request-failed'||/^load /.test((e&&e.message)||'')?'acErrNet':c==='auth/invalid-email'?'acErrMail':
       (c==='auth/invalid-action-code'||c==='auth/expired-action-code')?'acErrLink':c==='tavla/redirect'?'acErrRedir':'acErrX';
     showOverlay(`<h2>${esc(t('acErr'))}</h2><p>${esc(t(m))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`);
   }
   // Apple ile Giriş (App Store 4.8): Apple geliştirici hesabı ve Firebase'de Apple sağlayıcısı açılınca APPLE_ON=true yapılır
-  const APPLE_ON=false,apple=()=>APPLE_ON||!!window.__apple;
+  const APPLE_ON=false,apple=()=>APPLE_ON||!!window.__apple||!!nativeAuth();
+  // iOS uygulaması: Google ve Apple girişi yerel pencereyle (Capacitor Firebase Authentication), sonuç web SDK'sına aktarılır.
+  // WKWebView'de Google'ın web penceresi açılmaz; e-posta bağlantısı da uygulamaya dönemediği için iOS'ta gösterilmez.
+  function nativeAuth(){const C=window.Capacitor;return C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.FirebaseAuthentication||null;}
   const google=()=>popup('g');
   async function popup(k){
     try{
       // SDK önceden yüklüyse pencere dokunuşla aynı anda açılır (Safari aradaki beklemeyle pencereyi engelliyor)
       const a=auth||await load();let pr;
+      const FA=nativeAuth();
+      if(FA){
+        fresh=true;
+        const r=k==='a'?await FA.signInWithApple({skipNativeAuth:true}):await FA.signInWithGoogle({skipNativeAuth:true}),c=(r&&r.credential)||{};
+        const cred=k==='a'?new firebase.auth.OAuthProvider('apple.com').credential({idToken:c.idToken,rawNonce:c.nonce}):firebase.auth.GoogleAuthProvider.credential(c.idToken,c.accessToken);
+        await a.signInWithCredential(cred);return;
+      }
       if(k==='a'){pr=new firebase.auth.OAuthProvider('apple.com');pr.addScope('email');pr.addScope('name');}
       else{pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});}
       fresh=true;
@@ -243,6 +253,7 @@
   function signOut(){
     showOverlay(`<h2>${esc(t('acOutQ'))}</h2><p>${esc(t('acOutP'))}</p><button class="primary" id="ovOk">${esc(t('acOut'))}</button><button id="acNo">${esc(t('cancel2'))}</button>`,async()=>{
       clearTimeout(pushT);
+      try{const FA=nativeAuth();if(FA)await FA.signOut();}catch(e){}
       try{const a=await load();await a.signOut();}catch(e){}
       ['tavla_uid','tavla_acc','tavla_pt','tavla_name','tavla_av','tavla_xp'].forEach(k=>lsw(k,null));
       location.reload();
@@ -276,7 +287,7 @@
   const ASVG='<svg class="acA" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.59 1.1 8.75.73 1.05 1.6 2.24 2.73 2.2 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.3-3.51zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z"/></svg>';
   const GSVG='<svg class="acG" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
   const MSVG='<svg class="acM" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
-  const btns=()=>(apple()?`<button type="button" class="acBtn acBA" data-ac="a">${ASVG}<span>${esc(t('acA'))}</span></button>`:'')+`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button><button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`;
+  const btns=()=>(apple()?`<button type="button" class="acBtn acBA" data-ac="a">${ASVG}<span>${esc(t('acA'))}</span></button>`:'')+`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button>`+(nativeAuth()?'':`<button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`);
   function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,a:()=>popup('a'),m:mail,o:signOut,d:delAcct})[b.dataset.ac]();});}
   // ilk açılıştaki "Hoş geldin" penceresine eklenen giriş düğmeleri (askName çağırır)
   function paint(){

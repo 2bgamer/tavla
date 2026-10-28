@@ -568,6 +568,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.goto(URL);await sleep(400);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     const code=await A.evaluate(()=>G.code),bad='<IMG SRC=X ONERROR=window.__xss=1>"\'';
+    await A.waitForFunction(()=>G.loaded&&G.seats.w,null,{timeout:8000}).catch(()=>{});
     const id=await A.evaluate(()=>({tok:TOKEN,w:G.seats.w,n:window.__anonCalled}));
     ok('kimlik: misafir online için anonim hesap aldı, koltuk uid ile tutuluyor',/^anon/.test(id.tok)&&id.w===id.tok&&id.n===1,JSON.stringify(id));
     const room=await (await dbf(DB+'/games/'+code+'.json'+AQ)).json();
@@ -1230,6 +1231,21 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.evaluate(()=>{$('#overlay').hidden=true;});await press(p,'#bSet');await sleep(300);
     ok('apple: ayarlarda Apple ile giriş yapıldı yazıyor',await p.evaluate(()=>$('#acSet').textContent.includes('Apple ile giriş yapıldı')));
     ok('apple: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // iOS uygulaması (Capacitor): yerel Google/Apple girişi, e-posta düğmesi yok, mikrofon yok, titreşim, belgeler aynı görünümde
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'ios');
+    await p.context().addInitScript(()=>{window.__hap=0;window.Capacitor={isNativePlatform:()=>true,Plugins:{Haptics:{impact(){window.__hap++;}},
+      FirebaseAuthentication:{async signInWithGoogle(){return {credential:{idToken:'gid'}};},async signInWithApple(){return {credential:{idToken:'aid',nonce:'n'}};},async signOut(){window.__nativeOut=1;}}}};});
+    await p.goto(URL);await sleep(1200);
+    ok('ios: giriş düğmeleri Apple ve Google (e-posta yok)',await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')==='ag'));
+    await press(p,'#ovBox [data-ac=g]');await sleep(800);
+    ok('ios: Google yerel girişi web SDK\'sına aktarıldı',await p.evaluate(()=>window.__credSignIn&&window.__credSignIn.idToken==='gid'&&!!$('#nmIn')));
+    await p.fill('#nmIn','IOSCU');await press(p,'#ovOk');await sleep(800);await p.evaluate(()=>{$('#overlay').hidden=true;});
+    ok('ios: sohbette mikrofon düğmesi gizli',await p.evaluate(()=>getComputedStyle($('#bMic')).display==='none'));
+    ok('ios: belgeler aynı görünümde açılır',await p.evaluate(()=>[...document.querySelectorAll('#tmLinks a')].every(a=>a.target==='_self')));
+    await p.evaluate(()=>{window.__hap=0;moveSound(false);});
+    ok('ios: pul oynayınca titreşim',await p.evaluate(()=>window.__hap===1));
+    ok('ios: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
     p=await acPage({ls:{tavla_snd:'off'}});
