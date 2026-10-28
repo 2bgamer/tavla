@@ -1491,10 +1491,10 @@ function kickOpp(){
 function kickedOut(){
   lsSet('tavla_room',null);showHome();lobbyMsg(i18('kicked'));
 }
-// ana ekranda (Arkadaşınla seçiliyken) rakip bekleyen odaları canlı izler
+// ana ekranda Odalar sekmesi açıkken rakip bekleyen odaları canlı izler
 let lbUnsub=null,lbRooms=null,lbTick=null;
 function lbWatch(){
-  const on=!!(DB&&HM==='on'&&!G.mode);
+  const on=!!(DB&&!G.mode&&(window.SKOR?SKOR.tab==='rm':HM==='on'));
   if(!on){lbUnwatch();return;}
   if(lbUnsub)return;
   lbRooms=null;lbPaint();
@@ -2903,6 +2903,7 @@ function setHM(m){
   HM=m;lsSet('tavla_hm',m);
   $('#mCpu').className='mc '+(m==='cpu'?'on':'off');$('#mOnline').className='mc '+(m==='on'?'on':'off');
   $('#optCpu').hidden=m!=='cpu';$('#optOn').hidden=m!=='on';lobbyMsg('');
+  if(window.SKOR)SKOR.paint(); // sekmeler (Seçenekler · Odalar · Skorlar): skorlar.js
   contPaint();lbWatch();
 }
 $('#mCpu').onclick=()=>setHM('cpu');
@@ -3156,7 +3157,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610290000';
+const APP_VER='202610290100';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
@@ -3169,4 +3170,5 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
 </script>
 <script src="test-admin.js"></script>
 <script src="rakip-zar.js"></script>
+<script src="skorlar.js"></script>
 </body></html>

@@ -44,6 +44,32 @@
         ".validate": "$code.matches(/^[0-9]{4}$/) && newData.hasChildren(['u', 'n', 't']) && newData.child('t').isNumber() && newData.child('n').isString() && newData.child('n').val().length <= 14 && !newData.child('n').val().matches(/[<>&\"'`]/)"
       }
     },
+    "lb": {
+      "w": {
+        ".read": true,
+        ".indexOn": ["xp"],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
+          ".validate": "newData.hasChildren(['n', 'xp', 't']) && newData.child('n').isString() && newData.child('n').val().length <= 14 && !newData.child('n').val().matches(/[<>&\"'`]/) && newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000 && newData.child('t').isNumber() && newData.child('t').val() <= now + 600000 && (!newData.child('av').exists() || newData.child('av').isNumber()) && (!newData.child('c').exists() || (newData.child('c').isString() && newData.child('c').val().matches(/^[A-Z]{2}$/)))",
+          "$other": {
+            ".validate": "$other === 'n' || $other === 'xp' || $other === 't' || $other === 'av' || $other === 'c'"
+          }
+        }
+      },
+      "c": {
+        ".read": true,
+        "$cc": {
+          ".indexOn": ["xp"],
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
+            ".validate": "$cc.matches(/^[A-Z]{2}$/) && newData.hasChildren(['n', 'xp', 't']) && newData.child('n').isString() && newData.child('n').val().length <= 14 && !newData.child('n').val().matches(/[<>&\"'`]/) && newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000 && newData.child('t').isNumber() && newData.child('t').val() <= now + 600000 && (!newData.child('av').exists() || newData.child('av').isNumber())",
+            "$other": {
+              ".validate": "$other === 'n' || $other === 'xp' || $other === 't' || $other === 'av'"
+            }
+          }
+        }
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

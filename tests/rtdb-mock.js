@@ -9,6 +9,12 @@ function set(path,v){if(!path.length)return;let c=root;for(let i=0;i<path.length
 function q(v,u){
   if(u.searchParams.get('orderBy')==='"$value"'&&v&&typeof v==='object'){const ea=u.searchParams.get('endAt'),lf=+u.searchParams.get('limitToFirst')||1e9;
     const ks=Object.keys(v).filter(k=>ea==null||v[k]<=+ea).sort((a,b)=>v[a]-v[b]).slice(0,lf);const o={};ks.forEach(k=>o[k]=v[k]);return o;}
+  const ob=u.searchParams.get('orderBy');
+  if(ob&&/^"[^$]/.test(ob)&&v&&typeof v==='object'){ // alt alana göre (ör. "xp"): startAt + limitToFirst/limitToLast
+    const f=JSON.parse(ob),val=k=>v[k]&&typeof v[k]==='object'?v[k][f]:undefined,sa=u.searchParams.get('startAt');
+    let ks=Object.keys(v).filter(k=>typeof val(k)==='number'&&(sa==null||val(k)>=+sa)).sort((a,b)=>val(a)-val(b)||(a<b?-1:1));
+    const lf=u.searchParams.get('limitToFirst'),ll=u.searchParams.get('limitToLast');
+    if(lf)ks=ks.slice(0,+lf);if(ll)ks=ks.slice(-(+ll));const o={};ks.forEach(k=>o[k]=v[k]);return o;}
   const lt=u.searchParams.get('limitToLast');if(!lt||!v||typeof v!=='object')return v;const ks=Object.keys(v).sort().slice(-(+lt));const o={};ks.forEach(k=>o[k]=v[k]);return o;}
 function notify(){for(const s of subs){const v=q(get(s.path),s.u);const j=JSON.stringify(v);if(j!==s.last){s.last=j;s.res.write(`event: put\ndata: ${JSON.stringify({path:'/',data:v})}\n\n`);}}}
 let n=0;

@@ -139,7 +139,7 @@
   const local=()=>({n:NAME||'',av:AV,xp:XP,t:ls('tavla_pt',0)||0});
   function push(){
     clearTimeout(pushT);
-    pushT=setTimeout(()=>{if(!user||!NAME||isGuest(NAME))return;const p=local();if(!p.t){p.t=Date.now();lsw('tavla_pt',p.t);}cloud('PUT',p).catch(()=>{});},600);
+    pushT=setTimeout(()=>{if(!user||!NAME||isGuest(NAME))return;const p=local();if(!p.t){p.t=Date.now();lsw('tavla_pt',p.t);}cloud('PUT',p).catch(()=>{});if(window.SKOR)SKOR.pub();},600);
   }
   function apply(c){
     applying=true;
@@ -180,7 +180,7 @@
   function onUser(u){
     user=u&&!u.isAnonymous?u:null;ready=true;
     waitU.splice(0).forEach(f=>f());
-    if(user){lsw('tavla_uid',user.uid);lsw('tavla_acc',{e:user.email||'',p:prov(user)});sync();}
+    if(user){lsw('tavla_uid',user.uid);lsw('tavla_acc',{e:user.email||'',p:prov(user)});sync().then(()=>{if(window.SKOR)SKOR.pub();});}
     else{lsw('tavla_uid',null);lsw('tavla_acc',null);if(NAME&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}}
     paint();
   }
@@ -272,6 +272,7 @@
         if(u&&!u.isAnonymous){
           const k=nk(NAME);
           if(k)try{if(await names(k,'GET')===u.uid)await names(k,'DELETE');}catch(e){}
+          if(window.SKOR)await SKOR.drop();
           await cloud('DELETE');
           try{await u.delete();}catch(e){if(e&&e.code==='auth/requires-recent-login'){again=true;await a.signOut();}else throw e;}
         }

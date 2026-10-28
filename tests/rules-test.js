@@ -97,6 +97,22 @@ const room=(w,extra)=>Object.assign({ct:Date.now(),seats:{w},nm:{w:'AHMET'},turn
   await t('şikayetler okunamaz',assertFails(get(ref(A,'reports'))));
   await t('200 karakterden uzun şikayet metni yazılamaz',assertFails(push(ref(A,'reports'),rp('a',{text:'x'.repeat(201)}))));
 
+  /* skor tablosu (lb) */
+  {
+    const S1=acct('s1'),S2=acct('s2'),e={n:'AHMET',av:1,xp:1200,t:Date.now()};
+    await t('hesap kendi dünya skorunu yazar',assertSucceeds(set(ref(S1,'lb/w/s1'),Object.assign({c:'TR'},e))));
+    await t('hesap kendi ülke skorunu yazar',assertSucceeds(set(ref(S1,'lb/c/TR/s1'),e)));
+    await t('başkasının skoru yazılamaz',assertFails(set(ref(S2,'lb/w/s1'),e)));
+    await t('anonim hesap skor yazamaz',assertFails(set(ref(A,'lb/w/a'),e)));
+    await t('negatif puan yazılamaz',assertFails(set(ref(S1,'lb/w/s1'),Object.assign({},e,{xp:-5}))));
+    await t('HTML içeren ad skora yazılamaz',assertFails(set(ref(S1,'lb/c/TR/s1'),Object.assign({},e,{n:'<b>x</b>'}))));
+    await t('geçersiz ülke kodu yazılamaz',assertFails(set(ref(S1,'lb/c/tr1/s1'),e)));
+    await t('fazla alan yazılamaz',assertFails(set(ref(S1,'lb/w/s1'),Object.assign({},e,{x:1}))));
+    await t('dünya skor tablosu herkese açık',assertSucceeds(get(ref(X,'lb/w'))));
+    await t('ülke skor tablosu herkese açık',assertSucceeds(get(ref(X,'lb/c/TR'))));
+    await t('hesap kendi skorunu siler',assertSucceeds(remove(ref(S1,'lb/c/TR/s1'))));
+  }
+
   await env.cleanup();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);
