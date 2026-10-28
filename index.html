@@ -332,6 +332,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 <script src="theme/themes.js"></script>
 <script src="assets/avatars.js"></script>
 <script src="audio/foley.js"></script>
+<script src="account.js"></script>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -341,7 +342,7 @@ const sk=s=>s===1?'w':'k';
 const r6=()=>1+Math.floor(Math.random()*6);
 function removeOne(a,v){const i=a.indexOf(v);const r=a.slice();if(i>=0)r.splice(i,1);return r;}
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}if(window.ACCT)ACCT.dirty(k);}
 
 /* ---------- oyun mantığı ---------- */
 // st.b[i] > 0: beyaz (taraf 1), < 0: siyah (taraf -1). Taraf 1, 23 -> 0 yönünde; taraf -1, 0 -> 23 yönünde ilerler.
@@ -2669,6 +2670,7 @@ function showHome(){
   $('#play').hidden=true;$('#home').hidden=false;lsSet('tavla_scr','home');refreshHome();
 }
 function askName(first){
+  if(window.ACCT&&!ACCT.signed())return ACCT.askGuest(first); // misafir ad seçemez (GUEST…), giriş yapınca seçer
   showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2><p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
     let v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
     if(window.TESTADM)v=TESTADM.name(v); // "BURAK"+PIN: gizli test girişi, görünen ad BURAK
@@ -2676,6 +2678,7 @@ function askName(first){
     const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
     refreshHome();if(G.mode)render();
   });
+  if(window.ACCT)ACCT.guardName();
   document.querySelectorAll('.avb').forEach(b=>b.onclick=()=>document.querySelectorAll('.avb').forEach(x=>x.setAttribute('aria-checked',String(x===b))));
   const i=$('#nmIn');if(i){setTimeout(()=>{try{i.focus();}catch(e){}},50);i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#ovOk').click();}});}
 }
@@ -2708,7 +2711,7 @@ function refreshHome(){
     if(c&&c.prevW&&!G.mode&&!G.prevW)G.prevW=c.prevW;
   }
   const hn=$('#hello');if(hn){hn.hidden=!NAME;$('#helloN').textContent=UP(NAME);$('#avHome').innerHTML=AVATARS[AV];}
-  xpPaint();
+  xpPaint();if(window.ACCT)ACCT.paint();
   const room=lsGet('tavla_room',null);
   const rb=$('#bResume');
   rb.hidden=true; // oda devamı OYUNA DEVAM ET düğmesinde
@@ -2897,6 +2900,7 @@ $('#chatIn').addEventListener('blur',()=>{try{window.scrollTo(0,0);}catch(e){}})
 $('#chatIn').addEventListener('focus',()=>{const f=()=>{try{$('#chatForm').scrollIntoView({block:'end'});}catch(e){}};f();setTimeout(f,250);});
 
 $('#bName').onclick=()=>askName(false);
+if(window.ACCT)ACCT.init();
 refreshHome();
 if(!NAME)askName(true);
 /* Firebase Realtime Database (REST + SSE), SDK'sız. Claude db arayüzüyle aynı: doc(path).get/set/update/onSnapshot, collection(name).add/orderBy/limit/onSnapshot */
@@ -2990,7 +2994,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281100';
+const APP_VER='202610281200';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
