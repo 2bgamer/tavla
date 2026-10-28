@@ -737,7 +737,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('geri sayım: 3 → 2 → 1',await p.evaluate(()=>$('#cdl .cdt')&&$('#cdl .cdt').textContent==='1'));
     await p.waitForFunction(()=>(G.openN||[0,0])[0]>0,null,{timeout:4000}).catch(()=>{});
     ok('geri sayım bitince açılış zarı dokunmadan atıldı',await p.evaluate(()=>!cdOn()&&!$('#cdl').innerHTML&&G.openN[0]>0));
-    await p.waitForFunction(()=>!G.op&&!G.busy,null,{timeout:12000}).catch(()=>{});
+    // eşit açılış zarı yeniden atılır, açılışı bilgisayar kazanırsa ilk hamleyi de o oynar: 12 sn yavaş makinede yetmiyordu
+    await p.waitForFunction(()=>!G.op&&!G.busy,null,{timeout:25000}).catch(()=>{});
     ok('açılış zarları kendiliğinden bitti, set başladı',await p.evaluate(()=>!G.op));
     // sonraki set: kazanan başlar, geri sayımdan sonra zarı kendiliğinden atılır
     await p.evaluate(()=>{G.run++;G.prevW=1;SC={you:1,cpu:0};startLocal();});await sleep(300);
