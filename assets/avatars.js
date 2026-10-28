@@ -1,4 +1,4 @@
-/* Tavla Masası: geçici çizgi avatarlar (6 oyuncu + bilgisayar). Yalnızca veri: SVG metinleri.
+/* Tavla Sultanı: geçici çizgi avatarlar (6 oyuncu + bilgisayar). Yalnızca veri: SVG metinleri.
    ChatGPT'nin hazırlayacağı avatarlar gelince bu dosya, aynı sırayla görsel yollarıyla değiştirilir. */
 (function(){
   const EYES='<path d="M23.5 23.5q3-2 6 0M34.5 23.5q3-2 6 0" stroke="#3a2418" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="27" cy="28" r="1.8" fill="#2a1a12"/><circle cx="37" cy="28" r="1.8" fill="#2a1a12"/>';
