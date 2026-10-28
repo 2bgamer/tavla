@@ -24,6 +24,7 @@ async function mkPage(b,opts={}){
   await ctx.addInitScript(o=>{
     if(!sessionStorage.getItem('init')){sessionStorage.setItem('init','1');
       localStorage.setItem('tavla_name',JSON.stringify(o.name||'BURAK'));localStorage.setItem('tavla_lang','"tr"');
+      if(!o.noTerms)localStorage.setItem('tavla_terms','1');
       for(const [k,v] of Object.entries(o.ls||{}))localStorage.setItem(k,JSON.stringify(v));}
     window.__DBURL=o.db;if(o.dbns)window.__DBNS=o.dbns;
     if(!o.guest)window.__keepName=true; // misafir adları GUEST… olur; eski testler verilen adla (BURAK, AHMET) açılır
@@ -34,7 +35,7 @@ async function mkPage(b,opts={}){
     window.__log=[];window.__dice=[];
     const AC0=window.AudioContext||window.webkitAudioContext;if(AC0){const n=AC0.prototype.createOscillator,g=AC0.prototype.createGain;window.__osc=0;window.__gains=[];
       AC0.prototype.createOscillator=function(){window.__osc++;return n.call(this);};AC0.prototype.createGain=function(){const x=g.call(this);window.__gains.push(x);if(window.__gains.length>400)window.__gains.shift();return x;};}
-  },{name:opts.name,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:FBM,realFb:opts.realFb,dbns:DBNS});
+  },{name:opts.name,noTerms:opts.noTerms,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:FBM,realFb:opts.realFb,dbns:DBNS});
   return p;
 }
 async function hook(p){await p.evaluate(()=>{const m=moment;window.moment=function(k,d,key){const r=m(k,d,key);__log.push(k+':'+r);return r;};const r=Math.random;Math.random=()=>__dice.length?(__dice.shift()-1)/6+.01:r();});}
@@ -86,7 +87,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   for(const t of THEMES){
     const p=await mkPage(b,{ls:{tavla_theme:'poker',tavla_snd:'off'}});await p.goto(URL);await sleep(500);
     const bg0=await p.evaluate(()=>getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage);
-    await press(p,`#thHome .thc[data-t=${t}]`);await sleep(250);
+    if(t==='poker')ok('giriş: altta ayrı tema listesi yok, ortadaki sağ/sol seçici var',await p.evaluate(()=>!document.querySelector('#home .thc,#thHome,#bThAll,.shr')&&!!$('#heroPrev')&&!!$('#heroNext')));
+    await p.evaluate(()=>themeMenu());await p.waitForSelector('#thDrawer:not([hidden])');await press(p,`#thDrawer .thc[data-t=${t}]`);await sleep(350);
     const st=await p.evaluate(()=>({th:document.documentElement.dataset.theme,ls:lsGet('tavla_theme'),bg:getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage,hero:!!document.querySelector('#heroB polygon')}));
     ok(`[${t}] giriş: tema anında uygulandı ve kaydedildi`,st.th===t&&st.ls===t&&(t==='poker'||st.bg!==bg0)&&st.hero,JSON.stringify({th:st.th,ls:st.ls}));
     ok(`[${t}] giriş: devam düğmesi kayıt yokken pasif`,await p.evaluate(()=>$('#bCont').disabled));
@@ -396,11 +398,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('reduced motion: sade solma animasyonu',await p3.evaluate(()=>getComputedStyle($('#slg')).animationName==='slgfade'));
     await p3.context().close();
     const p4=await mkPage(b,{ls:{tavla_lang:'en'}});await p4.goto(URL);await sleep(300);
-    ok('İngilizce: tema başlığı',await p4.evaluate(()=>[...document.querySelectorAll('.sh')].some(e=>e.textContent==='Table theme')));
+    ok('İngilizce: tema başlığı',await p4.evaluate(()=>$('#thTitle [data-i=thT]').textContent==='Table theme'));
     await p4.evaluate(()=>moment('hit',0,'en'));
     ok('İngilizce: slogan',await waitSlg(p4,'GOTCHA!'));
-    await p4.evaluate(()=>{LANGSEL='tr';LANG='tr';applyLang();});
-    ok('dil değişince tema kartları yeniden yazıldı',await p4.evaluate(()=>$('#thHome .thc small').textContent==='Neon ışıklar, gece kulübü'));
+    await p4.evaluate(()=>{LANGSEL='tr';LANG='tr';applyLang();themeMenu();});
+    ok('dil değişince tema kartları yeniden yazıldı',await p4.evaluate(()=>$('#thBody .thc small').textContent==='Neon ışıklar, gece kulübü'));
     await p4.context().close();
   }
 
@@ -550,7 +552,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.goto(URL);await sleep(400);
     await dbf(DB+'/games/4321.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({seats:{w:'x',k:'y'},started:true})});
     await A.evaluate(async()=>{const r=Math.random;Math.random=()=>(4321-1000)/9000+1e-9;try{await createRoom();}finally{Math.random=r;}});await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    {const old=Date.now()-8*864e5;await dbf(DB+'/games/5555.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ct:old,seats:{w:'x',k:'y'},msgs:{m1:{from:'x',t:old,text:'eski'}}})});
+      await dbf(DB+'/gix/5555.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(old)});}
     ok('eski oda (ct yok): aynı kod temizlenip yeni oda kuruldu',await A.evaluate(()=>G.code==='4321'&&G.me===1&&!G.seats.k),await A.evaluate(()=>G.code));
+    await sleep(3800);
+    ok('7 günden eski oda ve sohbeti dizinden bulunup silindi',await (await dbf(DB+'/games/5555.json'+AQ)).json()===null&&await (await dbf(DB+'/gix/5555.json'+AQ)).json()===null);
+    ok('yeni oda dizinde',typeof (await (await dbf(DB+'/gix/4321.json'+AQ)).json())==='number');
     ok('veritabanı istekleri kimlik jetonu taşıyor',urls.some(u=>/games\/4321\.json\?(ns=[\w-]+&)?auth=ey/.test(u)),urls.slice(0,4).join(' '));
     await A.evaluate(()=>showHome());await sleep(200);
     ok('kimlik testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
@@ -562,6 +569,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.goto(URL);await sleep(400);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     const code=await A.evaluate(()=>G.code),bad='<IMG SRC=X ONERROR=window.__xss=1>"\'';
+    await A.waitForFunction(()=>G.loaded&&G.seats.w,null,{timeout:8000}).catch(()=>{});
     const id=await A.evaluate(()=>({tok:TOKEN,w:G.seats.w,n:window.__anonCalled}));
     ok('kimlik: misafir online için anonim hesap aldı, koltuk uid ile tutuluyor',/^anon/.test(id.tok)&&id.w===id.tok&&id.n===1,JSON.stringify(id));
     const room=await (await dbf(DB+'/games/'+code+'.json'+AQ)).json();
@@ -578,6 +586,74 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('ad kuralı: yalnız harf, rakam, boşluk, . _ - ve 14 karakter',await A.evaluate(()=>cleanName('  a<b>c "d"  ŞÜ_k-1.2 xxxxxxxxxx ')==='abc d ŞÜ_k-1.2'&&cleanName('<script>')==='script'));
     ok('XSS testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
     await A.context().close();
+  }
+  /* 5a3) sohbet güvenliği (App Store 1.2): küfür süzgeci, şikayet, engelleme */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{name:'MEHMET',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await B.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const code=await A.evaluate(()=>G.code);
+    await B.evaluate(c=>joinRoom(c),code);await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    await A.waitForFunction(()=>G.seats.k,null,{timeout:8000}).catch(()=>{});
+    ok('süzgeç: küfür yıldızlanır, masum kelimeler kalır',await A.evaluate(()=>MOD.filter('siiiktir git amk')==='******** git ***'&&MOD.filter('şikayet ediyorum, sıkıldım, götür, fukara, picture')==='şikayet ediyorum, sıkıldım, götür, fukara, picture'&&MOD.filter('s.i.k.t.i.r')==='********'),await A.evaluate(()=>MOD.filter('siiiktir git amk')+' | '+MOD.filter('s.i.k.t.i.r')));
+    await B.fill('#chatIn','siktir git');await B.press('#chatIn','Enter');
+    await A.waitForFunction(()=>$('#chatList').textContent.includes('git'),null,{timeout:6000}).catch(()=>{});
+    const raw=await (await dbf(DB+'/games/'+code+'/msgs.json'+AQ)).json();
+    ok('süzgeç: küfürlü mesaj yıldızlı gönderildi ve gösterildi',await A.evaluate(()=>$('#chatList').textContent.includes('****** git')&&!$('#chatList').textContent.includes('siktir'))&&!JSON.stringify(raw).includes('siktir'),JSON.stringify(raw));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-12-sohbet-suzgec.png`});}
+    await A.click('#play .ap.op');await sleep(300);
+    ok('rakibin adına/avatarına dokununca şikayet et / engelle',await A.evaluate(()=>!$('#overlay').hidden&&!!$('#mdRep')&&$('#ovBox').textContent.includes('MEHMET hakkında')));
+    await A.evaluate(()=>{$('#overlay').hidden=true;});
+    await A.click('#chatList .cm.them');await sleep(300);
+    ok('mesaja dokununca şikayet et / engelle penceresi',await A.evaluate(()=>!$('#overlay').hidden&&!!$('#mdRep')&&!!$('#mdBlk')&&$('#ovBox').textContent.includes('MEHMET')));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-12-sikayet.png`});}
+    await A.click('#mdRep');await sleep(200);
+    ok('şikayet: neden seçenekleri',await A.evaluate(()=>document.querySelectorAll('.mdWhy').length===4));
+    await A.click('.mdWhy[data-w=mdR1]');await sleep(800);
+    const reps=await (await dbf(DB+'/reports.json'+AQ)).json(),rl=Object.values(reps||{});
+    const bUid=await B.evaluate(()=>TOKEN),aUid=await A.evaluate(()=>TOKEN);
+    ok('şikayet veritabanına yazıldı (kim, oda, mesaj, neden)',rl.some(r=>r.by===aUid&&r.who===bUid&&r.room===code&&r.why==='mdR1'&&r.text.includes('git')),JSON.stringify(rl));
+    ok('şikayet: 24 saat içinde inceleme bilgisi',await A.evaluate(()=>$('#ovBox').textContent.includes('24 saat')));
+    await A.click('#mdBlk');await sleep(200);await A.click('#ovOk');await sleep(300);
+    ok('engelle: rakibin mesajları gizlendi',await A.evaluate(u=>!$('#chatList').textContent.includes('git')&&MOD.blocked(u),bUid));
+    await dbf(DB+'/games/'+code+'/msgs.json'+AQ,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from:bUid,n:-1,nm:'MEHMET',t:Date.now(),text:'yeni mesaj'})});await sleep(1200);
+    ok('engelle: yeni mesajı da görünmez, okunmamış sayılmaz',await A.evaluate(()=>!$('#chatList').textContent.includes('yeni mesaj')&&CH.unread===0));
+    ok('engelle: set başlamadan engellenen rakip odadan çıkarıldı',await A.evaluate(()=>!G.seats.k));
+    await B.waitForFunction(()=>!G.mode,null,{timeout:8000}).catch(()=>{});
+    ok('engelle: engellenen ana ekrana döndü',await B.evaluate(()=>!G.mode));
+    // engellenen oyuncunun odası listede görünmez
+    await A.evaluate(()=>showHome());await B.evaluate(()=>createRoom());await B.waitForFunction(()=>G.code,null,{timeout:5000});
+    const bcode=await B.evaluate(()=>G.code);await sleep(600);
+    ok('engelle: engellenenin odası listede görünmez',await A.evaluate(c=>{lbRooms=(lbRooms||[]).concat([{code:c,u:Object.keys(lsGet('tavla_block',{}))[0],n:'MEHMET',t:Date.now(),lv:1}]);lbPaint();return !$('#rmList').textContent.includes('MEHMET');},bcode));
+    await A.evaluate(()=>{$('#bSet').click();});await sleep(400);
+    ok('ayarlar: engellenen oyuncular listesi ve engeli kaldır',await A.evaluate(()=>!$('#mdSet').hidden&&$('#mdSet').textContent.includes('MEHMET')));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.evaluate(()=>$('#mdSet').scrollIntoView({block:'center'}));await A.screenshot({path:`${OUT}/${t}-12-engellenenler.png`});}
+    await A.click('#mdSet .mdRow button');await sleep(200);
+    ok('engeli kaldır: liste boşaldı',await A.evaluate(()=>$('#mdSet').hidden&&!Object.keys(lsGet('tavla_block',{})).length));
+    ok('sohbet güvenliği testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
+  /* 5a4) onay: ilk açılışta 13 yaş + kullanım şartları + gizlilik; davetle gelen de önce onaylar */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}});await A.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const inv=await A.evaluate(()=>inviteURL(G.code));
+    const B=await mkPage(b,{guest:true,noTerms:true,ls:{tavla_snd:'off',tavla_name:''}});
+    await B.goto(inv);await sleep(700);
+    ok('onay: ilk açılışta 13 yaş ve şartlar soruluyor, odaya henüz girilmedi',await B.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('13 yaşından büyüğüm')&&!!$('#ovBox a[href="sartlar.html"]')&&!!$('#ovBox a[href="gizlilik.html"]')&&!G.mode));
+    for(const t of THEMES){await B.evaluate(t=>applyTheme(t,false),t);await sleep(250);await B.screenshot({path:`${OUT}/${t}-13-onay.png`});}
+    await B.click('#ovOk');await sleep(500);
+    ok('onay: kabul edilince kaydedildi ve davet akışı sürdü',await B.evaluate(()=>lsGet('tavla_terms',0)===1&&!$('#overlay').hidden&&!!document.querySelector('#ovBox [data-ac=g]')));
+    await B.click('#ovOk');
+    await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    ok('onay: sonra odaya oturdu',await B.evaluate(()=>G.mode==='online'&&G.me===-1));
+    await B.evaluate(()=>showHome());await B.evaluate(()=>$('#bSet').click());await sleep(400);
+    ok('ayarlarda kullanım şartları ve gizlilik bağlantıları',await B.evaluate(()=>!!$('#tmLinks a[href="sartlar.html"]')&&!!$('#tmLinks a[href="gizlilik.html"]')));
+    for(const p of ['sartlar.html','gizlilik.html']){const q=await B.context().newPage();const r=await q.goto(URL.replace('index.html',p));
+      ok('belge açılıyor: '+p,r.ok()&&(await q.textContent('body')).includes('13 yaşından')&&(await q.textContent('body')).includes('2B Games'));
+      await q.setViewportSize({width:390,height:844});for(const t of ['tr']){await q.screenshot({path:`${OUT}/belge-${p.replace('.html','')}.png`});}await q.close();}
+    ok('onay testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
   }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
@@ -633,22 +709,22 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 5g) sinematik tema kartları (Faz 1): yazısız orta bant, yedek, taşma, çekmece */
   {
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'neon'}});await p.goto(URL);await sleep(300);
-    await p.evaluate(()=>$('#thHome').scrollIntoView());
-    await p.waitForFunction(()=>[...document.querySelectorAll('#thHome .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
-    const r=await p.evaluate(()=>[...document.querySelectorAll('#thHome .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
+    await p.evaluate(()=>themeMenu());await p.waitForSelector('#thDrawer.open');
+    await p.waitForFunction(()=>[...document.querySelectorAll('#thBody .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
+    const r=await p.evaluate(()=>[...document.querySelectorAll('#thBody .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
       return {t:c.dataset.t,w:i&&i.naturalWidth,h:i&&i.naturalHeight,fit:cs&&cs.objectFit,pos:cs&&cs.objectPosition,lazy:i&&i.loading,kare:Math.abs(pv.width-pv.height)<1.5,ad:c.querySelector('b').textContent};}));
     ok('tema kartı: dört temada sinematik görsel yüklendi (384×1024)',r.length===4&&r.every(x=>x.w===384&&x.h===1024),JSON.stringify(r.map(x=>x.t+':'+x.w+'×'+x.h)));
     ok('tema kartı: yalnızca yazısız orta bant (kare pencere, cover, %65)',r.every(x=>x.fit==='cover'&&x.pos==='50% 65%'&&x.kare),JSON.stringify(r[0]));
     ok('tema kartı: ad ve açıklama HTML\'den (görselde yazı yok)',r.map(x=>x.ad).join()==='Neon Club,Sunset Pop,Poker Lounge,Street Arcade');
     ok('tema kartı: görseller tembel yükleniyor (lazy)',r.every(x=>x.lazy==='lazy'));
-    const sel=await p.evaluate(()=>{const c=$('#thHome .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
+    const sel=await p.evaluate(()=>{const c=$('#thBody .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
     ok('tema kartı: seçili işaret görselin üstünde',sel);
-    await p.click('#thHome .thc[data-t=poker]');await sleep(200);
+    await p.click('#thBody .thc[data-t=poker]');await sleep(200);
     ok('tema kartı: dokununca tema değişip kaydedildi',await p.evaluate(()=>THEME==='poker'&&lsGet('tavla_theme')==='poker'));
     // CI'daki geniş yedek yazı tipini taklit et (en kötü durum)
     await p.evaluate(()=>{const st=document.createElement('style');st.id='wideHome';st.textContent='#home,#home *{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);});
     for(const w of [320,375,390,430]){await p.setViewportSize({width:w,height:740});await sleep(150);
-      ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thHome .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
+      ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thBody .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
     await p.evaluate(()=>$('#wideHome').remove());
     // oyunda çekmece: kısa ekranda da Kapat'a ulaşılır
     await p.setViewportSize({width:390,height:664});await p.click('#bGo');await sleep(400);
@@ -658,9 +734,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('tema kartı testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // yedek: görseller yüklenemezse kod çizimi önizleme görünür
-    const q=await mkPage(b,{ls:{tavla_snd:'off'}});await q.route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
-    await q.evaluate(()=>$('#thHome').scrollIntoView());await sleep(600);
-    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(()=>!document.querySelector('#thHome .thimg')&&[...document.querySelectorAll('#thHome .thpv svg')].every(s=>s.getBoundingClientRect().height>20)));
+    const q=await mkPage(b,{ls:{tavla_snd:'off'},noSW:true});await q.context().route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
+    await q.evaluate(()=>themeMenu());
+    const yedek=()=>!document.querySelector('#thBody .thimg')&&[...document.querySelectorAll('#thBody .thpv svg')].every(s=>s.getBoundingClientRect().height>20);
+    await q.waitForFunction(yedek,null,{timeout:8000}).catch(()=>{});
+    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(yedek),JSON.stringify(await q.evaluate(()=>({img:document.querySelectorAll('#thBody .thimg').length,h:[...document.querySelectorAll('#thBody .thpv svg')].map(s=>Math.round(s.getBoundingClientRect().height))}))));
     await q.context().close();
   }
   /* 5h) kırık pulun tek ve zorunlu girişi sormadan oynanır */
@@ -921,13 +999,20 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
     for(const t of THEMES){
       await dbf(DB+'/names.json'+AQ,{method:'DELETE'});
-      const p=await mkPage(b,{name:'AHMET',acct:'adm'+t+Date.now(),ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
+      const uid='adm'+t+Date.now();await dbf(DB+'/names/BURAK.json'+AQ,{method:'PUT',body:JSON.stringify(uid)});
       if(t==='neon'){
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');await sleep(400);
-        ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
+        // başka hesap: eski şifreyi yazsa da test modu açılmaz, BURAK adını da alamaz; misafirde de kapalı
+        const o=await mkPage(b,{name:'AHMET',acct:'baska'+Date.now(),ls:{tavla_snd:'off'}});await o.goto(URL);await sleep(1500);
+        await o.evaluate(()=>askName(false));await o.fill('#nmIn','burak31');await press(o,'#ovOk');await sleep(1500);
+        ok('test modu: başka hesap BURAK31 yazınca açılmaz, BURAK adını alamaz',await o.evaluate(()=>!TESTADM.on&&NAME!=='BURAK'),await o.evaluate(()=>NAME+' '+TESTADM.on));
+        await o.context().close();
+        const gp=await mkPage(b,{guest:true,ls:{tavla_snd:'off'}});await gp.goto(URL);await sleep(1500);
+        ok('test modu: misafirde kapalı',await gp.evaluate(()=>!TESTADM.on));
+        await gp.context().close();
       }
-      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');await sleep(400);
-      ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK, açılış bildirimi yok`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'&&!G.flash));
+      const p=await mkPage(b,{name:'BURAK',acct:uid,ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);
+      await p.waitForFunction(()=>TESTADM.on,null,{timeout:6000}).catch(()=>{});
+      ok(`[${t}] test modu: BURAK adının sahibi hesapla şifresiz açık, açılış bildirimi yok`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&!G.flash));
       await press(p,'#mCpu');await press(p,'#bGo');
       await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
       await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,opHold:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});opClear();render();});
@@ -960,14 +1045,17 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.evaluate(()=>{G.over=false;G.busy=false;G.turn=1;G.rolled=false;G.dice=[];G.all=[];saveCur();});
         await p.reload();await p.waitForFunction(()=>G.mode==='local',null,{timeout:8000}).catch(()=>{});await sleep(400);
         ok('test modu: sayfa yenilenince düğme hemen görünür',await p.evaluate(()=>TESTADM.on)&&await p.isVisible('#taBtn'));
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');await sleep(400);
-        ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
+        // BURAK adı artık bu hesabın değilse test modu kapanır
+        await dbf(DB+'/names/BURAK.json'+AQ,{method:'PUT',body:JSON.stringify('baskasi')});
+        await p.reload();await sleep(2500);
+        ok('test modu: ad sahibi değişince kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
       }
       ok(`[${t}] test modu yerel: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
       await p.context().close();
     }
     // online: admin (A) rakibinin (B) zarını seçer; B'nin ekranında sağ altta sabit 🧪 simgesi, oda alanı temizlenir
-    const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_adm:true,tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
+    await dbf(DB+'/names.json'+AQ,{method:'DELETE'});await dbf(DB+'/names/BURAK.json'+AQ,{method:'PUT',body:JSON.stringify('admOnline')});
+    const A=await mkPage(b,{name:'BURAK',acct:'admOnline',ls:{tavla_snd:'off',tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
     await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
@@ -996,9 +1084,6 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('test modu online: atışta iki ekranda da bildirim yok, rakipte simge duruyor',await noNote(A)&&await noNote(B)&&await icoOn(B));
     for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await sleep(300);await B.screenshot({path:`${OUT}/${t}-8-test-simgesi-rakip.png`});}
     ok('test modu online: seçim kullanıldı, odadaki alan temizlendi',!(await A.textContent('#taBtn')).includes('2-1'),await A.textContent('#taBtn'));
-    await press(A,'#taBtn');await press(A,'#taSheet .out');
-    await B.waitForFunction(()=>{const t=document.getElementById('taIco');return !t||t.hidden;},null,{timeout:8000}).catch(()=>{});
-    ok('test modu online: admin moddan çıkınca rakipteki simge kalkar',!(await icoOn(B)));
     ok('test modu online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
@@ -1117,6 +1202,24 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
     ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
     await p.context().close();
+    // hesabı sil (App Store 5.1.1(v)): ad kaydı, profil ve hesap silinir, cihaz misafire döner
+    {const du=uid+'del',q=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},du);await q.goto(URL);await sleep(600);
+      await press(q,'#ovBox [data-ac=g]');await sleep(700);
+      if(await q.$('#nmIn')){await q.fill('#nmIn','SILINECEK');await press(q,'#ovOk');await sleep(1200);}
+      await q.evaluate(()=>{$('#overlay').hidden=true;});
+      const own=async n=>(await dbf(DB+'/names/'+n+'.json'+AQ)).json(),prof=async()=>(await dbf(DB+'/users/'+du+'.json'+AQ)).json();
+      ok('hesap sil: önce ad ve profil kayıtlı',await own('SILINECEK')===du&&!!(await prof()),JSON.stringify(await prof()));
+      await press(q,'#bSet');await sleep(400);
+      ok('hesap sil: Ayarlar > Hesap altında düğme var',await q.evaluate(()=>!!$('#acSet [data-ac=d]')&&$('#acSet [data-ac=d]').textContent==='Hesabımı sil'));
+      await q.evaluate(()=>$('#acSet').scrollIntoView({block:'center'}));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-11-hesap-sil.png`});}
+      await press(q,'#acSet [data-ac=d]');await sleep(300);
+      ok('hesap sil: geri alınamaz uyarısıyla onay sorulur',await q.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('geri alınamaz')&&!!$('#ovBox .acDanger')));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-11-hesap-sil-onay.png`});}
+      await Promise.all([q.waitForNavigation().catch(()=>{}),press(q,'#ovOk')]);await sleep(900);
+      ok('hesap sil: ad kaydı ve profil silindi',await own('SILINECEK')===null&&await prof()===null);
+      ok('hesap sil: Firebase hesabı silindi, cihaz misafir',await q.evaluate(()=>localStorage.getItem('__fbmock_user')==='null'&&localStorage.getItem('tavla_uid')===null&&!NAME));
+      ok('hesap sil: sayfa hatası yok',!q.errs.length,q.errs.join('|'));await q.context().close();}
     // Google penceresi dokunuşla aynı anda açılır (SDK önceden yüklü); pencere engellenirse yönlendirme, dönüşte sonuç yoksa uyarı
     p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'r');
     await p.goto(URL);await sleep(2000);
@@ -1126,6 +1229,33 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.reload();await sleep(1000);
     ok('google: dönüşte giriş yoksa uyarı gösterilir',await p.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('tamamlanamadı')&&!localStorage.getItem('tavla_redir')));
     ok('google: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // Apple ile Giriş (App Store 4.8): açıkken düğmeler Apple, Google, e-posta sırasıyla
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'ap');await p.context().addInitScript(()=>{window.__apple=true;});
+    await p.goto(URL);await sleep(1200);
+    ok('apple: ilk pencerede Apple, Google, e-posta sırası',await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')==='agm'),await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')));
+    for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-14-apple.png`});}
+    await press(p,'#ovBox [data-ac=a]');await sleep(800);
+    ok('apple: Apple sağlayıcısıyla giriş, ad soruluyor',await p.evaluate(()=>window.__popupProv==='apple.com'&&!!$('#nmIn')));
+    await p.fill('#nmIn','ELMA');await press(p,'#ovOk');await sleep(900);
+    await p.evaluate(()=>{$('#overlay').hidden=true;});await press(p,'#bSet');await sleep(300);
+    ok('apple: ayarlarda Apple ile giriş yapıldı yazıyor',await p.evaluate(()=>$('#acSet').textContent.includes('Apple ile giriş yapıldı')));
+    ok('apple: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // iOS uygulaması (Capacitor): yerel Google/Apple girişi, e-posta düğmesi yok, mikrofon yok, titreşim, belgeler aynı görünümde
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'ios');
+    await p.context().addInitScript(()=>{window.__hap=0;window.Capacitor={isNativePlatform:()=>true,Plugins:{Haptics:{impact(){window.__hap++;}},
+      FirebaseAuthentication:{async signInWithGoogle(){return {credential:{idToken:'gid'}};},async signInWithApple(){return {credential:{idToken:'aid',nonce:'n'}};},async signOut(){window.__nativeOut=1;}}}};});
+    await p.goto(URL);await sleep(1200);
+    ok('ios: giriş düğmeleri Apple ve Google (e-posta yok)',await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')==='ag'));
+    await press(p,'#ovBox [data-ac=g]');await sleep(800);
+    ok('ios: Google yerel girişi web SDK\'sına aktarıldı',await p.evaluate(()=>window.__credSignIn&&window.__credSignIn.idToken==='gid'&&!!$('#nmIn')));
+    await p.fill('#nmIn','IOSCU');await press(p,'#ovOk');await sleep(800);await p.evaluate(()=>{$('#overlay').hidden=true;});
+    ok('ios: sohbette mikrofon düğmesi gizli',await p.evaluate(()=>getComputedStyle($('#bMic')).display==='none'));
+    ok('ios: belgeler aynı görünümde açılır',await p.evaluate(()=>[...document.querySelectorAll('#tmLinks a')].every(a=>a.target==='_self')));
+    await p.evaluate(()=>{window.__hap=0;moveSound(false);});
+    ok('ios: pul oynayınca titreşim',await p.evaluate(()=>window.__hap===1));
+    ok('ios: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
     p=await acPage({ls:{tavla_snd:'off'}});
