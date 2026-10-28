@@ -1,4 +1,4 @@
-/* Tavla Masası: kayıtlı foley sesleri (zar ve pul).
+/* Tavla Sultanı: kayıtlı foley sesleri (zar ve pul).
    assets/sfx/manifest.json içinde listelenen dosyalar yüklenir: {"dice":[...],"checker":[...],"hit":[...]}.
    Bir türün listesi boşsa ya da dosyalar yüklenemezse oyun o tür için sentez sesine döner. */
 window.TavlaFoley=(function(){

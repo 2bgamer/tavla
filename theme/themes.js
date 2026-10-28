@@ -1,4 +1,4 @@
-/* Tavla Masası: tema parametreleri (yalnızca veri; çizim kodu index.html'de).
+/* Tavla Sultanı: tema parametreleri (yalnızca veri; çizim kodu index.html'de).
    a: Premium Asset v2 klasörü (assets/<tema>/): board-field, board-frame, checker-{light,dark}, btn-roll,
       adv-bar-track, avatar-ring, fx-closed-point, points (üçgen degradesi ve konturu çalışma anında points.svg'den okunur).
    card: tema seçim kartının sinematik önizlemesi (384×1024 portre; logo/başlık/OYNA resme gömülü olduğu için kartta
