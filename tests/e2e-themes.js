@@ -942,6 +942,55 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('xp online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
+  /* 10) hesap (account.js): Google / e-posta bağlantısıyla giriş, profil hesaba yazılır, başka cihazda geri gelir, çıkış */
+  {
+    const FBM=require('fs').readFileSync(__dirname+'/firebase-mock.js','utf8'),uid='t'+Date.now();
+    const cloud=async()=>(await fetch(DB+'/users/'+uid+'.json')).json();
+    const acPage=async(o)=>{const p=await mkPage(b,o);await p.context().addInitScript(([m,u])=>{window.__mockUid=u;(0,eval)(m);},[FBM,uid]);return p;};
+    let p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}});
+    await p.goto(URL);await sleep(700);
+    ok('hesap: ilk açılışta Google ve e-posta düğmeleri',await p.evaluate(()=>!!document.querySelector('#ovBox [data-ac=g]')&&!!document.querySelector('#ovBox [data-ac=m]')&&!!$('#nmIn')));
+    for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-10-giris.png`});}
+    await press(p,'#ovBox [data-ac=g]');await sleep(500);
+    ok('hesap: Google sonrası ad Google adıyla dolar',await p.evaluate(()=>$('#nmIn')&&$('#nmIn').value==='BURAK'&&!document.querySelector('#ovBox .acOv')));
+    await press(p,'#ovOk');await sleep(1200);
+    let c=await cloud();
+    ok('hesap: yeni hesapta profil buluta yazılır',c&&c.n==='BURAK'&&c.xp&&c.xp.xp===0,JSON.stringify(c));
+    await p.evaluate(()=>{XP.xp=250;lsSet('tavla_xp',XP);});await sleep(1200);c=await cloud();
+    ok('hesap: puan değişince buluta yazılır',c&&c.xp&&c.xp.xp===250,JSON.stringify(c&&c.xp));
+    await press(p,'#bSet');await sleep(500);
+    ok('hesap: ayarlarda e-posta ve çıkış',await p.evaluate(()=>$('#acSet').textContent.includes('burak@gmail.com')&&!!$('#acSet [data-ac=o]')&&$('#acHome').hidden));
+    ok('hesap: sayfa hatası yok (1)',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // başka telefon: misafir AHMET (50 XP) giriş yapınca hesaptaki profil gelir
+    p=await acPage({name:'AHMET',ls:{tavla_snd:'off',tavla_xp:{v:1,xp:50,g:0,w:0}}});
+    await p.goto(URL);await sleep(700);
+    ok('hesap: misafire ana ekranda giriş çağrısı',await p.evaluate(()=>!$('#acHome').hidden));
+    await press(p,'#acHome');await sleep(500);
+    for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-10-ayarlar-misafir.png`});}
+    await press(p,'#acSet [data-ac=g]');await sleep(1200);
+    ok('hesap: girişte hesaptaki profil cihaza gelir',await p.evaluate(()=>NAME==='BURAK'&&XP.xp===250&&$('#helloN').textContent==='BURAK'&&$('#ovBox').textContent.includes('Hesabın bağlandı')));
+    await p.reload();await sleep(900);
+    ok('hesap: yeniden açılışta oturum sürer',await p.evaluate(()=>!!(ACCT.user&&ACCT.user.uid)&&NAME==='BURAK'&&$('#acHome').hidden));
+    await press(p,'#bSet');await sleep(400);
+    for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-10-ayarlar-hesap.png`});}
+    await press(p,'#acSet [data-ac=o]');await sleep(300);
+    ok('hesap: çıkış onayı sorulur',await p.evaluate(()=>!$('#overlay').hidden&&$('#setDrawer').hidden));
+    await Promise.all([p.waitForNavigation().catch(()=>{}),press(p,'#ovOk')]);await sleep(900);
+    ok('hesap: çıkışta cihaz misafir olarak baştan başlar',await p.evaluate(()=>!NAME&&XP.xp===0&&!!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')&&localStorage.getItem('tavla_uid')===null));
+    c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
+    ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
+    p=await acPage({ls:{tavla_snd:'off'}});
+    await p.goto(URL);await sleep(600);await press(p,'#bSet');await sleep(300);await press(p,'#acSet [data-ac=m]');await sleep(300);
+    await p.fill('#acMail','burak@gmail.com');await press(p,'#acSend');await sleep(400);
+    ok('hesap: e-posta bağlantısı gönderilir',await p.evaluate(()=>window.__sent==='burak@gmail.com'&&$('#ovBox').textContent.includes('Bağlantı gönderildi')));
+    await p.goto(URL+'?apiKey=x&oobCode=abc&mode=signIn&lang=tr');await sleep(1000);
+    ok('hesap: bağlantıyla açılınca giriş tamamlanır',await p.evaluate(()=>!!(ACCT.user&&ACCT.user.email==='burak@gmail.com')&&!location.search));
+    ok('hesap: sayfa hatası yok (3)',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);
