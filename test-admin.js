@@ -15,7 +15,7 @@
   let on=lsGet('tavla_adm',false)===true;
   const q={};                    // yerel sıradaki zarlar: q[1] beyaz, q[-1] siyah
   const room={w:null,k:null};    // online: odaya yazılmış bekleyen zarlar (admW/admK)
-  let used=null,tmSeed=0;        // used: bu atışta odadan alınan koltuk; tmSeed: elle seçilen atışın tohumu
+  let used=null,tmSeed=0,hit=false;        // used: bu atışta odadan alınan koltuk; tmSeed: elle seçilen atışın tohumu
   const sk=s=>s===1?'w':'k',fld=k=>'adm'+k.toUpperCase();
   const okPair=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isInteger(v)&&v>=1&&v<=6);
   const seatName=s=>s===G.me?myName():oppName();
@@ -111,6 +111,7 @@
     // atıştan sonra (G.seed atanmışken): etiketi işaretle; online'da odaya yazılacak alanlar
     rolled(fz){
       tmSeed=fz?G.seed:0;
+      if(fz)hit=true;
       const f={tm:fz?G.seed:null};if(used){f[fld(used)]=null;used=null;}
       return f;
     },
@@ -118,8 +119,11 @@
     room(d){
       room.w=okPair(d.admW)?d.admW:null;room.k=okPair(d.admK)?d.admK:null;
       if(d.rolled)tmSeed=d.tm|0;else tmSeed=0;
+      if(tmSeed)hit=true;
     },
     paint,
+    // puan sistemi: son sorgudan beri elle seçilmiş zar atıldı mı (maç puana sayılmaz)
+    takeHit(){const h=hit;hit=false;return h;},
     get on(){return on;}
   };
   // ana ekrana dönüş render() çağırmaz: #play gizlenip açıldıkça düğmeyi güncelle

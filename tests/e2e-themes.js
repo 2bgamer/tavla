@@ -893,41 +893,52 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('test modu online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
-  /* 9) puan (XP) ve level: yerel set sonu, tekrar yazmama, level atlama, online rakip leveli */
+  /* 9) puan (XP) ve level: maç sonunda kazanç/kayıp, mars ve hedef aşımı ekleri, test modu, online rakip leveli */
   {
-    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_lvl:'hard',tavla_xp:{v:1,xp:495,g:0,w:0}}});await p.goto(URL);await sleep(400);
-    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHomeAv').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHomeAv').textContent+' '+$('#xpTxt').textContent));
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_lvl:'hard',tavla_target:1,tavla_xp:{v:1,xp:560,g:0,w:0}}});await p.goto(URL);await sleep(400);
+    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHomeAv').textContent==='Level 5'&&$('#xpTxt').textContent==='100/140 XP'),await p.evaluate(()=>$('#lvHomeAv').textContent+' '+$('#xpTxt').textContent));
     await p.click('#bGo');await sleep(800);
     ok('xp: oyunda kendi level rozetim',await p.evaluate(()=>$('#lvMe').textContent==='Level 5'&&$('#lvOp').textContent===''));
     await p.evaluate(()=>{G.st.off[0]=15;gameOver(1);});await sleep(1500);
     const r=await p.evaluate(()=>({xp:XP.xp,g:XP.g,w:XP.w,html:$('#overlay').innerHTML,lv:$('#lvMe').textContent}));
-    ok('xp: Usta + mars kazanma 30 XP',r.xp===525&&r.g===1&&r.w===1,JSON.stringify({xp:r.xp,g:r.g,w:r.w}));
-    ok('xp: sonuç ekranında kazanç ve level atlama',r.html.includes('+30 XP')&&r.html.includes('Level atladın! Artık Level 6'));
+    ok('xp: 1 setlik maç Usta + mars + hedef aşımı = 30+5+10',r.xp===605&&r.g===1&&r.w===1,JSON.stringify({xp:r.xp,g:r.g,w:r.w}));
+    ok('xp: sonuç ekranında kazanç ve level atlama',r.html.includes('+45 XP')&&r.html.includes('Level atladın! Artık Level 6'));
     ok('xp: rozet yeni leveli gösteriyor',r.lv==='Level 6',r.lv);
     await p.evaluate(()=>showResult(false));await sleep(200);
-    ok('xp: aynı set iki kez sayılmadı',await p.evaluate(()=>XP.xp===525&&JSON.parse(localStorage.getItem('tavla_xp')).xp===525));
-    ok('xp: kaybedip çekilen oyuncuya puan yok',await p.evaluate(()=>xpGain({winner:-1,why:'resign'},false,true,3)===0&&xpGain({winner:-1,why:''},false,true,3)===5&&xpGain({winner:1,mars:false},true,true,3)===38));
+    ok('xp: aynı maç iki kez sayılmadı',await p.evaluate(()=>XP.xp===605&&JSON.parse(localStorage.getItem('tavla_xp')).xp===605));
+    // kaybedince %70 düşer; level düşebilir
+    await p.evaluate(()=>{$('#overlay').hidden=true;XP.xp=600;startLocal();});await sleep(600);
+    await p.evaluate(()=>{G.st.off[1]=15;G.st.off[0]=3;gameOver(-1);});await sleep(1500);
+    const q=await p.evaluate(()=>({xp:XP.xp,html:$('#overlay').innerHTML}));
+    ok('xp: Usta\'ya 1 setlik maçı kaybetmek −10 (14×0.7), level düştü',q.xp===590&&q.html.includes('−10 XP')&&q.html.includes('Level düştü: Level 5'),q.xp);
+    ok('xp: kural tablosu',await p.evaluate(()=>[xpGain({won:1,n:3,over:0,mars:0,local:1,lvl:'mid'}),xpGain({won:1,n:5,over:0,mars:0,local:1,lvl:'mid'}),xpGain({won:0,n:5,local:1,lvl:'mid'}),xpGain({won:0,n:3,local:1,lvl:'mid'}),xpGain({won:0,n:1,local:1,lvl:'easy'}),xpGain({won:1,n:5,over:1,mars:2,local:1,lvl:'mid'}),xpGain({won:1,n:3,local:0,d:10,over:0,mars:0}),xpGain({won:0,n:3,local:0,d:-10})].join()==='35,45,-31,-24,-18,65,42,-29'),await p.evaluate(()=>[xpGain({won:1,n:3,over:0,mars:0,local:1,lvl:'mid'}),xpGain({won:1,n:5,over:0,mars:0,local:1,lvl:'mid'}),xpGain({won:0,n:5,local:1,lvl:'mid'}),xpGain({won:0,n:3,local:1,lvl:'mid'}),xpGain({won:0,n:1,local:1,lvl:'easy'}),xpGain({won:1,n:5,over:1,mars:2,local:1,lvl:'mid'}),xpGain({won:1,n:3,local:0,d:10,over:0,mars:0}),xpGain({won:0,n:3,local:0,d:-10})].join()));
+    await p.evaluate(()=>{$('#overlay').hidden=true;XP.xp=5;startLocal();});await sleep(600);
+    await p.evaluate(()=>{G.st.off[1]=15;G.st.off[0]=3;gameOver(-1);});await sleep(1500);
+    ok('xp: puan 0\'ın altına inmez',await p.evaluate(()=>XP.xp===0),await p.evaluate(()=>XP.xp));
+    // test modu: elle zar seçilen maç puana sayılmaz
+    await p.evaluate(()=>{$('#overlay').hidden=true;XP.xp=600;startLocal();});await sleep(600);
+    await p.evaluate(()=>{TESTADM.rolled([6,5]);G.st.off[0]=15;gameOver(1);});await sleep(1500);
+    ok('xp: test modunda oynanan maç sayılmadı',await p.evaluate(()=>XP.xp===600&&$('#overlay').innerHTML.includes('Test modu: bu maç puana sayılmadı')));
     ok('ünvan: her 10 levelde değişir, 100 ve sonrası en üst',await p.evaluate(()=>lvTitle(1)==='Çaylak'&&lvTitle(9)==='Çaylak'&&lvTitle(10)==='Acemi'&&lvTitle(99)==='Büyük Usta'&&lvTitle(100)==='Tavla Sultanı'&&lvTitle(250)==='Tavla Sultanı'));
     ok('ünvan: 10. levelde yeni ünvan mesajı',await p.evaluate(()=>xpHtml({p:30,l0:9,l:10}).includes('Yeni ünvan: Acemi')&&!xpHtml({p:30,l0:5,l:6}).includes('Yeni ünvan')));
-    ok('ünvan: ana ekranda görünür',await p.evaluate(()=>$('#ttlHome').textContent==='Çaylak'));
-    ok('xp: level eğrisi',await p.evaluate(()=>lvOf(0).l===1&&lvOf(49).l===1&&lvOf(50).l===2&&lvOf(125).l===3&&lvOf(350).l===5&&lvOf(126225).l===100&&lvOf(1e9).l===999));
+    ok('xp: level eğrisi (1 yılda 100: 108.760)',await p.evaluate(()=>lvOf(0).l===1&&lvOf(99).l===1&&lvOf(100).l===2&&lvOf(6960).l===30&&lvOf(6959).l===29&&lvNeed(30)===675&&lvNeed(95)===2575&&lvOf(108759).l===99&&lvOf(108760).l===100&&lvOf(1e9).l>100));
     for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-9-xp-sonuc.png`});}
     ok('xp: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
   {
-    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_xp:{v:1,xp:520,g:0,w:0}}}),B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off'}});
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_target:1,tavla_xp:{v:1,xp:600,g:0,w:0}}}),B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_xp:{v:1,xp:100,g:0,w:0}}});
     await A.goto(URL);await B.goto(URL);await sleep(500);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
     await A.waitForFunction(()=>G.lv&&G.lv.k>0,null,{timeout:8000}).catch(()=>{});
     await B.waitForFunction(()=>G.lv&&G.lv.w>0,null,{timeout:8000}).catch(()=>{});
     await sleep(300);
-    ok('xp online: rakibin leveli iki ekranda',await A.evaluate(()=>$('#lvOp').textContent==='Level 1')&&await B.evaluate(()=>$('#lvOp').textContent==='Level 6'),await A.evaluate(()=>$('#lvOp').textContent)+' / '+await B.evaluate(()=>$('#lvOp').textContent));
+    ok('xp online: rakibin leveli iki ekranda',await A.evaluate(()=>$('#lvOp').textContent==='Level 2')&&await B.evaluate(()=>$('#lvOp').textContent==='Level 6'),await A.evaluate(()=>$('#lvOp').textContent)+' / '+await B.evaluate(()=>$('#lvOp').textContent));
     await A.evaluate(()=>startOnline());await B.waitForFunction(()=>G.started,null,{timeout:8000}).catch(()=>{});
     await A.evaluate(()=>{G.st.off[0]=15;gameOver(1);});
     await B.waitForFunction(()=>G.over,null,{timeout:8000}).catch(()=>{});await sleep(1500);
-    ok('xp online: kazanan ve kaybeden kendi XP\'sini aldı',await A.evaluate(()=>XP.xp===550)&&await B.evaluate(()=>XP.xp===5),await A.evaluate(()=>XP.xp)+' / '+await B.evaluate(()=>XP.xp));
+    ok('xp online: düşük levelliyi yenen az alır, yüksek levelliye kaybeden az verir',await A.evaluate(()=>XP.xp===633)&&await B.evaluate(()=>XP.xp===87),await A.evaluate(()=>XP.xp)+' / '+await B.evaluate(()=>XP.xp));
     ok('xp online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
