@@ -271,6 +271,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
     <div class="opts" id="optOn" hidden><div class="sh2"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span data-i="opts">Seçenekler</span></div>
       <div class="og"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 4.5-9 4.5-9-4.5z" fill="currentColor"/><path d="M3 12l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span class="ol" data-i="setsS">Set sayısı</span><div class="seg" data-grp="tgt"><button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button></div></div>
       <div class="og"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="ol" data-i="mtime">Hamle süresi</span><div class="seg" data-grp="tl"><button data-v="0" data-i="off">Kapalı</button><button data-v="20" data-i="sec" data-n="20">20 sn</button><button data-v="30" data-i="sec" data-n="30">30 sn</button></div></div>
+      <div class="og og-r"><span class="ol" data-i="roomsT">Odalar</span><div id="rmList" aria-live="polite"></div></div>
       <div class="og og-j"><span class="ol" data-i="joinIf">Arkadaşın oda kurduysa</span><div class="jrow"><input id="codeIn" inputmode="numeric" maxlength="4" data-ip="codePh" placeholder="Oda kodu (0000)" autocomplete="off"><button id="bJoin" data-i="join">Katıl</button></div></div>
       <button id="bResume" hidden></button>
       <div id="lobbyMsg"></div>
@@ -291,7 +292,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
       <div class="asc"><b id="ascT">0 – 0</b><small id="ascS"></small></div>
       <div class="ap op"><span class="an"><b id="anOp"></b><span class="pc" id="pcOp">%50</span></span><span class="avw" id="avwOp"><span class="av" id="avOp"></span><span class="lvb" id="lvOp"></span><img class="aring" alt=""><svg class="tring" viewBox="0 0 64 64" aria-hidden="true"><circle class="tfg" cx="32" cy="32" r="29.5" pathLength="100"/></svg><b class="tsec" aria-live="off"></b></span></div>
       <div class="abar" role="img" aria-label=""><span class="atrk" id="abTrack"></span><span class="afill"><i class="fo"></i><i class="fm" id="abMe"></i></span></div></div>
-    <div id="msg"></div>
+    <div id="msg"></div><button id="bKick" hidden></button>
     <div id="boardWrap"><svg id="board" viewBox="0 -3 410 406" preserveAspectRatio="xMidYMid meet"><defs>
 <radialGradient id="dsh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".6" stop-color="#000" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 <radialGradient id="dhl" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".55" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
@@ -812,7 +813,7 @@ document.addEventListener('pointerdown',()=>{audio();},{passive:true});
 
 /* ---------- durum ---------- */
 const G={mode:null,run:0,me:1,st:newState(),turn:1,dice:[],all:[],rolled:false,over:false,hist:[],sel:null,busy:false,
-  msg:'',flash:'',note:'',last:null,result:null,seats:{w:null,k:null},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,
+  msg:'',flash:'',note:'',last:null,result:null,seats:{w:null,k:null},th:{w:'',k:''},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,
   code:null,shownGid:-1,endTimer:null,endTok:0,auto:false,autoTok:0,open:[0,0],hl:[],un:{w:3,k:3},pose:null,poseKey:'',anim:null,tab:'c',rollPos:{x:218,y:200},target:0,tl:0,deadline:0,sim:null,flip:false,seed:1};
 let SC=lsGet('tavla_score',{you:0,cpu:0});
 let LVL=lsGet('tavla_lvl','hard');
@@ -829,6 +830,14 @@ const I18N=/*I18N*/{"tr":{"give1B":"Pul topluyorsun, mars olmazsın · rakibe so
 // puan/level metinleri (diğer diller İngilizceye düşer)
 Object.assign(I18N.tr,{lvS:'Level {n}',lvL:'Level {n}',xpOf:'{a}/{b} XP',xpGain:'+{p} XP',xpNone:'Bu maçta XP değişmedi',xpLoss:'−{p} XP',xpTest:'Test modu: bu maç puana sayılmadı',lvDown:'Level düştü: Level {n}',lvUp:'Level atladın! Artık Level {n}',ttlUp:'Yeni ünvan: {t}',
   ttl:['Çaylak','Acemi','Heveskâr','Kahve Oyuncusu','Zar Ustası','Kapı Ustası','Mars Avcısı','Tavla Kurdu','Kahvehane Efsanesi','Büyük Usta','Tavla Sultanı']});
+Object.assign(I18N.tr,{roomsT:'Odalar · rakip bekleyen oyunlar',rmNone:'Şu an rakip bekleyen oda yok. OYUNU BAŞLAT ile sen kur, burada listelensin.',rmLoad:'Odalar yükleniyor…',rmPts:'{p} puan',rmSets:'{n} set',rmSet1:'1 set',rmTl:'{n} sn',rmAge:'{n} dk önce',rmNow:'az önce',
+  kick:'Odadan at',kickQ:'{n} odadan atılsın mı? Bu odaya bir daha giremez.',kicked:'Oda sahibi seni odadan çıkardı.',banned:'Bu odaya giremezsin.',kickDone:'{n} odadan çıkarıldı. Oda yeniden listede.',
+  joinedG:'Odaya girdin. Oda sahibinin oyunu başlatması bekleniyor.',joinedH:'Rakip katıldı. Oyunu başlatabilir ya da odadan atabilirsin.',hostStarts:'Oda sahibi başlatacak',
+  thRoom:'Bu odada masa teması {t}: aynı ünvanda kurucunun, üst ünvandaysa üst ünvanlının teması geçerli.'});
+Object.assign(I18N.en,{roomsT:'Rooms · waiting for an opponent',rmNone:'No rooms are waiting right now. Tap START GAME to open one; it will be listed here.',rmLoad:'Loading rooms…',rmPts:'{p} pts',rmSets:'{n} sets',rmSet1:'1 set',rmTl:'{n} s',rmAge:'{n} min ago',rmNow:'just now',
+  kick:'Remove',kickQ:'Remove {n} from the room? They cannot come back.',kicked:'The host removed you from the room.',banned:'You cannot join this room.',kickDone:'{n} was removed. Your room is listed again.',
+  joinedG:'You are in. Waiting for the host to start the game.',joinedH:'Opponent joined. Start the game or remove them.',hostStarts:'Host will start',
+  thRoom:'This room plays on {t}: same title uses the host\'s theme, a higher title uses theirs.'});
 Object.assign(I18N.en,{lvS:'Level {n}',lvL:'Level {n}',xpOf:'{a}/{b} XP',xpGain:'+{p} XP',xpNone:'No XP change this match',xpLoss:'−{p} XP',xpTest:'Test mode: this match does not count',lvDown:'Level down: Level {n}',lvUp:'Level up! You are now Level {n}',ttlUp:'New title: {t}',
   ttl:['Rookie','Beginner','Enthusiast','Café Player','Dice Master','Prime Builder','Gammon Hunter','Board Wolf','Café Legend','Grandmaster','Backgammon Sultan']});
 const LANGS=/*LANGS*/[["tr","Türkçe","Turkish"],["en","English","English"],["de","Deutsch","German"],["fr","Français","French"],["es","Español","Spanish"],["pt","Português","Portuguese"],["it","Italiano","Italian"],["nl","Nederlands","Dutch"],["pl","Polski","Polish"],["ro","Română","Romanian"],["hu","Magyar","Hungarian"],["cs","Čeština","Czech"],["sv","Svenska","Swedish"],["el","Ελληνικά","Greek"],["bg","Български","Bulgarian"],["sr","Српски","Serbian"],["hr","Hrvatski","Croatian"],["uk","Українська","Ukrainian"],["ru","Русский","Russian"],["az","Azərbaycanca","Azerbaijani"],["uz","Oʻzbekcha","Uzbek"],["kk","Қазақша","Kazakh"],["ar","العربية","Arabic"],["fa","فارسی","Persian"],["he","עברית","Hebrew"],["ku","Kurdî","Kurdish"],["ka","ქართული","Georgian"],["hy","Հայերեն","Armenian"],["hi","हिन्दी","Hindi"],["bn","বাংলা","Bengali"],["ur","اردو","Urdu"],["id","Bahasa Indonesia","Indonesian"],["ms","Bahasa Melayu","Malay"],["th","ไทย","Thai"],["vi","Tiếng Việt","Vietnamese"],["tl","Filipino","Filipino"],["zh","中文","Chinese"],["ja","日本語","Japanese"],["ko","한국어","Korean"],["sw","Kiswahili","Swahili"]];
@@ -1108,7 +1117,7 @@ function centerBtn(){
   if(G.mode==='online'){
     const both=G.seats.w&&G.seats.k;
     if(!G.loaded||!both)return {label:i18('waitOpp'),en:false};
-    if(!G.started)return {label:i18('startGame'),en:true};
+    if(!G.started)return G.me===1?{label:i18('startGame'),en:true}:{label:i18('hostStarts'),en:false};
     if(G.over)return {label:'Tekrar Oyna',en:true};
   }
   if(G.turn===G.me&&!G.rolled&&!G.busy&&!G.over&&!opHeld()&&!cdOn())return {label:i18('roll'),en:true,roll:true};
@@ -1255,6 +1264,7 @@ function applyRoom(d){
   G.result=d.over?{winner:d.winner,pts:d.pts,mars:d.mars,why:d.why||'',quick:!!d.quick}:null;
   G.op=d.op||0;G.pw=d.pw||0;G.offer=d.offer||null;G.offN=Object.assign({w:3,k:3},d.offN);
   G.nm=Object.assign({w:'',k:''},d.nm);G.av=Object.assign({w:-1,k:-1},d.av);G.lv=Object.assign({w:0,k:0},d.lv);G.open=d.open||[0,0];G.openN=d.openN||[0,0];G.hl=Array.isArray(d.hl)?d.hl:[];G.un=Object.assign({w:3,k:3},d.un);
+  G.th=Object.assign({w:'',k:''},d.th);
   G.sw=(d.rp&&d.rp.sw&&typeof d.rp.sw.sx==='number')?d.rp.sw:null;G.rollPos=(d.rp&&typeof d.rp.x==='number')?(d.rp.s===G.me?{x:d.rp.x,y:d.rp.y}:{x:d.rp.x,y:400-d.rp.y}):{x:218,y:200};
   G.flip=!!(d.rp&&d.rp.s!==undefined&&d.rp.s!==G.me);G.seed=(d.rp&&d.rp.sd)|0||1;
 }
@@ -1268,12 +1278,13 @@ function onRoom(snap){
   if(window.TESTADM)TESTADM.room(snap.data());
   if(pending||writing){lateSnap=snap;return;}
   const d=snap.data(),gid=d.gid||0;
+  if(G.me===-1&&G.loaded&&!d.started&&((d.ban||{})[TOKEN]||(d.seats||{}).k!==TOKEN)){kickedOut();return;}
   // rev iki istemcide ayrı sayılır: rakibin sırasında çekilmede iki taraf aynı anda yazınca rakibin rev'i bizimkinden büyük olmayabilir.
   // yeni set ve set sonu bu yüzden rev'e bakılmadan alınır; yoksa eski setin hamleleri yeni tahtaya uygulanır
   const must=gid>(G.gid||0)||(!!d.over&&!G.over&&gid===G.gid);
   if(G.loaded&&!must&&(d.rev||0)<=G.rev)return;
   G.loaded=true;G.rev=d.rev||0;
-  applyRoom(d);
+  applyRoom(d);themeSync();lbSync();
   const fresh=gid!==G.gid;
   // yeni set: önceki setten kalan otomatik hamle ve sıra bitirme zamanlayıcıları iptal
   if(fresh){G.autoTok++;G.endTok++;G.endTimer=null;G.auto=false;}
@@ -1314,6 +1325,7 @@ function endTurnOnline(){
 function startOnline(){
   if(G.mode!=='online'||!(G.seats.w&&G.seats.k))return;
   if(G.started&&!G.over)return;
+  if(!G.started&&G.me!==1)return; // ilk seti kurucu başlatır (o zamana kadar rakibi odadan atabilir)
   const md=matchDone('online'),keep=md?{w:0,k:0}:G.score;
   const newMatch=md||((keep.w||0)+(keep.k||0))===0||!G.pw;
   const st=newState(),gid=(G.gid||0)+1;
@@ -1333,7 +1345,7 @@ function setIntro(){
 function enterRoom(code,ref,me){
   leaveRoom();G.run++;G.autoTok++;G.endTok++;cdTok++;G.cd=null;
   Object.assign(G,{mode:'online',me,code,st:newState(),turn:1,dice:[],all:[],rolled:false,over:false,hist:[],sel:null,busy:false,auto:false,msg:'',flash:'',
-    last:null,result:null,seats:{w:null,k:null},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,endTimer:null,shownGid:-1,hl:[],un:{w:3,k:3},poseKey:'',rollPos:{x:218,y:200},target:0,tl:0,deadline:0});
+    last:null,result:null,seats:{w:null,k:null},th:{w:'',k:''},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,endTimer:null,shownGid:-1,hl:[],un:{w:3,k:3},poseKey:'',rollPos:{x:218,y:200},target:0,tl:0,deadline:0});
   tmKey='';prevMyTurn=false;G.skInit=false;
   ROOM=ref;pending=null;lateSnap=null;
   lsSet('tavla_room',code);
@@ -1343,6 +1355,7 @@ function enterRoom(code,ref,me){
   chatStart();
 }
 function leaveRoom(){
+  lbStop(true);
   if(unsub){try{unsub();}catch(e){}}
   unsub=null;ROOM=null;pending=null;lateSnap=null;
   chatReset();
@@ -1358,7 +1371,7 @@ async function createRoom(){
       const snap=await ref.get();
       if(snap.exists)continue;
       const st=newState();
-      await ref.set({b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:NAME||''},av:{w:AV},lv:{w:myLv()}});
+      await ref.set({b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:NAME||''},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
       lobbyMsg('');enterRoom(code,ref,1);return;
     }
     lobbyMsg(i18('mkFail'));
@@ -1375,13 +1388,82 @@ async function joinRoom(code){
     const d=snap.data();let me,fresh=false;
     if(d.seats&&d.seats.w===TOKEN)me=1;
     else if(d.seats&&d.seats.k===TOKEN)me=-1;
-    else if(d.seats&&!d.seats.k){await ref.update({seats:{k:TOKEN},nm:{k:NAME||''},av:{k:AV},lv:{k:myLv()},rev:(d.rev||0)+1});me=-1;fresh=true;}
+    else if((d.ban||{})[TOKEN]){lobbyMsg(i18('banned'));return;}
+    else if(d.seats&&!d.seats.k){await ref.update({seats:{k:TOKEN},nm:{k:NAME||''},av:{k:AV},lv:{k:myLv()},th:{k:myTheme()},rev:(d.rev||0)+1});me=-1;fresh=true;
+      DB.doc('lobby/'+code).set(null).catch(()=>{});}
     else{lobbyMsg(i18('full'));return;}
     if(!fresh&&((d.av||{})[me===1?'w':'k'])!==AV){try{await ref.update({av:{[me===1?'w':'k']:AV},rev:(d.rev||0)+1});}catch(e){}}
     if(!fresh&&((d.lv||{})[me===1?'w':'k'])!==myLv()){try{await ref.update({lv:{[me===1?'w':'k']:myLv()},rev:(d.rev||0)+1});}catch(e){}}
+    if(!fresh&&((d.th||{})[me===1?'w':'k'])!==myTheme()){try{await ref.update({th:{[me===1?'w':'k']:myTheme()},rev:(d.rev||0)+1});}catch(e){}}
     if(NAME&&!fresh&&((d.nm||{})[me===1?'w':'k'])!==NAME){try{await ref.update({nm:{[me===1?'w':'k']:NAME},rev:(d.rev||0)+1});}catch(e){}}
     lobbyMsg('');enterRoom(code,ref,me);
   }catch(e){lobbyMsg(i18('joinFail'));}
+}
+
+/* ---------- odalar listesi ve oda teması ----------
+   Kurucu rakip beklerken odası lobby/<kod> altında listelenir: ad, avatar, level, puan, set sayısı, hamle süresi, tema.
+   Kurucu 45 sn'de bir t'yi tazeler; 3 dk tazelenmeyen kayıt (kapanmış sekme) listede gösterilmez.
+   Rakip oturunca ya da kurucu odadan çıkınca kayıt silinir; kurucu rakibi atınca (ilk set başlamadan) kayıt yeniden yazılır
+   ve atılanın jetonu ban/<jeton> altına yazılır, o oyuncu bu odaya bir daha oturamaz.
+   Oda teması: iki oyuncu aynı ünvandaysa kurucunun, rakip üst ünvandaysa rakibin seçtiği tema iki tarafta da kullanılır. */
+const LB_LIVE=180000,LB_BEAT=45000;
+const escH=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const myTheme=()=>{const t=lsGet('tavla_theme','poker');return THEMES[t]?t:'poker';};
+const rankOf=l=>Math.min(10,Math.floor((+l||0)/10));
+function roomTheme(){
+  if(G.mode!=='online')return null;
+  const th=G.th||{},w=THEMES[th.w]?th.w:null,k=THEMES[th.k]?th.k:null;
+  if(!G.seats.k||!k)return w;
+  const lv=G.lv||{};return rankOf(lv.k)>rankOf(lv.w)?k:(w||k);
+}
+function themeSync(){const t=roomTheme()||myTheme();if(t!==THEME)applyTheme(t,false);}
+let lbBeat=null,lbCode=null;
+function lbEntry(){return {n:NAME||'',av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,th:myTheme(),t:Date.now()};}
+// kurucu, rakip yokken ve set başlamamışken odasını listede tutar
+function lbSync(){
+  const want=!!(DB&&G.mode==='online'&&G.loaded&&G.me===1&&G.code&&!G.seats.k&&!G.started);
+  if(!want){lbStop(lbCode!=null);return;}
+  if(lbCode===G.code&&lbBeat)return;
+  lbCode=G.code;const put=()=>{if(lbCode)DB.doc('lobby/'+lbCode).set(lbEntry()).catch(()=>{});};
+  put();clearInterval(lbBeat);lbBeat=setInterval(put,LB_BEAT);
+}
+function lbStop(del){
+  clearInterval(lbBeat);lbBeat=null;
+  if(del&&lbCode&&DB)DB.doc('lobby/'+lbCode).set(null).catch(()=>{});
+  lbCode=null;
+}
+function kickOpp(){
+  if(G.mode!=='online'||G.me!==1||!G.seats.k||G.started)return;
+  const tk=G.seats.k,n=oppName();
+  G.seats.k=null;G.nm.k='';G.av.k=-1;G.lv.k=0;G.th.k='';
+  pushFields({seats:{k:null},nm:{k:null},av:{k:null},lv:{k:null},th:{k:null},ban:{[tk]:1}});
+  themeSync();lbSync();flash(i18('kickDone',{n}),4000);render();
+}
+function kickedOut(){
+  lsSet('tavla_room',null);showHome();lobbyMsg(i18('kicked'));
+}
+// ana ekranda (Arkadaşınla seçiliyken) rakip bekleyen odaları canlı izler
+let lbUnsub=null,lbRooms=null,lbTick=null;
+function lbWatch(){
+  const on=!!(DB&&HM==='on'&&!G.mode);
+  if(!on){lbUnwatch();return;}
+  if(lbUnsub)return;
+  lbRooms=null;lbPaint();
+  try{lbUnsub=DB.collection('lobby').orderBy('t').limit(40).onSnapshot(s=>{lbRooms=s.docs.map(x=>Object.assign({code:x.id},x.data()));lbPaint();},()=>{});}catch(e){}
+  lbTick=setInterval(lbPaint,30000);
+}
+function lbUnwatch(){if(lbUnsub){try{lbUnsub();}catch(e){}}lbUnsub=null;clearInterval(lbTick);lbTick=null;}
+function lbPaint(){
+  const el=$('#rmList');if(!el)return;
+  if(!lbRooms){el.innerHTML=`<p class="rmE">${i18('rmLoad')}</p>`;return;}
+  const now=Date.now(),L=lbRooms.filter(r=>r&&/^\d{4}$/.test(r.code)&&(+r.t||0)>now-LB_LIVE).sort((a,b)=>(+b.t||0)-(+a.t||0));
+  if(!L.length){el.innerHTML=`<p class="rmE">${i18('rmNone')}</p>`;return;}
+  const nf=v=>{try{return (+v||0).toLocaleString(ULOC());}catch(e){return String(+v||0);}};
+  el.innerHTML=L.map(r=>{
+    const lv=Math.max(1,+r.lv||1),tg=+r.tg||0,th=THEMES[r.th]?r.th:'poker',av=AVATARS[+r.av]||AVATARS[0]||'';
+    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(r.n)||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
+      `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
+      `<button class="rmj" data-c="${r.code}">${i18('join')}</button></div>`;}).join('');
 }
 
 /* ---------- zar çizimi ve efekti ---------- */
@@ -1712,6 +1794,10 @@ function heroPaint(){
 }
 function stripPaint(){heroPaint();const s=$('#strip');if(!s)return;let h='';for(let i=0;i<12;i++){const x=i*30;h+=tri(`${x},0 ${x+30},0 ${x+15},36`,!(i%2));}s.innerHTML=h;}
 function applyTheme(k,save){
+  if(save&&THEMES[k]&&G.mode==='online'&&ROOM){
+    lsSet('tavla_theme',k);G.th=Object.assign({},G.th,{[myKey()]:k});pushFields({th:{[myKey()]:k}});
+    const rt=roomTheme();if(rt&&rt!==k){flash(i18('thRoom',{t:THN[rt]||rt}),4500);k=rt;}save=false;
+  }
   if(!THEMES[k])k='poker';THEME=k;TK=THEMES[k].tk;
   const T=THEMES[k],r=document.documentElement;
   r.dataset.theme=k;Object.assign(PAL,TK.die);
@@ -2261,7 +2347,7 @@ function msgText(){
   const both=G.seats.w&&G.seats.k;
   if(!G.loaded)return i18('connecting');
   if(!both)return i18('waitCode',{c:G.code});
-  if(!G.started)return i18('joined');
+  if(!G.started)return i18(G.me===1?'joinedH':'joinedG');
   if(G.over)return G.result?(G.result.winner===G.me?i18('youWon'):i18('oppWon')):'';
   if(G.busy&&G.endTimer)return i18('doneUndo');
   if(G.turn===G.me)return G.rolled?hintText():i18('yourRoll');
@@ -2421,6 +2507,7 @@ function render(){
   drawDice(performance.now());cdPaint();
 
   $('#msg').textContent=G.flash||'';
+  {const kb=$('#bKick'),kv=!!(online&&G.me===1&&G.seats.k&&!G.started);if(kb.hidden===kv)kb.hidden=!kv;if(kv)kb.textContent='🚫 '+i18('kick')+' · '+oppName();}
   if(online){
     $('#scT').textContent=`${myName()} ${G.score[myKey()]||0} – ${G.score[oppKey()]||0} ${oppName()}`;
     $('#bChip').textContent=i18('room',{c:G.code});
@@ -2636,7 +2723,7 @@ function showOverlay(html,cb){
   $('#ovBox').innerHTML=html;$('#overlay').hidden=false;ovCb=cb||null;
   const ok=$('#ovOk');if(ok)ok.onclick=()=>{$('#overlay').hidden=true;const f=ovCb;ovCb=null;if(f)f();};
 }
-function showPlay(){$('#home').hidden=true;$('#play').hidden=false;lsSet('tavla_scr',G.mode||'home');}
+function showPlay(){lbUnwatch();$('#home').hidden=true;$('#play').hidden=false;lsSet('tavla_scr',G.mode||'home');}
 /* ---------- kaldığı yerden devam: bilgisayara karşı oyunun durumu her değişimde saklanır ---------- */
 let curKey='';
 function saveCur(){
@@ -2666,7 +2753,7 @@ function resumeLocal(o){
   proceed();return true;
 }
 function showHome(){
-  G.run++;G.autoTok++;G.endTok++;cdTok++;G.cd=null;leaveRoom();G.mode=null;G.busy=false;G.endTimer=null;
+  G.run++;G.autoTok++;G.endTok++;cdTok++;G.cd=null;leaveRoom();G.mode=null;G.busy=false;G.endTimer=null;themeSync();
   $('#play').hidden=true;$('#home').hidden=false;lsSet('tavla_scr','home');refreshHome();
 }
 function askName(first){
@@ -2760,12 +2847,15 @@ function setHM(m){
   HM=m;lsSet('tavla_hm',m);
   $('#mCpu').className='mc '+(m==='cpu'?'on':'off');$('#mOnline').className='mc '+(m==='on'?'on':'off');
   $('#optCpu').hidden=m!=='cpu';$('#optOn').hidden=m!=='on';lobbyMsg('');
-  contPaint();
+  contPaint();lbWatch();
 }
 $('#mCpu').onclick=()=>setHM('cpu');
 $('#mOnline').onclick=()=>setHM('on');
 $('#bGo').onclick=()=>{audio();if(HM==='on'){createRoom();return;}if(TARGET>0){SC={you:0,cpu:0};lsSet('tavla_score',SC);}startLocal();};
 $('#bJoin').onclick=()=>joinRoom($('#codeIn').value.trim());
+$('#rmList').addEventListener('click',e=>{const b=e.target.closest('.rmj');if(b){audio();joinRoom(b.dataset.c);}});
+$('#bKick').onclick=()=>{audio();if(G.mode!=='online'||G.me!==1||!G.seats.k||G.started)return;
+  showOverlay(`<h2>${i18('kick')}</h2><p>${escH(i18('kickQ',{n:oppName()}))}</p><button class="primary" id="ovOk">${i18('kick')}</button><button id="ovNo">${i18('close')}</button>`,kickOpp);};
 $('#codeIn').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4);});
 $('#bBack').onclick=showHome;
 $('#bUndo').onclick=undo;

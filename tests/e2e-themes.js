@@ -442,10 +442,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>$('#chatList').textContent.includes('Sana da'),null,{timeout:6000}).catch(()=>{});
     ok('sohbet: cevap geri ulaştı',await A.evaluate(()=>$('#chatList').textContent.includes('Sana da')));
     // tema değişimi online maç ortasında
+    ok('online: rakip odada kurucunun temasıyla oynuyor (aynı ünvan)',await B.evaluate(()=>THEME==='neon'),await B.evaluate(()=>THEME));
     const before=await stSnap(A);
     await A.evaluate(()=>applyTheme('poker',true));await sleep(300);
     ok('online: tema değişimi durumu değiştirmedi',before===await stSnap(A));
-    ok('online: rakip tarafın teması etkilenmedi',await B.evaluate(()=>THEME==='sunset'));
+    ok('online: aynı ünvanda kurucunun teması iki tarafta (neon→poker)',await B.waitForFunction(()=>THEME==='poker',null,{timeout:6000}).then(()=>true,()=>false),await B.evaluate(()=>THEME));
+    ok('online: rakibin kendi tema tercihi saklı kaldı',await B.evaluate(()=>myTheme()==='sunset'));
     // yeniden bağlanma
     await B.reload();await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
     await sleep(800);
@@ -480,6 +482,64 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok('online: çekilmede mars sloganı yok, çekilen tarafta slogan yok',!la.some(x=>x.startsWith('mars'))&&!lb.length,la.concat(['|']).concat(lb).join(','));}
     ok('online testlerde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
+  }
+  /* 5i) odalar listesi: kurulan oda listelenir (puan, set, tema), listeden katılma, kurucu rakibi atar, ünvana göre oda teması */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon',tavla_target:5,tavla_tl:30,tavla_xp:{v:1,xp:5000,g:0,w:0}}});
+    const B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_theme:'sunset',tavla_hm:'on'}});
+    const C=await mkPage(b,{name:'CEMİL',ls:{tavla_snd:'off',tavla_theme:'arcade',tavla_hm:'on',tavla_xp:{v:1,xp:20000,g:0,w:0}}});
+    await A.goto(URL);await B.goto(URL);await C.goto(URL);await sleep(600);
+    await press(B,'#mOnline');await press(C,'#mOnline');await sleep(300);
+    ok('odalar: Arkadaşınla seçiliyken odalar bölümü görünüyor',await B.evaluate(()=>!$('#optOn').hidden&&!!$('#rmList')&&$('#rmList').offsetHeight>0));
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code&&G.loaded,null,{timeout:6000});
+    const code=await A.evaluate(()=>G.code),row=`#rmList .rmj[data-c="${code}"]`;
+    const listed=await B.waitForSelector(row,{timeout:8000}).then(()=>true,()=>false);
+    ok('odalar: kurulan oda listede',listed,code);
+    const txt=await B.evaluate(r=>{const e=document.querySelector(r);return e?e.closest('.rm').textContent:'';},row);
+    const lvA=await A.evaluate(()=>myLv()),ttlA=await A.evaluate(()=>lvTitle(myLv()));
+    ok('odalar: kurucunun adı, level/ünvanı ve puanı',txt.includes('AHMET')&&txt.includes('Level '+lvA)&&txt.includes(ttlA)&&/5[.,]?000 puan/.test(txt),txt);
+    ok('odalar: set sayısı, hamle süresi ve tema',txt.includes('5 set')&&txt.includes('30 sn')&&txt.includes('Neon Club'),txt);
+    // ekran görüntüleri: odalar listesi, dört tema (390×844)
+    for(const t of THEMES){await B.evaluate(t=>applyTheme(t,true),t);await sleep(350);
+      await B.evaluate(()=>{const e=$('#rmList');e.closest('.og').scrollIntoView({block:'center'});});await sleep(200);
+      await B.screenshot({path:`${OUT}/odalar-${t}.png`});}
+    await B.evaluate(()=>applyTheme('sunset',true));
+    await B.click(row);
+    await B.waitForFunction(c=>G.mode==='online'&&G.code===c&&G.loaded,code,{timeout:8000}).catch(()=>{});
+    ok('odalar: listeden katıldı, ikinci koltukta',await B.evaluate(c=>G.mode==='online'&&G.code===c&&G.me===-1,code));
+    await A.waitForFunction(()=>G.seats.k,null,{timeout:8000}).catch(()=>{});
+    await sleep(500);
+    ok('odalar: rakip oturunca oda listeden kalktı',await C.evaluate(c=>!document.querySelector(`#rmList .rmj[data-c="${c}"]`),code)&&(await (await fetch(`${DB}/lobby/${code}.json`)).json())===null);
+    ok('oda teması: kurucu üst ünvanda, iki tarafta kurucunun teması',await B.evaluate(()=>THEME==='neon')&&await A.evaluate(()=>THEME==='neon'),await B.evaluate(()=>THEME));
+    ok('odalar: ilk seti yalnız kurucu başlatır',await B.evaluate(()=>{const c=centerBtn();startOnline();return c&&!c.en&&!G.started;}));
+    ok('odadan at: kurucuda düğme görünüyor',await A.evaluate(()=>!$('#bKick').hidden&&$('#bKick').textContent.includes('BURAK')));
+    ok('odadan at: rakipte düğme yok',await B.evaluate(()=>$('#bKick').hidden));
+    // ekran görüntüleri: kurucunun ekranı (rakip katıldı, odadan at), dört tema; kurucu belirleyici olduğu için tema iki tarafta değişir
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,true),t);await B.waitForFunction(t=>THEME===t,t,{timeout:5000}).catch(()=>{});await sleep(350);
+      await A.screenshot({path:`${OUT}/odadan-at-${t}.png`});}
+    ok('oda teması: kurucunun seçimi rakibe de geçti',await B.evaluate(()=>THEME==='arcade'));
+    await A.evaluate(()=>applyTheme('neon',true));
+    await press(A,'#bKick');await sleep(200);await press(A,'#ovOk');
+    await B.waitForFunction(()=>!G.mode,null,{timeout:8000}).catch(()=>{});
+    ok('odadan at: rakip ana ekrana döndü, bilgilendirildi',await B.evaluate(()=>!G.mode&&$('#lobbyMsg').textContent.includes('çıkardı')),await B.evaluate(()=>$('#lobbyMsg').textContent));
+    ok('odadan at: rakip kendi temasına döndü',await B.evaluate(()=>THEME==='sunset'));
+    ok('odadan at: kurucuda koltuk boşaldı',await A.evaluate(()=>!G.seats.k&&$('#bKick').hidden));
+    ok('odadan at: oda yeniden listede',await C.waitForSelector(row,{timeout:8000}).then(()=>true,()=>false));
+    await B.evaluate(c=>joinRoom(c),code);await sleep(800);
+    ok('odadan at: atılan oyuncu tekrar giremez',await B.evaluate(()=>!G.mode&&$('#lobbyMsg').textContent===i18('banned')));
+    await C.click(row);
+    await C.waitForFunction(c=>G.mode==='online'&&G.code===c&&G.loaded,code,{timeout:8000}).catch(()=>{});
+    await A.waitForFunction(()=>G.seats.k&&G.th.k,null,{timeout:8000}).catch(()=>{});await sleep(400);
+    ok('oda teması: üst ünvanlı rakip girince iki tarafta onun teması',await A.evaluate(()=>THEME==='arcade')&&await C.evaluate(()=>THEME==='arcade'),await A.evaluate(()=>THEME+' '+JSON.stringify(G.th)+' '+JSON.stringify(G.lv)));
+    await A.evaluate(()=>applyTheme('poker',true));await sleep(300);
+    ok('oda teması: alt ünvanlı kurucunun seçimi odayı değiştirmez, bildirilir',await A.evaluate(()=>THEME==='arcade'&&myTheme()==='poker'&&$('#msg').textContent.includes('Arcade')),await A.evaluate(()=>$('#msg').textContent));
+    await A.evaluate(()=>startOnline());
+    await C.waitForFunction(()=>G.started,null,{timeout:8000}).catch(()=>{});
+    ok('odalar: kurucu başlattı, set başladı; atma düğmesi kalktı',await C.evaluate(()=>G.started)&&await A.evaluate(()=>$('#bKick').hidden));
+    await A.evaluate(()=>showHome());await sleep(300);
+    ok('oda teması: ana ekranda kendi temasına döndü',await A.evaluate(()=>THEME==='poker'));
+    ok('odalar testinde sayfa hatası yok',!A.errs.length&&!B.errs.length&&!C.errs.length,A.errs.concat(B.errs,C.errs).join('|'));
+    await A.context().close();await B.context().close();await C.context().close();
   }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
