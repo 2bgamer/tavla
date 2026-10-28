@@ -1137,6 +1137,63 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('hesap: sayfa hatası yok (3)',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
+  /* 11) Rakip Zar modu: zarı rakip seçer (5 sn), seçmezse rastgele; oda listesinde etiket; XP yok */
+  {
+    const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_target:1,tavla_theme:'poker',tavla_xp:{v:1,xp:600,g:0,w:0}}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'poker',tavla_xp:{v:1,xp:300,g:0,w:0}}});
+    await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
+    await press(A,'#mOnline');await sleep(200);
+    ok('rakip zar: oyun modu seçeneği, varsayılan Klasik',await A.evaluate(()=>RZM===0&&$('[data-grp=rzm] .on').dataset.v==='0'&&$('#rzNote').hidden));
+    await press(A,'[data-grp=rzm] [data-v="1"]');await sleep(150);
+    ok('rakip zar: seçilince saklanır, açıklama görünür, hamle süresi değişmez',await A.evaluate(()=>RZM===1&&lsGet('tavla_rzm',0)===1&&!$('#rzNote').hidden&&TLIM===lsGet('tavla_tl',20)));
+    for(const t of THEMES){await A.evaluate(t=>{applyTheme(t,false);$('[data-grp=rzm]').scrollIntoView({block:'center'});},t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-secenek.png`});}
+    await A.evaluate(()=>applyTheme('poker',false));
+    await press(B,'#mOnline');await sleep(200);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code&&G.loaded,null,{timeout:6000});
+    const code=await A.evaluate(()=>G.code);
+    ok('rakip zar: oda rz:1 ile kuruldu',await A.evaluate(()=>G.rz===1));
+    await B.waitForFunction(c=>!!document.querySelector(`#rmList .rmj[data-c="${c}"]`),code,{timeout:8000}).catch(()=>{});
+    ok('rakip zar: oda listesinde Rakip Zar etiketi',await B.evaluate(c=>{const r=document.querySelector(`#rmList .rmj[data-c="${c}"]`);return !!r&&!!r.closest('.rm').querySelector('.rzt');},code));
+    await B.evaluate(c=>joinRoom(c),code);
+    await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000});
+    await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    ok('rakip zar: katılan oyuncuda mod açık',await B.evaluate(()=>G.rz===1));
+    await A.evaluate(()=>startOnline());
+    await B.waitForFunction(()=>G.started,null,{timeout:8000});
+    await A.evaluate(()=>{__dice.push(6);opThrowOnline();});
+    await B.waitForFunction(()=>G.op&&G.turn===G.me,null,{timeout:8000});
+    await B.evaluate(()=>{__dice.push(2);opThrowOnline();});
+    await A.waitForFunction(()=>!G.op&&G.turn===1&&!G.opHold,null,{timeout:12000});
+    await B.waitForFunction(()=>!!document.getElementById('rzSheet'),null,{timeout:6000}).catch(()=>{});
+    ok('rakip zar: rakibe 5 sn\'lik zar seçme penceresi açıldı',await B.evaluate(()=>!!$('#rzSheet')&&+$('#rzSheet .rzc').textContent<=5&&document.querySelectorAll('#rzSheet .row button').length===12&&$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
+    ok('rakip zar: sırası gelen bekliyor, ZAR AT kapalı ve atılamaz',await A.evaluate(()=>{doRoll(218,200);const c=centerBtn();return !G.rolled&&c&&!c.en&&c.label.includes('seçiyor');}),await A.evaluate(()=>JSON.stringify(centerBtn())));
+    ok('rakip zar: seçen tarafta pencere yok',await A.evaluate(()=>!$('#rzSheet')));
+    await press(B,'#rzSheet .row[data-i="0"] [data-v="6"]');await press(B,'#rzSheet .row[data-i="1"] [data-v="5"]');
+    for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await A.evaluate(k=>applyTheme(k,false),t);await sleep(150);
+      await B.screenshot({path:`${OUT}/${t}-11-rakip-zar-secim.png`});await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-bekleme.png`});}
+    await B.evaluate(()=>applyTheme('poker',false));
+    ok('rakip zar: iki zar seçilince Tamam açılır',await B.evaluate(()=>!$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
+    await press(B,'#rzSheet .ok');
+    await A.waitForFunction(()=>G.rolled,null,{timeout:6000}).catch(()=>{});
+    await B.waitForFunction(()=>G.rolled,null,{timeout:6000}).catch(()=>{});await sleep(300);
+    ok('rakip zar: zar seçilen değerlerle kendiliğinden atıldı (6-5)',await A.evaluate(()=>G.rolled&&G.all.join()==='6,5')&&await B.evaluate(()=>G.all.join()==='6,5'),await A.evaluate(()=>G.all.join()));
+    ok('rakip zar: seçim kullanıldı, pencere kapandı',await B.evaluate(()=>!$('#rzSheet'))&&(await (await dbf(`${DB}/games/${code}/pk.json${AQ}`)).json())===null);
+    await sleep(2600);
+    await A.evaluate(()=>{G.dice=[];G.busy=false;G.auto=false;G.endTimer=null;endTurnOnline();});
+    await A.waitForFunction(()=>!!document.getElementById('rzSheet'),null,{timeout:6000}).catch(()=>{});
+    ok('rakip zar: sıra değişince diğer tarafa pencere açıldı',await A.evaluate(()=>!!$('#rzSheet'))&&await B.evaluate(()=>!G.rolled&&!$('#rzSheet')));
+    const t0=Date.now();
+    await A.waitForFunction(()=>!document.getElementById('rzSheet'),null,{timeout:8000}).catch(()=>{});
+    const shut=Date.now()-t0;
+    await B.waitForFunction(()=>G.rolled,null,{timeout:8000}).catch(()=>{});
+    const tr=Date.now()-t0;
+    ok('rakip zar: 5 sn içinde seçilmezse pencere kapanır, zar rastgele atılır',shut>=3800&&shut<=5800&&tr>=4500&&tr<=7500&&await B.evaluate(()=>G.rolled&&G.all.length>=2),shut+' / '+tr+' ms');
+    await A.evaluate(()=>{G.st.off[0]=15;gameOver(1);});
+    await B.waitForFunction(()=>G.over,null,{timeout:8000}).catch(()=>{});await sleep(1600);
+    ok('rakip zar: maç sonunda XP değişmedi, sonuçta "XP yok"',await A.evaluate(()=>XP.xp===600&&$('#overlay').innerHTML.includes('XP yok'))&&await B.evaluate(()=>XP.xp===300&&$('#overlay').innerHTML.includes('XP yok')),await A.evaluate(()=>XP.xp)+' / '+await B.evaluate(()=>XP.xp));
+    for(const t of THEMES){await A.evaluate(k=>applyTheme(k,false),t);await sleep(200);await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-sonuc.png`});}
+    ok('rakip zar: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);
