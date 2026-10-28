@@ -7,6 +7,7 @@ const TAG=BR+(DEVN?'-'+DEVN.replace(/\W+/g,'_'):'');
 const SP=process.env.SP||__dirname+'/out',OUT=SP+'/shots-'+TAG;require('fs').mkdirSync(OUT,{recursive:true});
 const URL='http://localhost:8765/index.html',DB='http://localhost:8790';
 const THEMES=['neon','sunset','poker','arcade'];
+const FBM=require('fs').readFileSync(__dirname+'/firebase-mock.js','utf8');
 const res=[];let fails=0;
 const skip=(name,why)=>res.push(`SKIP  ${name}  — ${why}`);
 const ok=(name,cond,info)=>{res.push(`${cond?'PASS':'FAIL'}  ${name}${info?'  — '+info:''}`);if(!cond)fails++;};
@@ -23,11 +24,14 @@ async function mkPage(b,opts={}){
       localStorage.setItem('tavla_name',JSON.stringify(o.name||'BURAK'));localStorage.setItem('tavla_lang','"tr"');
       for(const [k,v] of Object.entries(o.ls||{}))localStorage.setItem(k,JSON.stringify(v));}
     window.__DBURL=o.db;
+    if(!o.guest)window.__keepName=true; // misafir adları GUEST… olur; eski testler verilen adla (BURAK, AHMET) açılır
+    if(o.acct){window.__mockUid=o.acct;if(!sessionStorage.getItem('acct')){sessionStorage.setItem('acct','1');localStorage.setItem('tavla_uid',JSON.stringify(o.acct));
+      localStorage.setItem('__fbmock_user',JSON.stringify({uid:o.acct,email:'test@mail.com',displayName:'Test',providerData:[{providerId:'google.com'}]}));}(0,eval)(o.fbm);}
     // olay kaydı + zar kuyruğu (r6 global fonksiyon bildirimi)
     window.__log=[];window.__dice=[];
     const AC0=window.AudioContext||window.webkitAudioContext;if(AC0){const n=AC0.prototype.createOscillator,g=AC0.prototype.createGain;window.__osc=0;window.__gains=[];
       AC0.prototype.createOscillator=function(){window.__osc++;return n.call(this);};AC0.prototype.createGain=function(){const x=g.call(this);window.__gains.push(x);if(window.__gains.length>400)window.__gains.shift();return x;};}
-  },{name:opts.name,ls:opts.ls,db:DB});
+  },{name:opts.name,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:opts.acct?FBM:''});
   return p;
 }
 async function hook(p){await p.evaluate(()=>{const m=moment;window.moment=function(k,d,key){const r=m(k,d,key);__log.push(k+':'+r);return r;};const r=Math.random;Math.random=()=>__dice.length?(__dice.shift()-1)/6+.01:r();});}
@@ -479,20 +483,20 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
-    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{ls:{tavla_snd:'off',tavla_name:''}});
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{guest:true,ls:{tavla_snd:'off',tavla_name:''}});
     await A.goto(URL);await sleep(400);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     const code=await A.evaluate(()=>G.code),inv=await A.evaluate(()=>inviteURL(G.code));
     ok('davet: bağlantı oda kodunu taşıyor',inv===URL+'?oda='+code,inv);
     ok('davet: oda düğmesi bağlantı paylaşımını anlatıyor',await A.evaluate(()=>$('#bChip').title==='Davet bağlantısını paylaş'));
     await B.goto(inv);await sleep(500);
-    ok('davet: isim sorulmadan odaya girilmedi',await B.evaluate(()=>!G.mode&&!$('#overlay').hidden&&!!$('#nmIn')));
-    await B.fill('#nmIn','DAVETLI');await B.click('#ovOk');
+    ok('davet: misafir onaylamadan odaya girilmedi, ad sorulmuyor',await B.evaluate(()=>!G.mode&&!$('#overlay').hidden&&!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')));
+    await B.click('#ovOk');
     await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
     ok('davet: arkadaş ikinci koltuğa oturdu',await B.evaluate(c=>G.mode==='online'&&G.code===c&&G.me===-1,code));
     ok('davet: adres çubuğundaki kod temizlendi',await B.evaluate(()=>!location.search.includes('oda=')));
     await A.waitForFunction(()=>G.seats.w&&G.seats.k,null,{timeout:8000}).catch(()=>{});
-    ok('davet: kurucu rakibi ve adını görüyor',await A.evaluate(()=>!!(G.seats.k&&G.nm&&G.nm.k==='DAVETLI')),await A.evaluate(()=>JSON.stringify(G.nm)));
+    ok('davet: kurucu rakibi ve misafir adını (GUEST…) görüyor',await A.evaluate(()=>!!(G.seats.k&&G.nm&&/^GUEST\d{4}$/.test(G.nm.k))),await A.evaluate(()=>JSON.stringify(G.nm)));
     await B.reload();await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
     ok('davet: yenileyince aynı odaya geri bağlandı',await B.evaluate(c=>G.mode==='online'&&G.code===c&&G.me===-1,code));
     ok('davet testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
@@ -816,12 +820,13 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const pick=async(p,side,a,b2)=>{const sd=side==='me'?'.sd:nth-of-type(1)':'.sd:nth-of-type(2)';
       await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
     for(const t of THEMES){
-      const p=await mkPage(b,{name:'AHMET',ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
+      await fetch(DB+'/names.json',{method:'DELETE'});
+      const p=await mkPage(b,{name:'AHMET',acct:'adm'+t+Date.now(),ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
       if(t==='neon'){
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');
+        await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');await sleep(400);
         ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
       }
-      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');
+      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');await sleep(400);
       ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'));
       await press(p,'#mCpu');await press(p,'#bGo');
       await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
@@ -855,7 +860,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.evaluate(()=>{G.over=false;G.busy=false;G.turn=1;G.rolled=false;G.dice=[];G.all=[];saveCur();});
         await p.reload();await p.waitForFunction(()=>G.mode==='local',null,{timeout:8000}).catch(()=>{});await sleep(400);
         ok('test modu: sayfa yenilenince düğme hemen görünür',await p.evaluate(()=>TESTADM.on)&&await p.isVisible('#taBtn'));
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');
+        await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');await sleep(400);
         ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
       }
       ok(`[${t}] test modu yerel: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
@@ -944,18 +949,20 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   }
   /* 10) hesap (account.js): Google / e-posta bağlantısıyla giriş, profil hesaba yazılır, başka cihazda geri gelir, çıkış */
   {
-    const FBM=require('fs').readFileSync(__dirname+'/firebase-mock.js','utf8'),uid='t'+Date.now();
-    const cloud=async()=>(await fetch(DB+'/users/'+uid+'.json')).json();
-    const acPage=async(o)=>{const p=await mkPage(b,o);await p.context().addInitScript(([m,u])=>{window.__mockUid=u;(0,eval)(m);},[FBM,uid]);return p;};
+    const uid='t'+Date.now();
+    const cloud=async()=>(await fetch(DB+'/users/'+uid+'.json')).json(),owner=async n=>(await fetch(DB+'/names/'+encodeURIComponent(n)+'.json')).json();
+    await fetch(DB+'/names.json',{method:'DELETE'});
+    const acPage=async(o,u)=>{const p=await mkPage(b,Object.assign({guest:true},o));await p.context().addInitScript(([m,u])=>{window.__mockUid=u;(0,eval)(m);},[FBM,u||uid]);return p;};
     let p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}});
     await p.goto(URL);await sleep(700);
-    ok('hesap: ilk açılışta Google ve e-posta düğmeleri',await p.evaluate(()=>!!document.querySelector('#ovBox [data-ac=g]')&&!!document.querySelector('#ovBox [data-ac=m]')&&!!$('#nmIn')));
+    ok('hesap: ilk açılışta Google ve e-posta düğmeleri, misafire ad sorulmaz',await p.evaluate(()=>!!document.querySelector('#ovBox [data-ac=g]')&&!!document.querySelector('#ovBox [data-ac=m]')&&!$('#nmIn')&&/GUEST\d{4}/.test($('#ovBox').textContent)));
     for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-10-giris.png`});}
     await press(p,'#ovBox [data-ac=g]');await sleep(500);
-    ok('hesap: Google sonrası ad Google adıyla dolar',await p.evaluate(()=>$('#nmIn')&&$('#nmIn').value==='BURAK'&&!document.querySelector('#ovBox .acOv')));
+    ok('hesap: Google sonrası kendi adı sorulur, Google adıyla dolar',await p.evaluate(()=>$('#nmIn')&&$('#nmIn').value==='BURAK'&&!document.querySelector('#ovBox .acOv')));
     await press(p,'#ovOk');await sleep(1200);
     let c=await cloud();
     ok('hesap: yeni hesapta profil buluta yazılır',c&&c.n==='BURAK'&&c.xp&&c.xp.xp===0,JSON.stringify(c));
+    ok('hesap: ad hesaba ayrılır',await owner('BURAK')===uid);
     await p.evaluate(()=>{XP.xp=250;lsSet('tavla_xp',XP);});await sleep(1200);c=await cloud();
     ok('hesap: puan değişince buluta yazılır',c&&c.xp&&c.xp.xp===250,JSON.stringify(c&&c.xp));
     await press(p,'#bSet');await sleep(500);
@@ -969,7 +976,32 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await press(p,'#acHome');await sleep(500);
     for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-10-ayarlar-misafir.png`});}
     await press(p,'#acSet [data-ac=g]');await sleep(1200);
-    ok('hesap: girişte hesaptaki profil cihaza gelir',await p.evaluate(()=>NAME==='BURAK'&&XP.xp===250&&$('#helloN').textContent==='BURAK'&&$('#ovBox').textContent.includes('Hesabın bağlandı')));
+    ok('hesap: girişte hesaptaki profil cihaza gelir (misafir adı GUEST…)',await p.evaluate(()=>NAME==='BURAK'&&XP.xp===250&&$('#helloN').textContent==='BURAK'&&$('#ovBox').textContent.includes('Hesabın bağlandı')));
+    // misafir: ad seçemez, GUEST… adıyla oynar; eskiden seçilmiş ad GUEST… olur
+    {const q=await acPage({ls:{tavla_name:'',tavla_snd:'off'}});await q.goto(URL);await sleep(600);
+      await press(q,'#ovOk');await sleep(400);
+      ok('misafir: GUEST ve 4 rakamla oynar',await q.evaluate(()=>/^GUEST\d{4}$/.test(NAME)&&$('#overlay').hidden&&$('#helloN').textContent===NAME));
+      await press(q,'#bName');await sleep(300);
+      ok('misafir: profil penceresinde ad kutusu yok, giriş düğmeleri var',await q.evaluate(()=>!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-10-misafir-profil.png`});}
+      ok('misafir: sayfa hatası yok',!q.errs.length,q.errs.join('|'));await q.context().close();}
+    {const q=await acPage({name:'AHMET',ls:{tavla_snd:'off'}});await q.goto(URL);await sleep(600);
+      ok('misafir: eskiden seçilmiş ad GUEST… olur',await q.evaluate(()=>/^GUEST\d{4}$/.test(NAME)));await q.context().close();}
+    // tekil ad: başka bir hesap aynı adı (küçük harfle de) alamaz; GUEST… adı alınamaz
+    {const q=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'b');await q.goto(URL);await sleep(600);
+      await press(q,'#ovBox [data-ac=g]');await sleep(600);
+      await q.fill('#nmIn','burak');await press(q,'#ovOk');await sleep(500);
+      ok('ad: başka hesabın adı verilmez',await q.evaluate(()=>!$('#overlay').hidden&&!!$('#nmE')&&$('#nmE').textContent.includes('başka bir oyuncuya')));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-10-ad-alinmis.png`});}
+      await q.fill('#nmIn','guest12');await press(q,'#ovOk');await sleep(300);
+      ok('ad: GUEST ile başlayan ad alınamaz',await q.evaluate(()=>!$('#overlay').hidden&&$('#nmE').textContent.includes('GUEST')));
+      await q.fill('#nmIn','MEHMET');await press(q,'#ovOk');await sleep(1200);
+      ok('ad: boştaki ad kaydedilir ve ayrılır',await q.evaluate(()=>NAME==='MEHMET'&&$('#overlay').hidden)&&await owner('MEHMET')===uid+'b');
+      ok('ad: sayfa hatası yok',!q.errs.length,q.errs.join('|'));await q.context().close();}
+    // girişli oyuncu adını değiştirince yeni ad ona geçer, eskisi boşa çıkar
+    await p.evaluate(()=>askName(false));await p.fill('#nmIn','SULTAN');await press(p,'#ovOk');await sleep(1200);
+    ok('ad: ad değişince yenisi ayrılır, eskisi bırakılır',await owner('SULTAN')===uid&&await owner('BURAK')===null&&(await cloud()).n==='SULTAN');
+    await p.evaluate(()=>askName(false));await p.fill('#nmIn','BURAK');await press(p,'#ovOk');await sleep(1200);
     await p.reload();await sleep(900);
     ok('hesap: yeniden açılışta oturum sürer',await p.evaluate(()=>!!(ACCT.user&&ACCT.user.uid)&&NAME==='BURAK'&&$('#acHome').hidden));
     await press(p,'#bSet');await sleep(400);
@@ -977,7 +1009,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await press(p,'#acSet [data-ac=o]');await sleep(300);
     ok('hesap: çıkış onayı sorulur',await p.evaluate(()=>!$('#overlay').hidden&&$('#setDrawer').hidden));
     await Promise.all([p.waitForNavigation().catch(()=>{}),press(p,'#ovOk')]);await sleep(900);
-    ok('hesap: çıkışta cihaz misafir olarak baştan başlar',await p.evaluate(()=>!NAME&&XP.xp===0&&!!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')&&localStorage.getItem('tavla_uid')===null));
+    ok('hesap: çıkışta cihaz misafir olarak baştan başlar',await p.evaluate(()=>!NAME&&XP.xp===0&&!$('#nmIn')&&!!document.querySelector('#ovBox [data-ac=g]')&&localStorage.getItem('tavla_uid')===null));
     c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
     ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
     await p.context().close();

@@ -2670,14 +2670,15 @@ function showHome(){
   $('#play').hidden=true;$('#home').hidden=false;lsSet('tavla_scr','home');refreshHome();
 }
 function askName(first){
-  showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2>${window.ACCT?ACCT.ovHtml(first):''}<p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
+  if(window.ACCT&&!ACCT.signed())return ACCT.askGuest(first); // misafir ad seçemez (GUEST…), giriş yapınca seçer
+  showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2><p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
     let v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
     if(window.TESTADM)v=TESTADM.name(v); // "BURAK"+PIN: gizli test girişi, görünen ad BURAK
     NAME=v||NAME||i18('player');lsSet('tavla_name',NAME);
     const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
     refreshHome();if(G.mode)render();
   });
-  if(window.ACCT)ACCT.bind($('#ovBox'));
+  if(window.ACCT)ACCT.guardName();
   document.querySelectorAll('.avb').forEach(b=>b.onclick=()=>document.querySelectorAll('.avb').forEach(x=>x.setAttribute('aria-checked',String(x===b))));
   const i=$('#nmIn');if(i){setTimeout(()=>{try{i.focus();}catch(e){}},50);i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#ovOk').click();}});}
 }
@@ -2899,8 +2900,8 @@ $('#chatIn').addEventListener('blur',()=>{try{window.scrollTo(0,0);}catch(e){}})
 $('#chatIn').addEventListener('focus',()=>{const f=()=>{try{$('#chatForm').scrollIntoView({block:'end'});}catch(e){}};f();setTimeout(f,250);});
 
 $('#bName').onclick=()=>askName(false);
-refreshHome();
 if(window.ACCT)ACCT.init();
+refreshHome();
 if(!NAME)askName(true);
 /* Firebase Realtime Database (REST + SSE), SDK'sız. Claude db arayüzüyle aynı: doc(path).get/set/update/onSnapshot, collection(name).add/orderBy/limit/onSnapshot */
 function makeRTDB(base){
