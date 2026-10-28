@@ -79,6 +79,14 @@ const room=(w,extra)=>Object.assign({ct:Date.now(),seats:{w},nm:{w:'AHMET'},turn
   await t('ad listesinin tamamı okunamaz',assertFails(get(ref(X,'names'))));
   await t('hesap adını bırakır',assertSucceeds(remove(ref(G1,'names/AHMET'))));
 
+  /* şikayetler */
+  const rp=(by,extra)=>Object.assign({by,who:'b',room:'1000',nm:'BURAK',text:'kötü söz',why:'mdR1',t:Date.now()},extra||{});
+  await t('oyuncu şikayet yazar',assertSucceeds(push(ref(A,'reports'),rp('a'))));
+  await t('başkası adına şikayet yazılamaz',assertFails(push(ref(A,'reports'),rp('c'))));
+  await t('kimliksiz şikayet yazılamaz',assertFails(push(ref(X,'reports'),rp('x'))));
+  await t('şikayetler okunamaz',assertFails(get(ref(A,'reports'))));
+  await t('200 karakterden uzun şikayet metni yazılamaz',assertFails(push(ref(A,'reports'),rp('a',{text:'x'.repeat(201)}))));
+
   await env.cleanup();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
   process.exit(fails?1:0);

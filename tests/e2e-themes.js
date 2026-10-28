@@ -579,6 +579,52 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('XSS testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
     await A.context().close();
   }
+  /* 5a3) sohbet güvenliği (App Store 1.2): küfür süzgeci, şikayet, engelleme */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{name:'MEHMET',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await B.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const code=await A.evaluate(()=>G.code);
+    await B.evaluate(c=>joinRoom(c),code);await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    await A.waitForFunction(()=>G.seats.k,null,{timeout:8000}).catch(()=>{});
+    ok('süzgeç: küfür yıldızlanır, masum kelimeler kalır',await A.evaluate(()=>MOD.filter('siiiktir git amk')==='******** git ***'&&MOD.filter('şikayet ediyorum, sıkıldım, götür, fukara, picture')==='şikayet ediyorum, sıkıldım, götür, fukara, picture'&&MOD.filter('s.i.k.t.i.r')==='********'),await A.evaluate(()=>MOD.filter('siiiktir git amk')+' | '+MOD.filter('s.i.k.t.i.r')));
+    await B.fill('#chatIn','siktir git');await B.press('#chatIn','Enter');
+    await A.waitForFunction(()=>$('#chatList').textContent.includes('git'),null,{timeout:6000}).catch(()=>{});
+    const raw=await (await dbf(DB+'/games/'+code+'/msgs.json'+AQ)).json();
+    ok('süzgeç: küfürlü mesaj yıldızlı gönderildi ve gösterildi',await A.evaluate(()=>$('#chatList').textContent.includes('****** git')&&!$('#chatList').textContent.includes('siktir'))&&!JSON.stringify(raw).includes('siktir'),JSON.stringify(raw));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-12-sohbet-suzgec.png`});}
+    await A.click('#play .ap.op');await sleep(300);
+    ok('rakibin adına/avatarına dokununca şikayet et / engelle',await A.evaluate(()=>!$('#overlay').hidden&&!!$('#mdRep')&&$('#ovBox').textContent.includes('MEHMET hakkında')));
+    await A.evaluate(()=>{$('#overlay').hidden=true;});
+    await A.click('#chatList .cm.them');await sleep(300);
+    ok('mesaja dokununca şikayet et / engelle penceresi',await A.evaluate(()=>!$('#overlay').hidden&&!!$('#mdRep')&&!!$('#mdBlk')&&$('#ovBox').textContent.includes('MEHMET')));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-12-sikayet.png`});}
+    await A.click('#mdRep');await sleep(200);
+    ok('şikayet: neden seçenekleri',await A.evaluate(()=>document.querySelectorAll('.mdWhy').length===4));
+    await A.click('.mdWhy[data-w=mdR1]');await sleep(800);
+    const reps=await (await dbf(DB+'/reports.json'+AQ)).json(),rl=Object.values(reps||{});
+    const bUid=await B.evaluate(()=>TOKEN),aUid=await A.evaluate(()=>TOKEN);
+    ok('şikayet veritabanına yazıldı (kim, oda, mesaj, neden)',rl.some(r=>r.by===aUid&&r.who===bUid&&r.room===code&&r.why==='mdR1'&&r.text.includes('git')),JSON.stringify(rl));
+    ok('şikayet: 24 saat içinde inceleme bilgisi',await A.evaluate(()=>$('#ovBox').textContent.includes('24 saat')));
+    await A.click('#mdBlk');await sleep(200);await A.click('#ovOk');await sleep(300);
+    ok('engelle: rakibin mesajları gizlendi',await A.evaluate(u=>!$('#chatList').textContent.includes('git')&&MOD.blocked(u),bUid));
+    await dbf(DB+'/games/'+code+'/msgs.json'+AQ,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from:bUid,n:-1,nm:'MEHMET',t:Date.now(),text:'yeni mesaj'})});await sleep(1200);
+    ok('engelle: yeni mesajı da görünmez, okunmamış sayılmaz',await A.evaluate(()=>!$('#chatList').textContent.includes('yeni mesaj')&&CH.unread===0));
+    ok('engelle: set başlamadan engellenen rakip odadan çıkarıldı',await A.evaluate(()=>!G.seats.k));
+    await B.waitForFunction(()=>!G.mode,null,{timeout:8000}).catch(()=>{});
+    ok('engelle: engellenen ana ekrana döndü',await B.evaluate(()=>!G.mode));
+    // engellenen oyuncunun odası listede görünmez
+    await A.evaluate(()=>showHome());await B.evaluate(()=>createRoom());await B.waitForFunction(()=>G.code,null,{timeout:5000});
+    const bcode=await B.evaluate(()=>G.code);await sleep(600);
+    ok('engelle: engellenenin odası listede görünmez',await A.evaluate(c=>{lbRooms=(lbRooms||[]).concat([{code:c,u:Object.keys(lsGet('tavla_block',{}))[0],n:'MEHMET',t:Date.now(),lv:1}]);lbPaint();return !$('#rmList').textContent.includes('MEHMET');},bcode));
+    await A.evaluate(()=>{$('#bSet').click();});await sleep(400);
+    ok('ayarlar: engellenen oyuncular listesi ve engeli kaldır',await A.evaluate(()=>!$('#mdSet').hidden&&$('#mdSet').textContent.includes('MEHMET')));
+    for(const t of THEMES){await A.evaluate(t=>applyTheme(t,false),t);await sleep(250);await A.evaluate(()=>$('#mdSet').scrollIntoView({block:'center'}));await A.screenshot({path:`${OUT}/${t}-12-engellenenler.png`});}
+    await A.click('#mdSet .mdRow button');await sleep(200);
+    ok('engeli kaldır: liste boşaldı',await A.evaluate(()=>$('#mdSet').hidden&&!Object.keys(lsGet('tavla_block',{})).length));
+    ok('sohbet güvenliği testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
     const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{guest:true,ls:{tavla_snd:'off',tavla_name:''}});

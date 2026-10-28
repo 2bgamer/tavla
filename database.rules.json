@@ -10,15 +10,25 @@
           ".validate": "newData.isNumber() && newData.val() <= now + 600000"
         },
         "seats": {
-          "w": { ".validate": "newData.isString() && newData.val().length <= 128" },
-          "k": { ".validate": "newData.isString() && newData.val().length <= 128" },
-          "$other": { ".validate": false }
+          "w": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          },
+          "k": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "nm": {
-          "$s": { ".validate": "($s === 'w' || $s === 'k') && newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)" }
+          "$s": {
+            ".validate": "($s === 'w' || $s === 'k') && newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)"
+          }
         },
         "ban": {
-          "$uid": { ".validate": "newData.val() === 1 || newData.val() === true" }
+          "$uid": {
+            ".validate": "newData.val() === 1 || newData.val() === true"
+          }
         },
         "msgs": {
           "$m": {
@@ -38,7 +48,9 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
-        "n": { ".validate": "newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)" }
+        "n": {
+          ".validate": "newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)"
+        }
       }
     },
     "names": {
@@ -47,6 +59,12 @@
         ".read": true,
         ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && (!data.exists() || data.val() === auth.uid)",
         ".validate": "newData.val() === auth.uid && $n.length <= 14"
+      }
+    },
+    "reports": {
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['by', 'who', 't', 'why']) && newData.child('by').val() === auth.uid && newData.child('who').isString() && newData.child('who').val().length <= 128 && newData.child('t').isNumber() && newData.child('why').isString() && newData.child('why').val().length <= 8 && (!newData.child('text').exists() || (newData.child('text').isString() && newData.child('text').val().length <= 200)) && (!newData.child('nm').exists() || (newData.child('nm').isString() && newData.child('nm').val().length <= 14)) && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 4))"
       }
     }
   }

@@ -109,6 +109,7 @@
       const raw=UP(cleanName(i.value)),v=window.TESTADM?TESTADM.name(raw):raw;
       if(!v&&isGuest(NAME)){nmErr('acNeed');return;}
       if(v&&isGuest(v)){nmErr('acNoGuest');return;}
+      if(v&&window.MOD&&MOD.bad(v)){nmErr('mdName');return;}
       if(v&&v===raw&&nk(v)!==nk(NAME)){
         ok.disabled=true;const free=await claim(v,NAME);ok.disabled=false;
         if(!free){nmErr('acTaken');return;}

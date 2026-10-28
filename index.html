@@ -334,6 +334,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 <script src="assets/avatars.js"></script>
 <script src="audio/foley.js"></script>
 <script src="account.js"></script>
+<script src="mod.js"></script>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -865,8 +866,10 @@ const UP=s=>{s=String(s||'');try{return s.toLocaleUpperCase(ULOC());}catch(e){re
 function deHtml(v){if(typeof v==='string')return v.replace(/[<>&"'`]/g,'');if(Array.isArray(v))return v.map(deHtml);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=deHtml(v[k]);return o;}return v;}
 // Oyuncu adı: harf, rakam, boşluk, nokta, alt çizgi, tire; en fazla 14 karakter
 const cleanName=s=>String(s==null?'':s).replace(/[^\p{L}\p{M}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,14);
+// başkasının adı ekranda: küfür yıldızlanır (mod.js)
+const seeName=s=>{const n=cleanName(s);return window.MOD?MOD.filter(n):n;};
 const myName=()=>UP(cleanName(NAME))||i18('you');
-const oppName=()=>G.mode==='online'?(UP(cleanName((G.nm||{})[G.me===1?'k':'w']))||i18('opp')):i18('cpu');
+const oppName=()=>G.mode==='online'?(UP(seeName((G.nm||{})[G.me===1?'k':'w']))||i18('opp')):i18('cpu');
 function locSfx(n){if(n==='BİLGİSAYAR')return 'BİLGİSAYARDA';const v=(n.match(/[AEIİOÖUÜ](?=[^AEIİOÖUÜ]*$)/)||['E'])[0];const a='AIOU'.includes(v)?'A':'E';const c='FSTKÇŞHP'.includes(n.slice(-1))?'T':'D';return n+"'"+c+a;}
 let DB=null,ROOM=null,unsub=null,pending=null,writing=false,lateSnap=null,flashT=null;
 const RM=(()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}})();
@@ -1289,7 +1292,7 @@ function onRoom(snap){
   const must=gid>(G.gid||0)||(!!d.over&&!G.over&&gid===G.gid);
   if(G.loaded&&!must&&(d.rev||0)<=G.rev)return;
   G.loaded=true;G.rev=d.rev||0;
-  applyRoom(d);themeSync();lbSync();
+  applyRoom(d);themeSync();lbSync();if(window.MOD)MOD.guard();
   const fresh=gid!==G.gid;
   // yeni set: önceki setten kalan otomatik hamle ve sıra bitirme zamanlayıcıları iptal
   if(fresh){G.autoTok++;G.endTok++;G.endTimer=null;G.auto=false;}
@@ -1477,12 +1480,12 @@ function lbUnwatch(){if(lbUnsub){try{lbUnsub();}catch(e){}}lbUnsub=null;clearInt
 function lbPaint(){
   const el=$('#rmList');if(!el)return;
   if(!lbRooms){el.innerHTML=`<p class="rmE">${i18('rmLoad')}</p>`;return;}
-  const now=Date.now(),L=lbRooms.filter(r=>r&&/^\d{4}$/.test(r.code)&&(+r.t||0)>now-LB_LIVE).sort((a,b)=>(+b.t||0)-(+a.t||0));
+  const now=Date.now(),L=lbRooms.filter(r=>r&&/^\d{4}$/.test(r.code)&&(+r.t||0)>now-LB_LIVE&&!(window.MOD&&MOD.blocked(r.u))).sort((a,b)=>(+b.t||0)-(+a.t||0));
   if(!L.length){el.innerHTML=`<p class="rmE">${i18('rmNone')}</p>`;return;}
   const nf=v=>{try{return (+v||0).toLocaleString(ULOC());}catch(e){return String(+v||0);}};
   el.innerHTML=L.map(r=>{
     const lv=Math.max(1,+r.lv||1),tg=+r.tg||0,th=THEMES[r.th]?r.th:'poker',av=AVATARS[+r.av]||AVATARS[0]||'';
-    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(cleanName(r.n))||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
+    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(seeName(r.n))||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
       `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
       `<button class="rmj" data-c="${r.code}">${i18('join')}</button></div>`;}).join('');
 }
@@ -2660,8 +2663,13 @@ function chatPaint(){
   let prev=null;
   for(const m of CH.msgs){
     const me=m.from===TOKEN;
-    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(cleanName(m.nm))||oppName());list.appendChild(n);prev=m.from;}
-    const d=document.createElement('div');d.className='cm '+(me?'me':'them');d.textContent=m.text;d.title=m.text;list.appendChild(d);}
+    if(!me&&window.MOD&&MOD.blocked(m.from))continue; // engellenen oyuncunun mesajları gizli
+    const txt=window.MOD?MOD.filter(m.text):m.text,nm=me?myName():(UP(seeName(m.nm))||oppName());
+    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=nm;
+      list.appendChild(n);prev=m.from;}
+    const d=document.createElement('div');d.className='cm '+(me?'me':'them');d.textContent=txt;d.title=txt;
+    if(!me&&window.MOD)d.onclick=()=>MOD.sheet(m.from,nm,txt);
+    list.appendChild(d);}
   list.scrollTop=grew?list.scrollHeight:y;scbSync();
   const b=$('#bdg');b.hidden=!(CH.unread>0&&G.tab!=='c');b.textContent=CH.unread>9?'9+':String(CH.unread);
 }
@@ -2675,13 +2683,13 @@ function onChat(snap){
   for(const m of CH.msgs){
     if(CH.ids.has(m.id))continue;
     CH.ids.add(m.id);
-    if(CH.init&&m.from!==TOKEN){
+    if(CH.init&&m.from!==TOKEN&&!(window.MOD&&MOD.blocked(m.from))){
       if(m.r)floatEmoji(m.text,false);
       if(document.hidden)setTitle(i18('newMsg')+' · '+BASE_TITLE);
     }
   }
   if(!CH.init||G.tab==='c'){CH.seen=Math.max(CH.seen,chatTop());CH.init=true;}
-  CH.unread=CH.msgs.filter(m=>m.from!==TOKEN&&m.t>CH.seen).length;
+  CH.unread=CH.msgs.filter(m=>m.from!==TOKEN&&m.t>CH.seen&&!(window.MOD&&MOD.blocked(m.from))).length;
   chatPaint();
 }
 function chatStart(){
@@ -3000,11 +3008,11 @@ document.addEventListener('click',e=>{
 });
 $('#chatForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const i=$('#chatIn'),t=i.value.trim().slice(0,200);
+  const i=$('#chatIn'),t0=i.value.trim().slice(0,200),t=window.MOD?MOD.filter(t0):t0;
   if(!t||!ROOM)return;
   i.value='';
   try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:cleanName(NAME),t:Date.now(),text:t});}
-  catch(err){i.value=t;flash(i18('sendFail'),3000);}
+  catch(err){i.value=t0;flash(i18('sendFail'),3000);}
 });
 $('#chatIn').addEventListener('blur',()=>{try{window.scrollTo(0,0);}catch(e){}});
 // oyun ekranı kendi içinde kaydığı için yazarken giriş kutusunun tamamını görünür alana getir (klavye açılınca bir kez daha)
@@ -3012,6 +3020,7 @@ $('#chatIn').addEventListener('focus',()=>{const f=()=>{try{$('#chatForm').scrol
 
 $('#bName').onclick=()=>askName(false);
 if(window.ACCT)ACCT.init();
+if(window.MOD)MOD.init();
 refreshHome();
 if(!NAME)askName(true);
 /* Firebase Realtime Database (REST + SSE), SDK'sız. Claude db arayüzüyle aynı: doc(path).get/set/update/onSnapshot, collection(name).add/orderBy/limit/onSnapshot */
@@ -3114,7 +3123,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281800';
+const APP_VER='202610281900';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
