@@ -5,7 +5,9 @@ const BR=process.env.BROWSER||'chromium',DEVN=process.env.DEVICE||'',DEV=DEVN?pw
 if(DEVN&&!DEV)throw new Error('bilinmeyen cihaz: '+DEVN);
 const TAG=BR+(DEVN?'-'+DEVN.replace(/\W+/g,'_'):'');
 const SP=process.env.SP||__dirname+'/out',OUT=SP+'/shots-'+TAG;require('fs').mkdirSync(OUT,{recursive:true});
-const URL='http://localhost:8765/index.html',DB='http://localhost:8790';
+const URL='http://localhost:8765/index.html',DB=process.env.DB||'http://localhost:8790',DBNS=process.env.DBNS||'',AQ=DBNS?'?ns='+DBNS:'';
+// testin kendi doğrudan veritabanı istekleri (emülatörde yönetici yetkisiyle, kurallara takılmadan)
+const dbf=(u,o={})=>fetch(u,Object.assign({},o,{headers:Object.assign({Authorization:'Bearer owner'},o.headers||{})}));
 const THEMES=['neon','sunset','poker','arcade'];
 const FBM=require('fs').readFileSync(__dirname+'/firebase-mock.js','utf8');
 const res=[];let fails=0;
@@ -23,15 +25,16 @@ async function mkPage(b,opts={}){
     if(!sessionStorage.getItem('init')){sessionStorage.setItem('init','1');
       localStorage.setItem('tavla_name',JSON.stringify(o.name||'BURAK'));localStorage.setItem('tavla_lang','"tr"');
       for(const [k,v] of Object.entries(o.ls||{}))localStorage.setItem(k,JSON.stringify(v));}
-    window.__DBURL=o.db;
+    window.__DBURL=o.db;if(o.dbns)window.__DBNS=o.dbns;
     if(!o.guest)window.__keepName=true; // misafir adları GUEST… olur; eski testler verilen adla (BURAK, AHMET) açılır
     if(o.acct){window.__mockUid=o.acct;if(!sessionStorage.getItem('acct')){sessionStorage.setItem('acct','1');localStorage.setItem('tavla_uid',JSON.stringify(o.acct));
-      localStorage.setItem('__fbmock_user',JSON.stringify({uid:o.acct,email:'test@mail.com',displayName:'Test',providerData:[{providerId:'google.com'}]}));}(0,eval)(o.fbm);}
+      localStorage.setItem('__fbmock_user',JSON.stringify({uid:o.acct,email:'test@mail.com',displayName:'Test',providerData:[{providerId:'google.com'}]}));}}
+    if(!o.realFb)(0,eval)(o.fbm); // gerçek Firebase'e (anonim hesap) istek gitmesin
     // olay kaydı + zar kuyruğu (r6 global fonksiyon bildirimi)
     window.__log=[];window.__dice=[];
     const AC0=window.AudioContext||window.webkitAudioContext;if(AC0){const n=AC0.prototype.createOscillator,g=AC0.prototype.createGain;window.__osc=0;window.__gains=[];
       AC0.prototype.createOscillator=function(){window.__osc++;return n.call(this);};AC0.prototype.createGain=function(){const x=g.call(this);window.__gains.push(x);if(window.__gains.length>400)window.__gains.shift();return x;};}
-  },{name:opts.name,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:opts.acct?FBM:''});
+  },{name:opts.name,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:FBM,realFb:opts.realFb,dbns:DBNS});
   return p;
 }
 async function hook(p){await p.evaluate(()=>{const m=moment;window.moment=function(k,d,key){const r=m(k,d,key);__log.push(k+':'+r);return r;};const r=Math.random;Math.random=()=>__dice.length?(__dice.shift()-1)/6+.01:r();});}
@@ -541,6 +544,41 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('odalar testinde sayfa hatası yok',!A.errs.length&&!B.errs.length&&!C.errs.length,A.errs.concat(B.errs,C.errs).join('|'));
     await A.context().close();await B.context().close();await C.context().close();
   }
+  /* 5a1) kimlik jetonu veritabanı isteklerine ekleniyor; eski oda (ct yok) aynı kod alınırken silinir */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}});const urls=[];A.on('request',r=>{if(r.url().startsWith(DB))urls.push(r.url());});
+    await A.goto(URL);await sleep(400);
+    await dbf(DB+'/games/4321.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({seats:{w:'x',k:'y'},started:true})});
+    await A.evaluate(async()=>{const r=Math.random;Math.random=()=>(4321-1000)/9000+1e-9;try{await createRoom();}finally{Math.random=r;}});await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    ok('eski oda (ct yok): aynı kod temizlenip yeni oda kuruldu',await A.evaluate(()=>G.code==='4321'&&G.me===1&&!G.seats.k),await A.evaluate(()=>G.code));
+    ok('veritabanı istekleri kimlik jetonu taşıyor',urls.some(u=>/games\/4321\.json\?(ns=[\w-]+&)?auth=ey/.test(u)),urls.slice(0,4).join(' '));
+    await A.evaluate(()=>showHome());await sleep(200);
+    ok('kimlik testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
+    await A.context().close();
+  }
+  /* 5a2) güvenlik: odaya ve oda listesine REST ile yazılan HTML/kod çalışmaz (XSS) */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const code=await A.evaluate(()=>G.code),bad='<IMG SRC=X ONERROR=window.__xss=1>"\'';
+    const id=await A.evaluate(()=>({tok:TOKEN,w:G.seats.w,n:window.__anonCalled}));
+    ok('kimlik: misafir online için anonim hesap aldı, koltuk uid ile tutuluyor',/^anon/.test(id.tok)&&id.w===id.tok&&id.n===1,JSON.stringify(id));
+    const room=await (await dbf(DB+'/games/'+code+'.json'+AQ)).json();
+    ok('kimlik: odada oluşturma zamanı (ct) var',typeof room.ct==='number'&&Date.now()-room.ct<60000);
+    const put=(path,v)=>dbf(DB+'/'+path+'.json'+AQ,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});
+    await put('games/'+code,{'nm/k':bad,'seats/k':'zz',rev:99999,'score/w':'<b id=xsb>1</b>'});
+    await put('lobby/'+code,{n:bad,t:Date.now()});
+    await A.waitForFunction(()=>G.seats&&G.seats.k==='zz',null,{timeout:8000}).catch(()=>{});
+    const r=await A.evaluate(()=>({nm:G.nm.k,opp:oppName(),sc:String(G.score.w)}));
+    ok('XSS: odadaki ad ve skor HTML karakterlerinden arındırıldı',!/[<>"']/.test(r.nm+r.opp+r.sc)&&r.opp.length<=14&&r.opp.startsWith('IMG SRCX'),JSON.stringify(r));
+    await A.evaluate(()=>{G.result={winner:-G.me,pts:1,why:'resign'};showResult(false);});await sleep(300);
+    await A.evaluate(()=>{lbRooms=[{code:'1234',n:'<img src=x onerror="window.__xss=2">',t:Date.now(),lv:1}];lbPaint();});await sleep(200);
+    ok('XSS: sonuç penceresi ve oda listesinde kod çalışmadı, etiket oluşmadı',await A.evaluate(()=>!window.__xss&&!document.querySelector('#ovBox img,#ovBox #xsb,#rmList img')),await A.evaluate(()=>String(window.__xss)));
+    ok('ad kuralı: yalnız harf, rakam, boşluk, . _ - ve 14 karakter',await A.evaluate(()=>cleanName('  a<b>c "d"  ŞÜ_k-1.2 xxxxxxxxxx ')==='abc d ŞÜ_k-1.2'&&cleanName('<script>')==='script'));
+    ok('XSS testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
+    await A.context().close();
+  }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
     const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{guest:true,ls:{tavla_snd:'off',tavla_name:''}});
@@ -882,7 +920,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const pick=async(p,side,a,b2)=>{const sd=side==='me'?'.sd:nth-of-type(1)':'.sd:nth-of-type(2)';
       await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
     for(const t of THEMES){
-      await fetch(DB+'/names.json',{method:'DELETE'});
+      await dbf(DB+'/names.json'+AQ,{method:'DELETE'});
       const p=await mkPage(b,{name:'AHMET',acct:'adm'+t+Date.now(),ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
       if(t==='neon'){
         await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');await sleep(400);
@@ -1016,8 +1054,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 10) hesap (account.js): Google / e-posta bağlantısıyla giriş, profil hesaba yazılır, başka cihazda geri gelir, çıkış */
   {
     const uid='t'+Date.now();
-    const cloud=async()=>(await fetch(DB+'/users/'+uid+'.json')).json(),owner=async n=>(await fetch(DB+'/names/'+encodeURIComponent(n)+'.json')).json();
-    await fetch(DB+'/names.json',{method:'DELETE'});
+    const cloud=async()=>(await dbf(DB+'/users/'+uid+'.json'+AQ)).json(),owner=async n=>(await dbf(DB+'/names/'+encodeURIComponent(n)+'.json'+AQ)).json();
+    await dbf(DB+'/names.json'+AQ,{method:'DELETE'});
     const acPage=async(o,u)=>{const p=await mkPage(b,Object.assign({guest:true},o));await p.context().addInitScript(([m,u])=>{window.__mockUid=u;(0,eval)(m);},[FBM,u||uid]);return p;};
     let p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}});
     await p.goto(URL);await sleep(700);

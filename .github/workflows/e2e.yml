@@ -51,3 +51,33 @@ jobs:
           name: e2e-${{ matrix.slug }}
           path: tests/out
           if-no-files-found: ignore
+
+  rules:
+    name: Veritabanı kuralları (Firebase emülatörü)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Araçlar (Firebase CLI, kural testi, Playwright)
+        run: |
+          npm i --no-save --no-package-lock firebase-tools@14 @firebase/rules-unit-testing@4 firebase@11 playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Kural testleri
+        run: npx firebase emulators:exec --only database --project demo-tavla "node tests/rules-test.js"
+      - name: Oyun testleri gerçek kurallarla (Chromium 390×844)
+        env:
+          BROWSER: chromium
+          DB: http://localhost:9000
+          DBNS: demo-tavla-default-rtdb
+          SP: tests/out-kurallar
+        run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://localhost:8765/index.html >/dev/null && break; sleep 0.5; done
+          npx firebase emulators:exec --only database --project demo-tavla "node tests/e2e-themes.js"
