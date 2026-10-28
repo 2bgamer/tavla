@@ -814,9 +814,10 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('online çekilme sonrası testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
-  /* 8) TEST MODU (test-admin.js): gizli admin girişi + elle zar seçimi; rakip ekranında TEST etiketi */
+  /* 8) TEST MODU (test-admin.js): gizli admin girişi + elle zar seçimi; atışta bildirim yok, rakibin ekranında sağ altta sabit 🧪 simgesi */
   {
-    const tagOn=p=>p.evaluate(()=>{const t=document.getElementById('taTag');return !!t&&!t.hidden&&t.getBoundingClientRect().width>0;});
+    const noNote=p=>p.evaluate(()=>!document.getElementById('taTag')&&!/TEST MODU/i.test(G.flash||''));
+    const icoOn=p=>p.evaluate(()=>{const t=document.getElementById('taIco');if(!t||t.hidden)return false;const r=t.getBoundingClientRect();return r.width>0&&r.right<=innerWidth&&r.bottom<=innerHeight&&r.left>innerWidth/2;});
     const pick=async(p,side,a,b2)=>{const sd=side==='me'?'.sd:nth-of-type(1)':'.sd:nth-of-type(2)';
       await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
     for(const t of THEMES){
@@ -827,32 +828,32 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
       }
       await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');await sleep(400);
-      ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'));
+      ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK, açılış bildirimi yok`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'&&!G.flash));
       await press(p,'#mCpu');await press(p,'#bGo');
       await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
       await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,opHold:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});opClear();render();});
-      ok(`[${t}] test modu: zar düğmesi görünür`,await p.isVisible('#taBtn'));
+      ok(`[${t}] test modu: sağ altta 🧪 simgesi görünür`,await p.isVisible('#taBtn')&&await p.evaluate(()=>{const r=$('#taBtn').getBoundingClientRect();return r.left>innerWidth/2&&r.bottom>innerHeight-80&&$('#taBtn').textContent.includes('🧪');}));
+      await p.screenshot({path:`${OUT}/${t}-8-test-simgesi.png`});
       await press(p,'#taBtn');await pick(p,'me',6,5);await pick(p,'op',3,3);
       await p.screenshot({path:`${OUT}/${t}-8-test-zar-secimi.png`});
       await press(p,'#taSheet .ok');
       ok(`[${t}] test modu: bekleyen zarlar düğmede`,(await p.textContent('#taBtn')).includes('6-5 / 3-3'),await p.textContent('#taBtn'));
       await p.evaluate(()=>doRoll(218,200));await sleep(1400);
       ok(`[${t}] test modu: benim zarım seçilen 6-5`,await p.evaluate(()=>G.all.join()==='6,5'),await p.evaluate(()=>JSON.stringify({a:G.all,r:G.rolled,b:G.busy,cd:cdOn(),oh:opHeld()})));
-      ok(`[${t}] test modu: TEST etiketi görünür`,await tagOn(p));
-      await p.screenshot({path:`${OUT}/${t}-8-test-etiketi.png`});
+      ok(`[${t}] test modu: elle seçilen atışta bildirim/etiket yok`,await noNote(p));
       await p.evaluate(()=>{G.dice=[];endTurn();});
       await p.waitForFunction(()=>G.turn===-1&&G.rolled,null,{timeout:6000}).catch(()=>{});
       ok(`[${t}] test modu: bilgisayarın zarı seçilen 3-3`,await p.evaluate(()=>G.all.join()==='3,3,3,3'));
       if(t==='neon'){
         await p.waitForFunction(()=>G.turn===1,null,{timeout:12000}).catch(()=>{});
         await p.evaluate(()=>{if(!G.rolled)doRoll(218,200);});await sleep(300);
-        ok('test modu: seçim bir kez kullanılır, sonraki atışta etiket yok',await p.evaluate(()=>G.rolled)&&!(await tagOn(p)));
+        ok('test modu: seçim bir kez kullanılır, düğmede bekleyen zar kalmadı',await p.evaluate(()=>G.rolled&&$('#taBtn').textContent.trim()==='🧪'),await p.textContent('#taBtn'));
         // set bitip yeni set başlayınca ve oyun alanı kaydırılınca düğme ekranda kalır (iOS'ta kaydırılan kutu içinde kayboluyordu)
         await p.evaluate(()=>gameOver(1));await sleep(2500);await p.evaluate(()=>{const o=$('#ovOk');if(o)o.click();});
         await p.waitForFunction(()=>!G.over,null,{timeout:8000}).catch(()=>{});
         await p.evaluate(()=>{const pl=$('#play');pl.scrollTop=pl.scrollHeight;});await sleep(200);
         ok('test modu: yeni sette ve kaydırınca düğme görünür, üstünde başka öğe yok',await p.evaluate(()=>{const b=$('#taBtn'),r=b.getBoundingClientRect();
-          return b.parentNode===document.body&&!b.hidden&&r.bottom<=innerHeight&&document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)===b;}));
+          return b.parentNode===document.body&&!b.hidden&&r.bottom<=innerHeight&&b.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));}));
         await p.evaluate(()=>showHome());await sleep(200);
         ok('test modu: ana ekranda düğme gizli',!(await p.isVisible('#taBtn')));
         await p.evaluate(()=>{const o=$('#bCont');if(o&&!o.disabled)o.click();});await sleep(800);
@@ -866,7 +867,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok(`[${t}] test modu yerel: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
       await p.context().close();
     }
-    // online: admin (A) rakibinin (B) zarını seçer; B'nin ekranında etiket görünür, oda alanı temizlenir
+    // online: admin (A) rakibinin (B) zarını seçer; B'nin ekranında sağ altta sabit 🧪 simgesi, oda alanı temizlenir
     const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_adm:true,tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
     await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
@@ -880,10 +881,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>!G.op&&G.turn===1&&!G.opHold,null,{timeout:12000});
     await sleep(800);
     ok('test modu online: rakipte zar düğmesi yok',!(await B.isVisible('#taBtn')));
+    await B.waitForFunction(()=>{const t=document.getElementById('taIco');return t&&!t.hidden;},null,{timeout:8000}).catch(()=>{});
+    ok('test modu online: rakibin ekranında sağ altta 🧪 simgesi (seçim yapılmadan önce de)',await icoOn(B));
+    ok('test modu online: admin ekranında rakip simgesi yok, kendi düğmesi var',!(await icoOn(A))&&await A.isVisible('#taBtn'));
     await press(A,'#taBtn');await pick(A,'op',2,1);await press(A,'#taSheet .ok');
     await B.waitForFunction(()=>true,null,{timeout:100});await sleep(800);
     await A.evaluate(()=>doRoll(218,200));await sleep(600);
-    ok('test modu online: admin kendi zarını seçmedi, etiket yok',!(await tagOn(A))&&!(await tagOn(B)));
     await A.evaluate(()=>{G.dice=[];endTurnOnline();});
     await B.waitForFunction(()=>G.turn===-1&&!G.rolled,null,{timeout:8000}).catch(()=>{});
     await sleep(400);
@@ -891,10 +894,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.waitForFunction(()=>G.turn===-1&&G.rolled,null,{timeout:8000}).catch(()=>{});
     await sleep(1400);
     ok('test modu online: rakibin zarı adminin seçtiği 2-1',await B.evaluate(()=>G.all.join()==='2,1')&&await A.evaluate(()=>G.all.join()==='2,1'));
-    ok('test modu online: rakip ekranında TEST etiketi',await tagOn(B));
-    ok('test modu online: admin ekranında da TEST etiketi',await tagOn(A));
-    for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await sleep(300);await B.screenshot({path:`${OUT}/${t}-8-test-etiketi-rakip.png`});}
+    ok('test modu online: atışta iki ekranda da bildirim yok, rakipte simge duruyor',await noNote(A)&&await noNote(B)&&await icoOn(B));
+    for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await sleep(300);await B.screenshot({path:`${OUT}/${t}-8-test-simgesi-rakip.png`});}
     ok('test modu online: seçim kullanıldı, odadaki alan temizlendi',!(await A.textContent('#taBtn')).includes('2-1'),await A.textContent('#taBtn'));
+    await press(A,'#taBtn');await press(A,'#taSheet .out');
+    await B.waitForFunction(()=>{const t=document.getElementById('taIco');return !t||t.hidden;},null,{timeout:8000}).catch(()=>{});
+    ok('test modu online: admin moddan çıkınca rakipteki simge kalkar',!(await icoOn(B)));
     ok('test modu online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
