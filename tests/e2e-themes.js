@@ -483,7 +483,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('online testlerde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
-  /* 5c) odalar listesi: kurulan oda listelenir (puan, set, tema), listeden katılma, kurucu rakibi atar, ünvana göre oda teması */
+  /* 5i) odalar listesi: kurulan oda listelenir (puan, set, tema), listeden katılma, kurucu rakibi atar, ünvana göre oda teması */
   {
     const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon',tavla_target:5,tavla_tl:30,tavla_xp:{v:1,xp:5000,g:0,w:0}}});
     const B=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_theme:'sunset',tavla_hm:'on'}});

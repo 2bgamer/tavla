@@ -1372,7 +1372,7 @@ async function createRoom(){
       if(snap.exists)continue;
       const st=newState();
       await ref.set({b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:NAME||''},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
-      lobbyMsg('');enterRoom(code,ref,1);lbSync();return;
+      lobbyMsg('');enterRoom(code,ref,1);return;
     }
     lobbyMsg(i18('mkFail'));
   }catch(e){lobbyMsg(i18('mkFail'));}
@@ -1421,7 +1421,7 @@ let lbBeat=null,lbCode=null;
 function lbEntry(){return {n:NAME||'',av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,th:myTheme(),t:Date.now()};}
 // kurucu, rakip yokken ve set başlamamışken odasını listede tutar
 function lbSync(){
-  const want=!!(DB&&G.mode==='online'&&G.me===1&&G.code&&!G.seats.k&&!G.started);
+  const want=!!(DB&&G.mode==='online'&&G.loaded&&G.me===1&&G.code&&!G.seats.k&&!G.started);
   if(!want){lbStop(lbCode!=null);return;}
   if(lbCode===G.code&&lbBeat)return;
   lbCode=G.code;const put=()=>{if(lbCode)DB.doc('lobby/'+lbCode).set(lbEntry()).catch(()=>{});};
@@ -3084,7 +3084,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281200';
+const APP_VER='202610281300';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
