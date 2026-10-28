@@ -3,7 +3,9 @@
    - Şikayet: rakibin mesajına ya da adının yanındaki bayrağa dokununca; reports/<id> = {by, who, room, nm, text, t} yazılır
      (oyuncular okuyamaz, Firebase konsolundan incelenir).
    - Engelleme: engellenen oyuncunun (uid) mesajları gizlenir, odası listede görünmez, odana oturursa set başlamadan çıkarılır.
-     Liste bu cihazda (tavla_block = {uid: ad}); Ayarlar'dan kaldırılabilir. */
+     Liste bu cihazda (tavla_block = {uid: ad}); Ayarlar'dan kaldırılabilir.
+   - Onay: ilk açılışta ve online'a girmeden önce bir kez "13 yaşından büyüğüm, Kullanım Şartları ve Gizlilik Politikası'nı
+     kabul ediyorum" (tavla_terms = sürüm). Ayarlar'ın altında iki belgeye bağlantı. */
 (function(){
   'use strict';
   // kelimenin başında aranan kökler (yanlış eşleşmesi olmayanlar) ve tam kelime olarak aranan kısa sözcükler.
@@ -26,12 +28,32 @@
     if(i18ok||typeof I18N==='undefined')return;i18ok=true;
     Object.assign(I18N.tr,{mdT:'{n} hakkında',mdRep:'Şikayet et',mdBlk:'Engelle',mdUnb:'Engeli kaldır',mdRepQ:'Ne oldu?',mdR1:'Küfür ya da hakaret',mdR2:'Taciz ya da tehdit',mdR3:'Uygunsuz ad',mdR4:'Spam ya da hile',
       mdRepOk:'Şikayetin alındı. 24 saat içinde inceleyip gerekirse oyuncuyu engelleyeceğiz.',mdBlkQ:'{n} engellensin mi?',mdBlkP:'Mesajlarını görmezsin, odası listende çıkmaz, odana giremez.',
-      mdBlkOk:'{n} engellendi.',mdList:'Engellenen oyuncular',mdNone:'Engellediğin oyuncu yok.',mdName:'Bu ad uygun değil, başka bir ad seç.',mdMsg:'Mesaj: “{m}”',mdFlag:'Şikayet et ya da engelle'});
+      mdBlkOk:'{n} engellendi.',mdList:'Engellenen oyuncular',mdNone:'Engellediğin oyuncu yok.',mdName:'Bu ad uygun değil, başka bir ad seç.',mdMsg:'Mesaj: “{m}”',mdFlag:'Şikayet et ya da engelle',
+      tmT:'Tavla Sultanı\'na hoş geldin',tmP:'Online oyunda başka oyuncularla eşleşir ve sohbet edersin. Küfür, hakaret ve tacize izin yok; şikayetleri 24 saat içinde inceliyoruz.',
+      tmA:'Devam etmek için 13 yaşından büyük olmalı ve {t} ile {p}\'nı kabul etmelisin.',tmTerms:'Kullanım Şartları',tmPriv:'Gizlilik Politikası',tmOk:'13 yaşından büyüğüm, kabul ediyorum'});
     Object.assign(I18N.en,{mdT:'About {n}',mdRep:'Report',mdBlk:'Block',mdUnb:'Unblock',mdRepQ:'What happened?',mdR1:'Swearing or insults',mdR2:'Harassment or threats',mdR3:'Inappropriate name',mdR4:'Spam or cheating',
       mdRepOk:'Thanks, we got your report. We review reports within 24 hours and block the player if needed.',mdBlkQ:'Block {n}?',mdBlkP:'You won\'t see their messages, their room won\'t appear in your list and they can\'t join your room.',
-      mdBlkOk:'{n} is blocked.',mdList:'Blocked players',mdNone:'You haven\'t blocked anyone.',mdName:'This name isn\'t allowed, pick another one.',mdMsg:'Message: “{m}”',mdFlag:'Report or block'});
+      mdBlkOk:'{n} is blocked.',mdList:'Blocked players',mdNone:'You haven\'t blocked anyone.',mdName:'This name isn\'t allowed, pick another one.',mdMsg:'Message: “{m}”',mdFlag:'Report or block',
+      tmT:'Welcome to Tavla Sultanı',tmP:'Online you get matched and chat with other players. Swearing, insults and harassment aren\'t allowed; we review reports within 24 hours.',
+      tmA:'To continue you must be over 13 and accept the {t} and {p}.',tmTerms:'Terms of Use',tmPriv:'Privacy Policy',tmOk:'I\'m over 13 and I accept'});
   }
   const t=(k,p)=>{addI18n();return i18(k,p);};
+
+  /* ---------- onay: 13 yaş, kullanım şartları, gizlilik ---------- */
+  const TERMS_V=1,trPage=()=>/^tr/.test(typeof LANG==='string'?LANG:'tr');
+  const docURL=f=>f+'.html'+(trPage()?'':'#en');
+  const agreed=()=>(+lsGet('tavla_terms',0)||0)>=TERMS_V;
+  let pend=null;
+  // onay yoksa pencere açılır, kabul edilince bekleyen işler (ad sorusu, odaya girme) sırayla yapılır
+  function consent(next){
+    if(agreed()){if(next)next();return;}
+    if(pend){if(next)pend.push(next);return;}
+    pend=next?[next]:[];
+    const a=`<a href="${docURL('sartlar')}" target="_blank" rel="noopener">${escH(t('tmTerms'))}</a>`,p=`<a href="${docURL('gizlilik')}" target="_blank" rel="noopener">${escH(t('tmPriv'))}</a>`;
+    showOverlay(`<h2>${escH(t('tmT'))}</h2><p>${escH(t('tmP'))}</p><p class="tmA">${escH(t('tmA',{t:'\u0001',p:'\u0002'})).replace('\u0001',a).replace('\u0002',p)}</p><button class="primary" id="ovOk">${escH(t('tmOk'))}</button>`,()=>{
+      lsSet('tavla_terms',TERMS_V);const q=pend||[];pend=null;q.forEach(f=>{try{f();}catch(e){}});
+    });
+  }
 
   /* ---------- engelleme ---------- */
   const list=()=>{const v=lsGet('tavla_block',{});return v&&typeof v==='object'?v:{};};
@@ -108,15 +130,21 @@
 .mdQ{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .mdWhy{width:100%}
 #mdSet[hidden]{display:none}#mdSet .mdB{display:flex;flex-direction:column;gap:6px}
+.tmA{font-size:14px}.tmA a,.tmL a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.tmL{display:flex;justify-content:center;gap:16px;font-size:13px;margin:6px 0 2px}
 .mdRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px}.mdRow button{min-height:32px;padding:0 12px;font-size:13px}`;
     document.head.appendChild(css);
     const ac=$('#acSet');
     if(ac&&!$('#mdSet')){const d=document.createElement('div');d.className='opts';d.id='mdSet';d.hidden=true;d.innerHTML='<div class="og"><span class="ol"></span><div class="mdB"></div></div>';ac.after(d);}
     paint();
+    // Ayarlar'ın en altında belgelere bağlantı
+    const sh=$('#setDrawer .sheet');
+    if(sh&&!$('#tmLinks')){const d=document.createElement('p');d.id='tmLinks';d.className='tmL';
+      d.innerHTML=`<a href="${docURL('sartlar')}" target="_blank" rel="noopener">${escH(t('tmTerms'))}</a><a href="${docURL('gizlilik')}" target="_blank" rel="noopener">${escH(t('tmPriv'))}</a>`;sh.appendChild(d);}
     // online'da rakibin adına ya da avatarına dokununca da şikayet et / engelle
     const op=document.querySelector('#play .ap.op');
     if(op){op.style.cursor='pointer';op.addEventListener('click',()=>{
       if(G.mode!=='online'||!G.seats)return;const u=G.seats[G.me===1?'k':'w'];if(u)sheet(u,oppName(),'');});}
   }
-  window.MOD={filter,bad,blocked,block,unblock,report,sheet,guard,paint,init};
+  window.MOD={filter,bad,blocked,block,unblock,report,sheet,guard,paint,init,agreed,consent};
 })();

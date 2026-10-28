@@ -24,6 +24,7 @@ async function mkPage(b,opts={}){
   await ctx.addInitScript(o=>{
     if(!sessionStorage.getItem('init')){sessionStorage.setItem('init','1');
       localStorage.setItem('tavla_name',JSON.stringify(o.name||'BURAK'));localStorage.setItem('tavla_lang','"tr"');
+      if(!o.noTerms)localStorage.setItem('tavla_terms','1');
       for(const [k,v] of Object.entries(o.ls||{}))localStorage.setItem(k,JSON.stringify(v));}
     window.__DBURL=o.db;if(o.dbns)window.__DBNS=o.dbns;
     if(!o.guest)window.__keepName=true; // misafir adları GUEST… olur; eski testler verilen adla (BURAK, AHMET) açılır
@@ -34,7 +35,7 @@ async function mkPage(b,opts={}){
     window.__log=[];window.__dice=[];
     const AC0=window.AudioContext||window.webkitAudioContext;if(AC0){const n=AC0.prototype.createOscillator,g=AC0.prototype.createGain;window.__osc=0;window.__gains=[];
       AC0.prototype.createOscillator=function(){window.__osc++;return n.call(this);};AC0.prototype.createGain=function(){const x=g.call(this);window.__gains.push(x);if(window.__gains.length>400)window.__gains.shift();return x;};}
-  },{name:opts.name,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:FBM,realFb:opts.realFb,dbns:DBNS});
+  },{name:opts.name,noTerms:opts.noTerms,ls:opts.ls,db:DB,guest:opts.guest,acct:opts.acct,fbm:FBM,realFb:opts.realFb,dbns:DBNS});
   return p;
 }
 async function hook(p){await p.evaluate(()=>{const m=moment;window.moment=function(k,d,key){const r=m(k,d,key);__log.push(k+':'+r);return r;};const r=Math.random;Math.random=()=>__dice.length?(__dice.shift()-1)/6+.01:r();});}
@@ -550,7 +551,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.goto(URL);await sleep(400);
     await dbf(DB+'/games/4321.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({seats:{w:'x',k:'y'},started:true})});
     await A.evaluate(async()=>{const r=Math.random;Math.random=()=>(4321-1000)/9000+1e-9;try{await createRoom();}finally{Math.random=r;}});await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    {const old=Date.now()-8*864e5;await dbf(DB+'/games/5555.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ct:old,seats:{w:'x',k:'y'},msgs:{m1:{from:'x',t:old,text:'eski'}}})});
+      await dbf(DB+'/gix/5555.json'+AQ,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(old)});}
     ok('eski oda (ct yok): aynı kod temizlenip yeni oda kuruldu',await A.evaluate(()=>G.code==='4321'&&G.me===1&&!G.seats.k),await A.evaluate(()=>G.code));
+    await sleep(3800);
+    ok('7 günden eski oda ve sohbeti dizinden bulunup silindi',await (await dbf(DB+'/games/5555.json'+AQ)).json()===null&&await (await dbf(DB+'/gix/5555.json'+AQ)).json()===null);
+    ok('yeni oda dizinde',typeof (await (await dbf(DB+'/gix/4321.json'+AQ)).json())==='number');
     ok('veritabanı istekleri kimlik jetonu taşıyor',urls.some(u=>/games\/4321\.json\?(ns=[\w-]+&)?auth=ey/.test(u)),urls.slice(0,4).join(' '));
     await A.evaluate(()=>showHome());await sleep(200);
     ok('kimlik testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
@@ -623,6 +629,28 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await A.click('#mdSet .mdRow button');await sleep(200);
     ok('engeli kaldır: liste boşaldı',await A.evaluate(()=>$('#mdSet').hidden&&!Object.keys(lsGet('tavla_block',{})).length));
     ok('sohbet güvenliği testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
+    await A.context().close();await B.context().close();
+  }
+  /* 5a4) onay: ilk açılışta 13 yaş + kullanım şartları + gizlilik; davetle gelen de önce onaylar */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}});await A.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const inv=await A.evaluate(()=>inviteURL(G.code));
+    const B=await mkPage(b,{guest:true,noTerms:true,ls:{tavla_snd:'off',tavla_name:''}});
+    await B.goto(inv);await sleep(700);
+    ok('onay: ilk açılışta 13 yaş ve şartlar soruluyor, odaya henüz girilmedi',await B.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('13 yaşından büyüğüm')&&!!$('#ovBox a[href="sartlar.html"]')&&!!$('#ovBox a[href="gizlilik.html"]')&&!G.mode));
+    for(const t of THEMES){await B.evaluate(t=>applyTheme(t,false),t);await sleep(250);await B.screenshot({path:`${OUT}/${t}-13-onay.png`});}
+    await B.click('#ovOk');await sleep(500);
+    ok('onay: kabul edilince kaydedildi ve davet akışı sürdü',await B.evaluate(()=>lsGet('tavla_terms',0)===1&&!$('#overlay').hidden&&!!document.querySelector('#ovBox [data-ac=g]')));
+    await B.click('#ovOk');
+    await B.waitForFunction(()=>G.mode==='online'&&G.loaded,null,{timeout:8000}).catch(()=>{});
+    ok('onay: sonra odaya oturdu',await B.evaluate(()=>G.mode==='online'&&G.me===-1));
+    await B.evaluate(()=>showHome());await B.evaluate(()=>$('#bSet').click());await sleep(400);
+    ok('ayarlarda kullanım şartları ve gizlilik bağlantıları',await B.evaluate(()=>!!$('#tmLinks a[href="sartlar.html"]')&&!!$('#tmLinks a[href="gizlilik.html"]')));
+    for(const p of ['sartlar.html','gizlilik.html']){const q=await B.context().newPage();const r=await q.goto(URL.replace('index.html',p));
+      ok('belge açılıyor: '+p,r.ok()&&(await q.textContent('body')).includes('13 yaşından')&&(await q.textContent('body')).includes('2B Games'));
+      await q.setViewportSize({width:390,height:844});for(const t of ['tr']){await q.screenshot({path:`${OUT}/belge-${p.replace('.html','')}.png`});}await q.close();}
+    ok('onay testinde sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */

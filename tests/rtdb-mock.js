@@ -6,7 +6,10 @@ const seg=p=>p.replace(/\.json$/,'').split('/').filter(Boolean).map(decodeURICom
 function get(path){let c=root;for(const k of path){if(c==null||typeof c!=='object')return null;c=c[k];}return c===undefined?null:c;}
 function set(path,v){if(!path.length)return;let c=root;for(let i=0;i<path.length-1;i++){if(!c[path[i]]||typeof c[path[i]]!=='object')c[path[i]]={};c=c[path[i]];}
   if(v===null||v===undefined)delete c[path[path.length-1]];else c[path[path.length-1]]=v;}
-function q(v,u){const lt=u.searchParams.get('limitToLast');if(!lt||!v||typeof v!=='object')return v;const ks=Object.keys(v).sort().slice(-(+lt));const o={};ks.forEach(k=>o[k]=v[k]);return o;}
+function q(v,u){
+  if(u.searchParams.get('orderBy')==='"$value"'&&v&&typeof v==='object'){const ea=u.searchParams.get('endAt'),lf=+u.searchParams.get('limitToFirst')||1e9;
+    const ks=Object.keys(v).filter(k=>ea==null||v[k]<=+ea).sort((a,b)=>v[a]-v[b]).slice(0,lf);const o={};ks.forEach(k=>o[k]=v[k]);return o;}
+  const lt=u.searchParams.get('limitToLast');if(!lt||!v||typeof v!=='object')return v;const ks=Object.keys(v).sort().slice(-(+lt));const o={};ks.forEach(k=>o[k]=v[k]);return o;}
 function notify(){for(const s of subs){const v=q(get(s.path),s.u);const j=JSON.stringify(v);if(j!==s.last){s.last=j;s.res.write(`event: put\ndata: ${JSON.stringify({path:'/',data:v})}\n\n`);}}}
 let n=0;
 http.createServer((req,res)=>{

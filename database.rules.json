@@ -66,6 +66,14 @@
         ".write": "auth != null && !data.exists()",
         ".validate": "newData.hasChildren(['by', 'who', 't', 'why']) && newData.child('by').val() === auth.uid && newData.child('who').isString() && newData.child('who').val().length <= 128 && newData.child('t').isNumber() && newData.child('why').isString() && newData.child('why').val().length <= 8 && (!newData.child('text').exists() || (newData.child('text').isString() && newData.child('text').val().length <= 200)) && (!newData.child('nm').exists() || (newData.child('nm').isString() && newData.child('nm').val().length <= 14)) && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 4))"
       }
+    },
+    "gix": {
+      ".read": true,
+      ".indexOn": ".value",
+      "$code": {
+        ".write": "auth != null && ((newData.exists() && newData.val() === root.child('games').child($code).child('ct').val()) || (!newData.exists() && (!root.child('games').child($code).exists() || data.val() < now - 604800000)))",
+        ".validate": "newData.isNumber() && $code.matches(/^[0-9]{4}$/)"
+      }
     }
   }
 }

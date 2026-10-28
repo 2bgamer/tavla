@@ -8,6 +8,7 @@ async function t(name,p){try{await p;res.push('PASS  '+name);}catch(e){fails++;r
 const room=(w,extra)=>Object.assign({ct:Date.now(),seats:{w},nm:{w:'AHMET'},turn:1,started:false,rev:0},extra||{});
 (async()=>{
   const env=await initializeTestEnvironment({projectId:'demo-tavla',database:{rules:fs.readFileSync(__dirname+'/../database.rules.json','utf8')}});
+  await env.clearDatabase();
   const anon=uid=>env.authenticatedContext(uid,{firebase:{sign_in_provider:'anonymous'}}).database();
   const acct=uid=>env.authenticatedContext(uid,{firebase:{sign_in_provider:'google.com'}}).database();
   const A=anon('a'),B=anon('b'),C=anon('c'),X=env.unauthenticatedContext().database();
@@ -78,6 +79,15 @@ const room=(w,extra)=>Object.assign({ct:Date.now(),seats:{w},nm:{w:'AHMET'},turn
   await t('ad sahibi kim herkes görür (tekil ad kontrolü)',assertSucceeds(get(ref(X,'names/AHMET'))));
   await t('ad listesinin tamamı okunamaz',assertFails(get(ref(X,'names'))));
   await t('hesap adını bırakır',assertSucceeds(remove(ref(G1,'names/AHMET'))));
+
+  /* eski oda dizini (gix) */
+  const r4=room('a'),ct4=r4.ct;await seed('games/4000',r4);
+  await t('kurucu odasını dizine ekler (ct ile aynı)',assertSucceeds(set(ref(A,'gix/4000'),ct4)));
+  await t('dizine sahte zaman yazılamaz',assertFails(set(ref(A,'gix/4000'),1)));
+  await t('dizin herkese açık',assertSucceeds(get(ref(X,'gix'))));
+  await t('yeni odanın dizin kaydı silinemez',assertFails(remove(ref(C,'gix/4000'))));
+  await seed('gix/4001',Date.now()-8*864e5);
+  await t('7 günden eski dizin kaydı silinebilir',assertSucceeds(remove(ref(C,'gix/4001'))));
 
   /* şikayetler */
   const rp=(by,extra)=>Object.assign({by,who:'b',room:'1000',nm:'BURAK',text:'kötü söz',why:'mdR1',t:Date.now()},extra||{});

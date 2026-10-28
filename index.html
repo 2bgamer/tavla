@@ -1379,10 +1379,19 @@ async function codeFree(ref,code){
   if(snap&&!snap.exists)return true;
   let ct;try{ct=(await DB.doc('games/'+code+'/ct').get()).data();}catch(e){return false;}
   if(ct!=null&&+ct>Date.now()-ROOM_TTL)return false;
-  try{await ref.set(null);return true;}catch(e){return false;}
+  try{await ref.set(null);DB.doc('gix/'+code).set(null).catch(()=>{});return true;}catch(e){return false;}
+}
+// gix/<kod> = oluşturma zamanı: 7 günden eski odalar (sohbetiyle) bu dizinden bulunup silinir (gizlilik politikası: en fazla 7 gün)
+async function cleanOld(){
+  if(!DB||!DB.query)return;
+  let old;try{old=await DB.query('gix','?orderBy='+encodeURIComponent('"$value"')+'&endAt='+(Date.now()-ROOM_TTL)+'&limitToFirst=20');}catch(e){return;}
+  for(const c of Object.keys(old||{})){if(!/^\d{4}$/.test(c))continue;
+    try{await DB.doc('games/'+c).set(null);}catch(e){}
+    try{await DB.doc('gix/'+c).set(null);}catch(e){}}
 }
 async function createRoom(){
   if(!DB)return;
+  if(window.MOD&&!MOD.agreed()){MOD.consent(createRoom);return;} // online ve sohbet: önce onay
   lobbyMsg(i18('mkRoom'));
   try{
     await idReady();
@@ -1390,8 +1399,9 @@ async function createRoom(){
       const code=String(1000+Math.floor(Math.random()*9000));
       const ref=DB.doc('games/'+code);
       if(!await codeFree(ref,code))continue;
-      const st=newState();
-      await ref.set({ct:Date.now(),b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:cleanName(NAME)},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
+      const st=newState(),ct=Date.now();
+      await ref.set({ct,b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:cleanName(NAME)},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
+      DB.doc('gix/'+code).set(ct).catch(()=>{});setTimeout(cleanOld,3000);
       lobbyMsg('');enterRoom(code,ref,1);return;
     }
     lobbyMsg(i18('mkFail'));
@@ -1399,6 +1409,7 @@ async function createRoom(){
 }
 async function joinRoom(code){
   if(!DB)return;
+  if(window.MOD&&!MOD.agreed()){MOD.consent(()=>joinRoom(code));return;}
   if(!/^\d{4}$/.test(code)){lobbyMsg(i18('code4'));return;}
   lobbyMsg(i18('joining'));
   try{
@@ -3022,7 +3033,9 @@ $('#bName').onclick=()=>askName(false);
 if(window.ACCT)ACCT.init();
 if(window.MOD)MOD.init();
 refreshHome();
-if(!NAME)askName(true);
+// ilk açılışta önce 13 yaş ve şartlar onayı, sonra ad/giriş (davetle ya da kaldığı odaya girme de onayı bekler)
+if(window.MOD&&!MOD.agreed())MOD.consent(()=>{if(!NAME)askName(true);});
+else if(!NAME)askName(true);
 /* Firebase Realtime Database (REST + SSE), SDK'sız. Claude db arayüzüyle aynı: doc(path).get/set/update/onSnapshot, collection(name).add/orderBy/limit/onSnapshot */
 function makeRTDB(base){
   base=base.replace(/\/+$/,'');
@@ -3115,7 +3128,9 @@ function makeRTDB(base){
     };
     return c;
   }
-  return{doc:mkDoc,collection:mkCol};
+  // sorgulu okuma (ör. orderBy="$value"&endAt=…)
+  const query=(path,qs)=>req('GET',path,undefined,qs);
+  return{doc:mkDoc,collection:mkCol,query};
 }
 
 if(window.claude&&window.claude.use){
@@ -3123,7 +3138,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281900';
+const APP_VER='202610282000';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
