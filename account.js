@@ -30,7 +30,7 @@
       acOk:'Hesabın bağlandı',acOkP:'Puanın ve profilin artık hesabında saklanıyor; başka telefondan girince de devam eder.',
       acOutQ:'Çıkış yapılsın mı?',acOutP:'Puanın hesabında saklı kalır. Bu cihaz misafir olarak baştan başlar.',
       acErr:'Giriş yapılamadı',acErrNet:'İnternet bağlantını kontrol edip tekrar dene.',acErrMail:'Geçerli bir e-posta adresi yaz.',
-      acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç',acTaken:'Bu ad başka bir oyuncuya ait. Başka bir ad seç.',acNoGuest:'GUEST ile başlayan adlar misafirlere ayrılmış.',acNeed:'Masada görünecek bir ad yaz.',acProf:'Profil',acGuestF:'Misafir olarak {n} adıyla oynarsın. Kendi adını seçmek için giriş yap.',acGuestP:'Şu an misafir olarak {n} adıyla oynuyorsun. Kendi adını seçmek için giriş yap.',acPlayG:'Misafir olarak oyna'});
+      acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acErrRedir:'Google girişi bu tarayıcıda tamamlanamadı. Oyunu Safari ya da Chrome\'da açıp tekrar dene ya da E-posta ile devam et.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç',acTaken:'Bu ad başka bir oyuncuya ait. Başka bir ad seç.',acNoGuest:'GUEST ile başlayan adlar misafirlere ayrılmış.',acNeed:'Masada görünecek bir ad yaz.',acProf:'Profil',acGuestF:'Misafir olarak {n} adıyla oynarsın. Kendi adını seçmek için giriş yap.',acGuestP:'Şu an misafir olarak {n} adıyla oynuyorsun. Kendi adını seçmek için giriş yap.',acPlayG:'Misafir olarak oyna'});
     Object.assign(I18N.en,{acG:'Continue with Google',acM:'Continue with email',acOr:'or as a guest',acT:'Account',
       acGuest:'Guest · your points live on this device only',acIn:'{e}',acVia:'Signed in with {p}',acOut:'Sign out',acHome:'Sign in to pick a name and keep your points',
       acMT:'Sign in with email',acMP:'We\'ll send you a sign-in link. No password needed.',acMPh:'you@mail.com',acSend:'Send link',
@@ -39,7 +39,7 @@
       acOk:'Account connected',acOkP:'Your points and profile are now saved to your account and follow you to other phones.',
       acOutQ:'Sign out?',acOutP:'Your points stay in your account. This device starts over as a guest.',
       acErr:'Couldn\'t sign in',acErrNet:'Check your connection and try again.',acErrMail:'Enter a valid email address.',
-      acErrLink:'This link has expired or was already used. Request a new one.',acErrX:'Something went wrong, try again later.',acSync:'Syncing account…',cancel2:'Cancel',acTaken:'This name belongs to another player. Pick another one.',acNoGuest:'Names starting with GUEST are reserved for guests.',acNeed:'Type the name shown at the table.',acProf:'Profile',acGuestF:'As a guest you play as {n}. Sign in to pick your own name.',acGuestP:'You\'re playing as guest {n}. Sign in to pick your own name.',acPlayG:'Play as guest'});
+      acErrLink:'This link has expired or was already used. Request a new one.',acErrX:'Something went wrong, try again later.',acErrRedir:'Google sign-in couldn\'t finish in this browser. Open the game in Safari or Chrome and try again, or continue with email.',acSync:'Syncing account…',cancel2:'Cancel',acTaken:'This name belongs to another player. Pick another one.',acNoGuest:'Names starting with GUEST are reserved for guests.',acNeed:'Type the name shown at the table.',acProf:'Profile',acGuestF:'As a guest you play as {n}. Sign in to pick your own name.',acGuestP:'You\'re playing as guest {n}. Sign in to pick your own name.',acPlayG:'Play as guest'});
   }
   const t=(k,p)=>{addI18n();return i18(k,p);};
 
@@ -50,7 +50,9 @@
     if(!loading)loading=(window.firebase&&window.firebase.auth?Promise.resolve():script('assets/fb/firebase-app-compat.js').then(()=>script('assets/fb/firebase-auth-compat.js'))).then(()=>{
       const fb=window.firebase;if(!fb.apps||!fb.apps.length)fb.initializeApp(CFG);
       auth=fb.auth();auth.onAuthStateChanged(onUser);
-      if(auth.getRedirectResult)auth.getRedirectResult().then(r=>{if(r&&r.user)fresh=true;}).catch(err);
+      // Google sayfasından dönüş (ayrı pencere açılamadıysa): sonuç gelmezse tarayıcı girişi tamamlayamamıştır
+      const rd=ls('tavla_redir',0);lsw('tavla_redir',null);
+      if(auth.getRedirectResult)auth.getRedirectResult().then(r=>{if(r&&r.user)fresh=true;else if(rd&&Date.now()-rd<6e5&&!auth.currentUser)err({code:'tavla/redirect'});}).catch(err);
       return auth;
     }).catch(e=>{loading=null;throw e;});
     return loading;
@@ -180,16 +182,17 @@
     const c=(e&&e.code)||'';
     if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'||c==='auth/user-cancelled')return;
     const m=c==='auth/network-request-failed'||/^load /.test((e&&e.message)||'')?'acErrNet':c==='auth/invalid-email'?'acErrMail':
-      (c==='auth/invalid-action-code'||c==='auth/expired-action-code')?'acErrLink':'acErrX';
+      (c==='auth/invalid-action-code'||c==='auth/expired-action-code')?'acErrLink':c==='tavla/redirect'?'acErrRedir':'acErrX';
     showOverlay(`<h2>${esc(t('acErr'))}</h2><p>${esc(t(m))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`);
   }
   async function google(){
     try{
-      const a=await load(),pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});
+      // SDK önceden yüklüyse pencere dokunuşla aynı anda açılır (Safari aradaki beklemeyle pencereyi engelliyor)
+      const a=auth||await load(),pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});
       fresh=true;
       try{await a.signInWithPopup(pr);}
       catch(e){
-        if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){await a.signInWithRedirect(pr);return;}
+        if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){lsw('tavla_redir',Date.now());await a.signInWithRedirect(pr);return;}
         throw e;
       }
     }catch(e){fresh=false;err(e);}
@@ -282,7 +285,9 @@
     if(NAME&&!signed()&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}
     paint();
     if(linkIn())finishLink();
-    else if(ls('tavla_uid',null))load().catch(()=>{});
+    else if(ls('tavla_uid',null)||ls('tavla_redir',0))load().catch(()=>{});
+    // misafirde SDK'yı boşta önceden yükle: Google düğmesine basınca pencere hemen açılabilsin
+    else setTimeout(()=>load().catch(()=>{}),1500);
   }
   window.ACCT={bind,paint,init,guardName,askGuest,signed,nk,
     // index.html lsSet kancası: profil değişince hesaba yaz

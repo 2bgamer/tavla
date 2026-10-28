@@ -1018,6 +1018,16 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
     ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
     await p.context().close();
+    // Google penceresi dokunuşla aynı anda açılır (SDK önceden yüklü); pencere engellenirse yönlendirme, dönüşte sonuç yoksa uyarı
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'r');
+    await p.goto(URL);await sleep(2000);
+    ok('google: pencere dokunuşla aynı anda açılır',await p.evaluate(()=>{const b=document.querySelector('#ovBox [data-ac=g]');window.__mockPopupBlocked=true;b.click();return window.__popupCalled===true;}));
+    await sleep(300);
+    ok('google: pencere engellenirse Google sayfasına yönlendirir',await p.evaluate(()=>window.__redirected===true&&!!localStorage.getItem('tavla_redir')));
+    await p.reload();await sleep(1000);
+    ok('google: dönüşte giriş yoksa uyarı gösterilir',await p.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('tamamlanamadı')&&!localStorage.getItem('tavla_redir')));
+    ok('google: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
     // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
     p=await acPage({ls:{tavla_snd:'off'}});
     await p.goto(URL);await sleep(600);await press(p,'#bSet');await sleep(300);await press(p,'#acSet [data-ac=m]');await sleep(300);
