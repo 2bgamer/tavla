@@ -896,7 +896,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 9) puan (XP) ve level: yerel set sonu, tekrar yazmama, level atlama, online rakip leveli */
   {
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_lvl:'hard',tavla_xp:{v:1,xp:495,g:0,w:0}}});await p.goto(URL);await sleep(400);
-    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHome').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHome').textContent+' '+$('#xpTxt').textContent));
+    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHomeAv').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHomeAv').textContent+' '+$('#xpTxt').textContent));
     await p.click('#bGo');await sleep(800);
     ok('xp: oyunda kendi level rozetim',await p.evaluate(()=>$('#lvMe').textContent==='Level 5'&&$('#lvOp').textContent===''));
     await p.evaluate(()=>{G.st.off[0]=15;gameOver(1);});await sleep(1500);
