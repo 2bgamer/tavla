@@ -166,6 +166,7 @@ button.primary{background:var(--pri-bg)}
 .xpt{flex:none;opacity:.8;font-variant-numeric:tabular-nums}
 .xpres{margin:6px 0 10px}
 .xpres .xpg{display:block;font-size:18px;font-weight:900;color:var(--accent)}
+.xpres .xpg.neg{color:#ef4444}
 .xpres .lvup{margin:4px 0 0;font-weight:800}
 #xpRow{flex-wrap:wrap;row-gap:3px}
 #hello .avh{position:relative;flex:none;display:grid;place-items:center;margin-bottom:6px}
