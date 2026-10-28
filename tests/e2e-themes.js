@@ -495,7 +495,9 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     const C=await mkPage(b,{name:'CEMİL',ls:{tavla_snd:'off',tavla_theme:'arcade',tavla_hm:'on',tavla_xp:{v:1,xp:20000,g:0,w:0}}});
     await A.goto(URL);await B.goto(URL);await C.goto(URL);await sleep(600);
     await press(B,'#mOnline');await press(C,'#mOnline');await sleep(300);
-    ok('odalar: Arkadaşınla seçiliyken odalar bölümü görünüyor',await B.evaluate(()=>!$('#optOn').hidden&&!!$('#rmList')&&$('#rmList').offsetHeight>0));
+    ok('sekmeler: Seçenekler kutusunda Seçenekler · Odalar · Skorlar, Seçenekler açık',await B.evaluate(()=>{const t=[...$('#optOn .htabs').querySelectorAll('button')];return t.length===3&&t[0].classList.contains('on')&&t.map(x=>x.textContent.trim()).join('|')==='Seçenekler|Odalar|Skorlar'&&!$('#optOn').hidden&&$('#optRm').hidden&&$('#optSc').hidden;}));
+    await press(B,'#optOn [data-htab="rm"]');await C.evaluate(()=>SKOR.setTab('rm'));await sleep(300);
+    ok('odalar: Odalar sekmesinde odalar bölümü görünüyor',await B.evaluate(()=>$('#optOn').hidden&&!$('#optRm').hidden&&!!$('#rmList')&&$('#rmList').offsetHeight>0&&$('#codeIn').offsetHeight>0));
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code&&G.loaded,null,{timeout:6000});
     const code=await A.evaluate(()=>G.code),row=`#rmList .rmj[data-c="${code}"]`;
     const listed=await B.waitForSelector(row,{timeout:8000}).then(()=>true,()=>false);
@@ -1277,7 +1279,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('rakip zar: seçilince saklanır, açıklama görünür, hamle süresi değişmez',await A.evaluate(()=>RZM===1&&lsGet('tavla_rzm',0)===1&&!$('#rzNote').hidden&&TLIM===lsGet('tavla_tl',20)));
     for(const t of THEMES){await A.evaluate(t=>{applyTheme(t,false);$('[data-grp=rzm]').scrollIntoView({block:'center'});},t);await sleep(250);await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-secenek.png`});}
     await A.evaluate(()=>applyTheme('poker',false));
-    await press(B,'#mOnline');await sleep(200);
+    await press(B,'#mOnline');await B.evaluate(()=>SKOR.setTab('rm'));await sleep(200);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code&&G.loaded,null,{timeout:6000});
     const code=await A.evaluate(()=>G.code);
     ok('rakip zar: oda rz:1 ile kuruldu',await A.evaluate(()=>G.rz===1));
@@ -1337,6 +1339,43 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     for(const t of THEMES){await A.evaluate(k=>applyTheme(k,false),t);await sleep(200);await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-sonuc.png`});}
     ok('rakip zar: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
+  }
+  /* 12) Skorlar sekmesi: ülkede ve dünyada en iyi 20, en altta oyuncunun kendi sırası; girişli oyuncu listeye yazılır, misafir tahmini sırasını görür */
+  {
+    const put=(p,v)=>dbf(`${DB}/${p}.json${AQ}`,{method:'PUT',body:JSON.stringify(v)});
+    const w={},tr={};
+    for(let i=0;i<24;i++){const e={n:'OYUNCU'+(i+1),av:i%8,xp:1000*(i+1),t:1};tr['t'+i]=e;w['t'+i]=Object.assign({c:'TR'},e);}
+    for(let i=0;i<6;i++)w['d'+i]={n:'SPIELER'+(i+1),av:1,xp:50000+i,t:1,c:'DE'};
+    await put('lb',{w,c:{TR:tr}});
+    const uid='skor'+Date.now();
+    await put('users/'+uid,{n:'SKORCU',av:2,xp:{v:1,xp:5500,g:3,w:2},t:Date.now()+6e5});await put('names/SKORCU',uid);
+    const p=await mkPage(b,{name:'SKORCU',acct:uid,ls:{tavla_snd:'off',tavla_theme:'poker',tavla_cc:'TR',tavla_xp:{v:1,xp:5500,g:3,w:2}}});
+    await p.goto(URL);await sleep(1500);
+    await press(p,'#optCpu [data-htab="sc"]');
+    await p.waitForFunction(()=>document.querySelectorAll('#scList .scw').length>0&&$('#scMe .scw'),null,{timeout:8000}).catch(()=>{});
+    ok('skorlar: Skorlar sekmesi açıldı, ülke (Türkiye) seçili',await p.evaluate(()=>!$('#optSc').hidden&&$('#optCpu').hidden&&$('#optSc [data-sc="c"]').classList.contains('on')&&$('#optSc [data-sc="c"]').textContent.includes('Türkiye')));
+    const lbw=await (await dbf(`${DB}/lb/w/${uid}.json${AQ}`)).json(),lbc=await (await dbf(`${DB}/lb/c/TR/${uid}.json${AQ}`)).json();
+    ok('skorlar: girişli oyuncu dünya ve ülke listesine yazıldı',!!lbw&&lbw.n==='SKORCU'&&lbw.xp===5500&&lbw.c==='TR'&&!!lbc&&lbc.xp===5500,JSON.stringify([lbw,lbc]));
+    await p.evaluate(()=>SKOR.load(true));await sleep(800);
+    const L=await p.evaluate(()=>[...document.querySelectorAll('#scList .scw')].map(r=>r.querySelector('.rmi b').textContent+':'+r.querySelector('.scp').textContent));
+    ok('skorlar: ülkede en iyi 20, puana göre sıralı',L.length===20&&L[0]==='OYUNCU24:24.000'&&L[19]==='SKORCU:5.500'&&!L.some(x=>x.startsWith('SPIELER')),L.slice(0,3).join(' ')+' … '+L[19]);
+    ok('skorlar: en altta oyuncunun sırası parlak (Türkiye 20.)',await p.evaluate(()=>{const m=$('#scMe .scw');return !!m&&m.querySelector('.scn').textContent.startsWith('20.')&&m.textContent.includes('SKORCU')&&getComputedStyle(m).boxShadow!=='none';}),await p.evaluate(()=>$('#scMe').textContent));
+    await press(p,'#optSc [data-sc="w"]');
+    await p.waitForFunction(()=>{const r=document.querySelector('#scList .scw .rmi b');return r&&r.textContent.startsWith('SPIELER');},null,{timeout:8000}).catch(()=>{});await sleep(300);
+    const W=await p.evaluate(()=>({top:[...document.querySelectorAll('#scList .scw .rmi b')].map(x=>x.textContent),me:$('#scMe .scn').textContent}));
+    ok('skorlar: dünya listesi (iki ülke birlikte) ve dünya sırası',W.top.length===20&&W.top[0]==='SPIELER6'&&W.top.includes('OYUNCU24')&&W.me.startsWith('26.'),W.top.slice(0,2).join(' ')+' · '+W.me);
+    for(const t of THEMES){await p.evaluate(t=>{applyTheme(t,false);$('#optSc').scrollIntoView({block:'start'});},t);await sleep(300);await p.screenshot({path:`${OUT}/${t}-12-skorlar.png`});}
+    await p.evaluate(()=>{$('#scCc').value='DE';$('#scCc').dispatchEvent(new Event('change'));});await press(p,'#optSc [data-sc="c"]');await sleep(1800);
+    const de=await (await dbf(`${DB}/lb/c/DE/${uid}.json${AQ}`)).json(),tr2=await (await dbf(`${DB}/lb/c/TR/${uid}.json${AQ}`)).json();
+    ok('skorlar: ülke değişince kayıt yeni ülkeye taşınır',!!de&&de.xp===5500&&tr2===null&&await p.evaluate(()=>$('#optSc [data-sc="c"]').textContent.includes('Almanya')),JSON.stringify([de,tr2]));
+    ok('skorlar: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+    // misafir: listeye yazılmaz, tahmini sırası ve giriş çağrısı görünür
+    const g=await mkPage(b,{guest:true,name:'GUEST1234',ls:{tavla_snd:'off',tavla_cc:'TR',tavla_xp:{v:1,xp:12500,g:1,w:1}}});
+    await g.goto(URL);await sleep(1200);await g.evaluate(()=>SKOR.setTab('sc'));
+    await g.waitForFunction(()=>$('#scMe .scw'),null,{timeout:8000}).catch(()=>{});
+    ok('skorlar: misafirde tahmini sıra (~13.) ve giriş düğmesi',await g.evaluate(()=>$('#scMe .scn').textContent.startsWith('~13.')&&!!$('#scSign')),await g.evaluate(()=>$('#scMe').textContent));
+    await g.context().close();
   }
   await b.close();
   console.log(res.join('\n'));console.log(`\n${res.length-fails}/${res.length} geçti`);
