@@ -20,7 +20,7 @@
     const uid=uidNow();if(uid===checked)return;checked=uid;
     if(!uid){on=false;return;}
     on=lsGet(OWN,null)===uid;
-    fetch(dbBase()+'/names/'+ADMIN+'.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(o=>{
+    fetch(dbBase()+'/names/'+ADMIN+'.json'+(window.__DBNS?'?ns='+window.__DBNS:'')).then(r=>r.ok?r.json():Promise.reject(r.status)).then(o=>{
       if(uidNow()!==uid)return;
       on=o===uid;lsSet(OWN,on?uid:null);paint();
     }).catch(()=>{}); // ağ hatası: bu cihazdaki önceki karar geçerli kalır

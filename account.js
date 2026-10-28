@@ -7,7 +7,9 @@
    Misafir ad seçemez: GUEST ve 4 rakam (GUEST4821) adıyla oynar; ad seçmek için giriş yapar.
    Giriş yapanın adı tekildir: names/<AD> = uid ile ona ayrılır, başkası alamaz. BURAK = Burak = burak aynı ad sayılır; GUEST ile başlayan adlar misafirlere ayrılmıştır.
    Firebase SDK (assets/fb) yalnız gerektiğinde yüklenir: giriş yapılmışsa, giriş düğmesine basılınca ya da e-posta bağlantısıyla açılınca.
-   Online oda/davet akışı hesaptan bağımsızdır (oyuncu kimliği tavla_tok). */
+   Online oyunda oyuncu kimliği Firebase uid'idir: hesapla girmiş oyuncunun uid'i, misafirin ise ilk online oyunda alınan
+   görünmez anonim hesabın uid'i (ACCT.uid). Veritabanı kuralları odayı yalnız iki oyuncuya açar (database.rules.json).
+   Anonim hesap "giriş yapılmış" sayılmaz: arayüz ve profil eşitleme yalnız Google/e-posta hesabıyla çalışır. */
 (function(){
   'use strict';
   const CFG={apiKey:'AIzaSyBZeM1Rbted6Totu61GCN-sp6JqREq2oGc',authDomain:'e-tavla.firebaseapp.com',
@@ -17,7 +19,7 @@
   const lsw=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const linkIn=()=>/[?&]oobCode=/.test(location.search)&&/[?&]mode=signIn/.test(location.search);
-  let auth=null,loading=null,user=null,applying=false,pushT=null,fresh=false,ready=false;
+  let auth=null,loading=null,user=null,anonP=null,waitU=[],applying=false,pushT=null,fresh=false,ready=false;
 
   let i18ok=false;
   function addI18n(){
@@ -52,7 +54,7 @@
       auth=fb.auth();auth.onAuthStateChanged(onUser);
       // Google sayfasından dönüş (ayrı pencere açılamadıysa): sonuç gelmezse tarayıcı girişi tamamlayamamıştır
       const rd=ls('tavla_redir',0);lsw('tavla_redir',null);
-      if(auth.getRedirectResult)auth.getRedirectResult().then(r=>{if(r&&r.user)fresh=true;else if(rd&&Date.now()-rd<6e5&&!auth.currentUser)err({code:'tavla/redirect'});}).catch(err);
+      if(auth.getRedirectResult)auth.getRedirectResult().then(r=>{if(r&&r.user)fresh=true;else if(rd&&Date.now()-rd<6e5&&!(auth.currentUser&&!auth.currentUser.isAnonymous))err({code:'tavla/redirect'});}).catch(err);
       return auth;
     }).catch(e=>{loading=null;throw e;});
     return loading;
@@ -60,9 +62,10 @@
 
   /* ---------- profil eşitleme (RTDB REST, kimlik jetonuyla) ---------- */
   const dbBase=()=>String(window.__DBURL||CFG.databaseURL).replace(/\/+$/,'');
+  const nsQ=()=>window.__DBNS?'ns='+window.__DBNS+'&':''; // test: Firebase emülatörü
   async function cloud(method,body){
     const tok=await user.getIdToken();
-    const r=await fetch(dbBase()+'/users/'+encodeURIComponent(user.uid)+'.json?auth='+encodeURIComponent(tok),
+    const r=await fetch(dbBase()+'/users/'+encodeURIComponent(user.uid)+'.json?'+nsQ()+'auth='+encodeURIComponent(tok),
       {method,headers:body!==undefined?{'Content-Type':'application/json'}:undefined,body:body!==undefined?JSON.stringify(body):undefined});
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
@@ -70,7 +73,7 @@
   /* ---------- ad ayırma: names/<AD> = uid ---------- */
   const nk=v=>String(v||'').toLocaleUpperCase('tr').replace(/İ/g,'I').replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,' ').trim();
   async function names(k,method,body){
-    const tok=method==='GET'||!user?'':'?auth='+encodeURIComponent(await user.getIdToken());
+    const tok='?'+nsQ()+(method==='GET'||!user?'':'auth='+encodeURIComponent(await user.getIdToken()));
     const r=await fetch(dbBase()+'/names/'+encodeURIComponent(k)+'.json'+tok,{method,headers:body!==undefined?{'Content-Type':'application/json'}:undefined,body:body!==undefined?JSON.stringify(body):undefined});
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
@@ -99,7 +102,7 @@
     const ok=$('#ovOk'),i=$('#nmIn');if(!ok||!i)return;
     const save=ok.onclick;
     ok.onclick=async()=>{
-      const raw=UP((i.value||'').trim().replace(/\s+/g,' ')).slice(0,14),v=window.TESTADM?TESTADM.name(raw):raw;
+      const raw=UP(cleanName(i.value)),v=window.TESTADM?TESTADM.name(raw):raw;
       if(!v&&isGuest(NAME)){nmErr('acNeed');return;}
       if(v&&isGuest(v)){nmErr('acNoGuest');return;}
       if(v&&v===raw&&nk(v)!==nk(NAME)){
@@ -136,7 +139,7 @@
   function apply(c){
     applying=true;
     try{
-      if(typeof c.n==='string'&&c.n){NAME=c.n;lsSet('tavla_name',NAME);}
+      if(typeof c.n==='string'&&cleanName(c.n)){NAME=cleanName(c.n);lsSet('tavla_name',NAME);}
       if(Number.isInteger(c.av)&&c.av>=0&&c.av<AVATARS.length){AV=c.av;lsSet('tavla_av',AV);}
       if(c.xp&&typeof c.xp==='object'&&c.xp.xp>=0){
         XP=Object.assign({v:1,xp:0,g:0,w:0},c.xp);if(!Array.isArray(XP.ks))XP.ks=[];if(!XP.cm||typeof XP.cm!=='object')XP.cm={mars:0,tm:false};
@@ -170,7 +173,8 @@
   function done(){showOverlay(`<h2>${esc(t('acOk'))}</h2><p>${esc(t('acOkP'))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`);}
 
   function onUser(u){
-    user=u||null;ready=true;
+    user=u&&!u.isAnonymous?u:null;ready=true;
+    waitU.splice(0).forEach(f=>f());
     if(user){lsw('tavla_uid',user.uid);lsw('tavla_acc',{e:user.email||'',p:prov(user)});sync();}
     else{lsw('tavla_uid',null);lsw('tavla_acc',null);if(NAME&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}}
     paint();
@@ -289,7 +293,20 @@
     // misafirde SDK'yı boşta önceden yükle: Google düğmesine basınca pencere hemen açılabilsin
     else setTimeout(()=>load().catch(()=>{}),1500);
   }
-  window.ACCT={bind,paint,init,guardName,askGuest,signed,nk,
+  /* ---------- oyuncu kimliği (online) ---------- */
+  // uid: hesap yoksa görünmez anonim hesap açılır (bir kez; sonraki açılışlarda Firebase hatırlar)
+  async function uid(){
+    const a=await load();
+    if(!ready)await new Promise(ok=>waitU.push(ok));
+    if(!a.currentUser){if(!anonP)anonP=a.signInAnonymously().finally(()=>{anonP=null;});await anonP;}
+    return a.currentUser.uid;
+  }
+  // veritabanı isteklerine eklenen kimlik jetonu (süresi dolmuşsa SDK yeniler); hesap yoksa boş
+  async function idToken(){
+    if(!auth||!auth.currentUser)return '';
+    try{return await auth.currentUser.getIdToken();}catch(e){return '';}
+  }
+  window.ACCT={bind,paint,init,guardName,askGuest,signed,nk,uid,idToken,
     // index.html lsSet kancası: profil değişince hesaba yaz
     dirty(k){if(applying||!PK.includes(k))return;lsw('tavla_pt',Date.now());if(user)push();},
     get user(){return user;}};

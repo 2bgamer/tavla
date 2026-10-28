@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "games": {
+      "$code": {
+        ".read": "auth != null && (!data.exists() || data.child('seats/w').val() === auth.uid || data.child('seats/k').val() === auth.uid || !data.child('seats/k').exists())",
+        ".write": "auth != null && ((!data.exists() && newData.child('seats/w').val() === auth.uid && newData.child('ct').isNumber()) || (!newData.exists() && (!data.child('ct').exists() || data.child('ct').val() < now - 604800000)) || (data.exists() && newData.exists() && newData.child('seats/w').val() === data.child('seats/w').val() && newData.child('ct').val() === data.child('ct').val() && (data.child('seats/w').val() === auth.uid || (data.child('seats/k').val() === auth.uid && newData.child('seats/k').val() === auth.uid && !newData.child('ban').child(auth.uid).exists()) || (!data.child('seats/k').exists() && newData.child('seats/k').val() === auth.uid && !data.child('ban').child(auth.uid).exists()))))",
+        ".validate": "newData.hasChildren(['seats', 'ct'])",
+        "ct": {
+          ".read": true,
+          ".validate": "newData.isNumber() && newData.val() <= now + 600000"
+        },
+        "seats": {
+          "w": { ".validate": "newData.isString() && newData.val().length <= 128" },
+          "k": { ".validate": "newData.isString() && newData.val().length <= 128" },
+          "$other": { ".validate": false }
+        },
+        "nm": {
+          "$s": { ".validate": "($s === 'w' || $s === 'k') && newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)" }
+        },
+        "ban": {
+          "$uid": { ".validate": "newData.val() === 1 || newData.val() === true" }
+        },
+        "msgs": {
+          "$m": {
+            ".validate": "!data.exists() && newData.hasChildren(['from', 't', 'text']) && newData.child('from').val() === auth.uid && newData.child('t').isNumber() && newData.child('text').isString() && newData.child('text').val().length <= 200 && (!newData.child('nm').exists() || (newData.child('nm').isString() && newData.child('nm').val().length <= 14))"
+          }
+        }
+      }
+    },
+    "lobby": {
+      ".read": true,
+      "$code": {
+        ".write": "auth != null && ((!newData.exists() && (!data.exists() || data.child('u').val() === auth.uid || root.child('games').child($code).child('seats/k').val() === auth.uid || (data.child('t').isNumber() && data.child('t').val() < now - 600000))) || (newData.exists() && newData.child('u').val() === auth.uid && (!data.exists() || data.child('u').val() === auth.uid || (data.child('t').isNumber() && data.child('t').val() < now - 600000))))",
+        ".validate": "$code.matches(/^[0-9]{4}$/) && newData.hasChildren(['u', 'n', 't']) && newData.child('t').isNumber() && newData.child('n').isString() && newData.child('n').val().length <= 14 && !newData.child('n').val().matches(/[<>&\"'`]/)"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
+        "n": { ".validate": "newData.isString() && newData.val().length <= 14 && !newData.val().matches(/[<>&\"'`]/)" }
+      }
+    },
+    "names": {
+      ".read": false,
+      "$n": {
+        ".read": true,
+        ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && (!data.exists() || data.val() === auth.uid)",
+        ".validate": "newData.val() === auth.uid && $n.length <= 14"
+      }
+    }
+  }
+}
