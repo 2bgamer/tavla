@@ -30,6 +30,8 @@
       acSent:'Bağlantı gönderildi',acSentP:'{e} adresine gelen maildeki bağlantıya bu telefonda dokun. Gelmezse spam klasörüne bak.',
       acMC:'E-postanı doğrula',acMCP:'Girişi tamamlamak için bağlantıyı istediğin e-posta adresini yaz.',acGo:'Giriş yap',
       acOk:'Hesabın bağlandı',acOkP:'Puanın ve profilin artık hesabında saklanıyor; başka telefondan girince de devam eder.',
+      acDel:'Hesabımı sil',acDelQ:'Hesabın silinsin mi?',acDelP:'Adın, puanın, avatarın ve hesabın kalıcı olarak silinir. Bu geri alınamaz. Bu cihaz misafir olarak baştan başlar.',acDelGo:'Kalıcı olarak sil',
+      acDelRe:'Verilerin silindi',acDelReP:'Hesabı tamamen kapatmak için güvenlik gereği yeniden giriş yapman gerekiyor. Giriş yapıp Ayarlar > Hesap > Hesabımı sil\'e tekrar bas.',
       acOutQ:'Çıkış yapılsın mı?',acOutP:'Puanın hesabında saklı kalır. Bu cihaz misafir olarak baştan başlar.',
       acErr:'Giriş yapılamadı',acErrNet:'İnternet bağlantını kontrol edip tekrar dene.',acErrMail:'Geçerli bir e-posta adresi yaz.',
       acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acErrRedir:'Google girişi bu tarayıcıda tamamlanamadı. Oyunu Safari ya da Chrome\'da açıp tekrar dene ya da E-posta ile devam et.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç',acTaken:'Bu ad başka bir oyuncuya ait. Başka bir ad seç.',acNoGuest:'GUEST ile başlayan adlar misafirlere ayrılmış.',acNeed:'Masada görünecek bir ad yaz.',acProf:'Profil',acGuestF:'Misafir olarak {n} adıyla oynarsın. Kendi adını seçmek için giriş yap.',acGuestP:'Şu an misafir olarak {n} adıyla oynuyorsun. Kendi adını seçmek için giriş yap.',acPlayG:'Misafir olarak oyna'});
@@ -39,6 +41,8 @@
       acSent:'Link sent',acSentP:'Tap the link in the email sent to {e} on this phone. Check spam if it doesn\'t arrive.',
       acMC:'Confirm your email',acMCP:'Type the email address you requested the link for.',acGo:'Sign in',
       acOk:'Account connected',acOkP:'Your points and profile are now saved to your account and follow you to other phones.',
+      acDel:'Delete my account',acDelQ:'Delete your account?',acDelP:'Your name, points, avatar and account will be permanently deleted. This can\'t be undone. This device starts over as a guest.',acDelGo:'Delete permanently',
+      acDelRe:'Your data was deleted',acDelReP:'To close the account completely, sign in again for security, then tap Settings > Account > Delete my account once more.',
       acOutQ:'Sign out?',acOutP:'Your points stay in your account. This device starts over as a guest.',
       acErr:'Couldn\'t sign in',acErrNet:'Check your connection and try again.',acErrMail:'Enter a valid email address.',
       acErrLink:'This link has expired or was already used. Request a new one.',acErrX:'Something went wrong, try again later.',acErrRedir:'Google sign-in couldn\'t finish in this browser. Open the game in Safari or Chrome and try again, or continue with email.',acSync:'Syncing account…',cancel2:'Cancel',acTaken:'This name belongs to another player. Pick another one.',acNoGuest:'Names starting with GUEST are reserved for guests.',acNeed:'Type the name shown at the table.',acProf:'Profile',acGuestF:'As a guest you play as {n}. Sign in to pick your own name.',acGuestP:'You\'re playing as guest {n}. Sign in to pick your own name.',acPlayG:'Play as guest'});
@@ -240,11 +244,33 @@
     $('#acNo').onclick=()=>{$('#overlay').hidden=true;};
   }
 
+  // hesabı sil (App Store 5.1.1(v), KVKK): önce ad kaydı ve profil, sonra Firebase hesabı silinir.
+  // Hesap silme yakın zamanda giriş ister; gerekirse veriler silinmiş olarak çıkış yapılır, yeniden girip tekrar basılır.
+  function delAcct(){
+    showOverlay(`<h2>${esc(t('acDelQ'))}</h2><p>${esc(t('acDelP'))}</p><button class="primary acDanger" id="ovOk">${esc(t('acDelGo'))}</button><button id="acNo">${esc(t('cancel2'))}</button>`,async()=>{
+      clearTimeout(pushT);
+      let again=false;
+      try{
+        const a=await load(),u=a.currentUser;
+        if(u&&!u.isAnonymous){
+          const k=nk(NAME);
+          if(k)try{if(await names(k,'GET')===u.uid)await names(k,'DELETE');}catch(e){}
+          await cloud('DELETE');
+          try{await u.delete();}catch(e){if(e&&e.code==='auth/requires-recent-login'){again=true;await a.signOut();}else throw e;}
+        }
+      }catch(e){err(e);return;}
+      ['tavla_uid','tavla_acc','tavla_pt','tavla_name','tavla_av','tavla_xp','tavla_mail'].forEach(k=>lsw(k,null));
+      if(again){showOverlay(`<h2>${esc(t('acDelRe'))}</h2><p>${esc(t('acDelReP'))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`,()=>location.reload());return;}
+      location.reload();
+    });
+    $('#acNo').onclick=()=>{$('#overlay').hidden=true;};
+  }
+
   /* ---------- görünüm ---------- */
   const GSVG='<svg class="acG" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
   const MSVG='<svg class="acM" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
   const btns=()=>`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button><button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`;
-  function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,m:mail,o:signOut})[b.dataset.ac]();});}
+  function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,m:mail,o:signOut,d:delAcct})[b.dataset.ac]();});}
   // ilk açılıştaki "Hoş geldin" penceresine eklenen giriş düğmeleri (askName çağırır)
   function paint(){
     const acc=ls('tavla_acc',null),inn=!!(user||(acc&&!ready));
@@ -252,7 +278,7 @@
     if(s){
       s.querySelector('.ol').textContent=t('acT');
       s.querySelector('.acB').innerHTML=inn?
-        `<div class="acU"><span class="acDot" aria-hidden="true">✓</span><span><b>${esc((user&&user.email)||(acc&&acc.e)||'')}</b><small>${esc(t('acVia',{p:(user?prov(user):acc&&acc.p)||''}))}</small></span></div><button type="button" class="acOut" data-ac="o">${esc(t('acOut'))}</button>`:
+        `<div class="acU"><span class="acDot" aria-hidden="true">✓</span><span><b>${esc((user&&user.email)||(acc&&acc.e)||'')}</b><small>${esc(t('acVia',{p:(user?prov(user):acc&&acc.p)||''}))}</small></span></div><button type="button" class="acOut" data-ac="o">${esc(t('acOut'))}</button><button type="button" class="acDel" data-ac="d">${esc(t('acDel'))}</button>`:
         `<small class="acS">${esc(t('acGuest'))}</small>${btns()}`;
       bind(s);
     }
@@ -274,6 +300,8 @@
 .acU b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.acU small{font-size:12px;color:var(--muted)}
 .acDot{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-fg);font-weight:800;font-size:15px}
 .acOut{width:100%}
+.acDanger{background:#e5484d!important;color:#fff!important;border-color:#e5484d!important;box-shadow:none!important}
+.acDel{width:100%;background:transparent!important;border:0!important;box-shadow:none!important;color:#e5484d!important;font-size:13px!important;min-height:34px;text-decoration:underline;text-underline-offset:3px}
 #acHome{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px auto 8px;padding:6px 14px;min-height:34px;border-radius:999px;font-size:13px;background:transparent;border:1px dashed var(--line);color:var(--fg)}
 #acHome[hidden]{display:none}#acHome svg{width:16px;height:16px;flex:none}
 .acIn{letter-spacing:0!important;font-size:16px!important}

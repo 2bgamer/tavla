@@ -1117,6 +1117,24 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     c=await cloud();ok('hesap: çıkışta hesaptaki puan kalır',c&&c.xp&&c.xp.xp===250);
     ok('hesap: sayfa hatası yok (2)',!p.errs.length,p.errs.join('|'));
     await p.context().close();
+    // hesabı sil (App Store 5.1.1(v)): ad kaydı, profil ve hesap silinir, cihaz misafire döner
+    {const du=uid+'del',q=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},du);await q.goto(URL);await sleep(600);
+      await press(q,'#ovBox [data-ac=g]');await sleep(700);
+      if(await q.$('#nmIn')){await q.fill('#nmIn','SILINECEK');await press(q,'#ovOk');await sleep(1200);}
+      await q.evaluate(()=>{$('#overlay').hidden=true;});
+      const own=async n=>(await dbf(DB+'/names/'+n+'.json'+AQ)).json(),prof=async()=>(await dbf(DB+'/users/'+du+'.json'+AQ)).json();
+      ok('hesap sil: önce ad ve profil kayıtlı',await own('SILINECEK')===du&&!!(await prof()),JSON.stringify(await prof()));
+      await press(q,'#bSet');await sleep(400);
+      ok('hesap sil: Ayarlar > Hesap altında düğme var',await q.evaluate(()=>!!$('#acSet [data-ac=d]')&&$('#acSet [data-ac=d]').textContent==='Hesabımı sil'));
+      await q.evaluate(()=>$('#acSet').scrollIntoView({block:'center'}));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-11-hesap-sil.png`});}
+      await press(q,'#acSet [data-ac=d]');await sleep(300);
+      ok('hesap sil: geri alınamaz uyarısıyla onay sorulur',await q.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('geri alınamaz')&&!!$('#ovBox .acDanger')));
+      for(const t of THEMES){await q.evaluate(t=>applyTheme(t,false),t);await sleep(250);await q.screenshot({path:`${OUT}/${t}-11-hesap-sil-onay.png`});}
+      await Promise.all([q.waitForNavigation().catch(()=>{}),press(q,'#ovOk')]);await sleep(900);
+      ok('hesap sil: ad kaydı ve profil silindi',await own('SILINECEK')===null&&await prof()===null);
+      ok('hesap sil: Firebase hesabı silindi, cihaz misafir',await q.evaluate(()=>localStorage.getItem('__fbmock_user')==='null'&&localStorage.getItem('tavla_uid')===null&&!NAME));
+      ok('hesap sil: sayfa hatası yok',!q.errs.length,q.errs.join('|'));await q.context().close();}
     // Google penceresi dokunuşla aynı anda açılır (SDK önceden yüklü); pencere engellenirse yönlendirme, dönüşte sonuç yoksa uyarı
     p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'r');
     await p.goto(URL);await sleep(2000);
