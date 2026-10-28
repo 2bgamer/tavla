@@ -154,6 +154,20 @@ button.primary{background:var(--pri-bg)}
 #adv.fl .abar{animation:advfl .9s ease-out}
 @keyframes advfl{0%{box-shadow:0 0 0 2px #fff,0 0 18px var(--adv-me)}100%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}}
 #adv.nowp .pc,#adv.nowp .abar{visibility:hidden}
+/* puan/level rozeti: oyunda profil resminin altında (süre sayacı bu yüzden üst köşede); ana ekranda ve set sonunda XP çubuğu */
+.lvb{display:inline-block;flex:none;padding:1px 6px;border-radius:7px;font-size:11px;line-height:16px;font-weight:900;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#3a2400;background:linear-gradient(180deg,#ffe07a,#f5a524);box-shadow:inset 0 -1px 0 rgba(0,0,0,.18)}
+.lvb:empty{display:none}
+.avw .lvb{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);z-index:2;padding:0 5px;font-size:9.5px;line-height:13px;box-shadow:0 0 0 2px var(--bg),inset 0 -1px 0 rgba(0,0,0,.18)}
+.avw .tsec{top:-5px;bottom:auto;z-index:3}
+#xpRow,.xpline{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px auto 0;max-width:300px;font-size:12px;font-weight:700}
+#xpRow[hidden]{display:none}
+.xpb{flex:1;min-width:60px;height:8px;border-radius:4px;overflow:hidden;background:color-mix(in srgb,var(--fg) 16%,transparent)}
+.xpb i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#f5a524,#ffe07a);transition:width .4s ease}
+.xpt{flex:none;opacity:.8;font-variant-numeric:tabular-nums}
+.xpres{margin:6px 0 10px}
+.xpres .xpg{display:block;font-size:18px;font-weight:900;color:var(--accent)}
+.xpres .lvup{margin:4px 0 0;font-weight:800}
+.xpres .xpline{margin-top:6px}
 @media (max-height:700px){#adv .av{width:38px;height:38px}#adv .asc b{font-size:19px}}
 @media (prefers-reduced-motion:reduce){#adv.fl .abar{animation:none}}
 #hello .av{width:30px;height:30px;border-radius:50%;overflow:hidden;flex:none;border:2px solid var(--accent)}
