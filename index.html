@@ -271,6 +271,7 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
     <div class="opts" id="optOn" hidden><div class="sh2"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg><span data-i="opts">Seçenekler</span></div>
       <div class="og"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 4.5-9 4.5-9-4.5z" fill="currentColor"/><path d="M3 12l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span class="ol" data-i="setsS">Set sayısı</span><div class="seg" data-grp="tgt"><button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button></div></div>
       <div class="og"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="ol" data-i="mtime">Hamle süresi</span><div class="seg" data-grp="tl"><button data-v="0" data-i="off">Kapalı</button><button data-v="20" data-i="sec" data-n="20">20 sn</button><button data-v="30" data-i="sec" data-n="30">30 sn</button></div></div>
+      <div class="og"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="1.6" fill="currentColor"/><circle cx="15" cy="15" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg><span class="ol" data-i="gmode">Oyun modu</span><div class="seg" data-grp="rzm"><button data-v="0" data-i="gmClassic">Klasik</button><button data-v="1" data-i="gmRz">Rakip Zar</button></div><small id="rzNote" class="rzn" data-i="rzNote" hidden></small></div>
       <div class="og og-r"><span class="ol" data-i="roomsT">Odalar</span><div id="rmList" aria-live="polite"></div></div>
       <div class="og og-j"><span class="ol" data-i="joinIf">Arkadaşın oda kurduysa</span><div class="jrow"><input id="codeIn" inputmode="numeric" maxlength="4" data-ip="codePh" placeholder="Oda kodu (0000)" autocomplete="off"><button id="bJoin" data-i="join">Katıl</button></div></div>
       <button id="bResume" hidden></button>
@@ -825,6 +826,7 @@ const LVLN={get easy(){return i18('easy')},get mid(){return i18('mid')},get hard
 let tmKey='',prevMyTurn=false;
 let TARGET=lsGet('tavla_target',3),TLIM=lsGet('tavla_tl',20),TLC=lsGet('tavla_tlc',20),MUTE=false;
 if(TARGET===2||TARGET===4)TARGET++;if(![1,3,5].includes(TARGET))TARGET=3;if(![0,20,30].includes(TLIM))TLIM=20;if(![0,20,30].includes(TLC))TLC=20;
+let RZM=lsGet('tavla_rzm',0)===1?1:0; // online oda kurarken seçilen oyun modu: 0 Klasik, 1 Rakip Zar
 let NAME=lsGet('tavla_name','');
 // Davet bağlantısı: ...?oda=1234 ile açılınca isim alındıktan sonra o odaya katılır
 let INVITE=(()=>{try{const m=/[?&]oda=(\d{4})(?:&|$)/.exec(location.search);return m?m[1]:'';}catch(e){return '';}})();
@@ -843,6 +845,11 @@ Object.assign(I18N.en,{roomsT:'Rooms · waiting for an opponent',rmNone:'No room
   thRoom:'This room plays on {t}: same title uses the host\'s theme, a higher title uses theirs.'});
 Object.assign(I18N.en,{lvS:'Level {n}',lvL:'Level {n}',xpOf:'{a}/{b} XP',xpGain:'+{p} XP',xpNone:'No XP change this match',xpLoss:'−{p} XP',xpTest:'Test mode: this match does not count',lvDown:'Level down: Level {n}',lvUp:'Level up! You are now Level {n}',ttlUp:'New title: {t}',
   ttl:['Rookie','Beginner','Enthusiast','Café Player','Dice Master','Prime Builder','Gammon Hunter','Board Wolf','Café Legend','Grandmaster','Backgammon Sultan']});
+// Rakip Zar modu metinleri (diğer diller İngilizceye düşer)
+Object.assign(I18N.tr,{gmode:'Oyun modu',gmClassic:'Klasik',gmRz:'Rakip Zar',rzTag:'🎲 Rakip Zar',rzNote:'Zarını rakibin seçer (5 saniyesi var, çift seçemez). Bu modda XP yok, sadece eğlence.',xpRz:'Rakip Zar: eğlence modu, XP yok',
+  rzWait:'🎲 {n} seçiyor… {s}',rzPickT:'{n} için zar seç',rzOk:'Tamam',rzGot:'{n} senin için {d} seçti',rzLate:'{n} zar seçmedi, zar rastgele atıldı',rzSent:'Zar gönderildi: {d}',rzMiss:'Süre doldu, zar rastgele atılacak'});
+Object.assign(I18N.en,{gmode:'Game mode',gmClassic:'Classic',gmRz:'Opponent Dice',rzTag:'🎲 Opponent Dice',rzNote:'Your opponent picks your dice (5 seconds, no doubles). No XP in this mode, just for fun.',xpRz:'Opponent Dice: fun mode, no XP',
+  rzWait:'🎲 {n} is picking… {s}',rzPickT:'Pick dice for {n}',rzOk:'OK',rzGot:'{n} picked {d} for you',rzLate:'{n} did not pick, dice rolled at random',rzSent:'Dice sent: {d}',rzMiss:'Time is up, dice will be random'});
 const LANGS=/*LANGS*/[["tr","Türkçe","Turkish"],["en","English","English"],["de","Deutsch","German"],["fr","Français","French"],["es","Español","Spanish"],["pt","Português","Portuguese"],["it","Italiano","Italian"],["nl","Nederlands","Dutch"],["pl","Polski","Polish"],["ro","Română","Romanian"],["hu","Magyar","Hungarian"],["cs","Čeština","Czech"],["sv","Svenska","Swedish"],["el","Ελληνικά","Greek"],["bg","Български","Bulgarian"],["sr","Српски","Serbian"],["hr","Hrvatski","Croatian"],["uk","Українська","Ukrainian"],["ru","Русский","Russian"],["az","Azərbaycanca","Azerbaijani"],["uz","Oʻzbekcha","Uzbek"],["kk","Қазақша","Kazakh"],["ar","العربية","Arabic"],["fa","فارسی","Persian"],["he","עברית","Hebrew"],["ku","Kurdî","Kurdish"],["ka","ქართული","Georgian"],["hy","Հայերեն","Armenian"],["hi","हिन्दी","Hindi"],["bn","বাংলা","Bengali"],["ur","اردو","Urdu"],["id","Bahasa Indonesia","Indonesian"],["ms","Bahasa Melayu","Malay"],["th","ไทย","Thai"],["vi","Tiếng Việt","Vietnamese"],["tl","Filipino","Filipino"],["zh","中文","Chinese"],["ja","日本語","Japanese"],["ko","한국어","Korean"],["sw","Kiswahili","Swahili"]];
 const RTL=['ar','fa','he','ur'];
 let LANGSEL=lsGet('tavla_lang','auto');
@@ -1107,11 +1114,14 @@ function doRoll(x,y,sw){
   if(G.over||G.busy||G.turn!==G.me||G.rolled||opHeld()||cdOn())return;
   if(G.mode==='online'&&!G.started)return;
   if(G.op){if(G.mode==='local')opThrowLocal(G.me);else opThrowOnline();return;}
-  const fz=window.TESTADM&&TESTADM.take(G.me),a=fz?fz[0]:r6(),b=fz?fz[1]:r6(); // TESTADM: test modunda elle seçilen zar
+  if(window.RZ&&RZ.hold())return; // Rakip Zar: rakip zarı seçerken atılmaz (rakip-zar.js atar)
+  const rz=window.RZ&&RZ.take(); // Rakip Zar: rakibin seçtiği zar
+  const fz=!rz&&window.TESTADM&&TESTADM.take(G.me),dz=rz||fz,a=dz?dz[0]:r6(),b=dz?dz[1]:r6(); // TESTADM: test modunda elle seçilen zar
   G.all=a===b?[a,a,a,a]:[a,b];G.dice=G.all.slice();G.rolled=true;G.hist=[];G.last=null;G.sel=null;
   G.hl=logRoll(G.me,[a,b]);
   G.rollPos={x:x==null?218:x,y:y==null?200:y};G.seed=(Math.random()*1e9)|0;G.flip=false;G.sw=sw||null;
   const tf=window.TESTADM?TESTADM.rolled(fz):{};
+  if(window.RZ)Object.assign(tf,RZ.rolled());
   G.slgRoll=a===b?G.seed:0; // çift zar sloganı, zar oturunca render() içinde
   G.advStart=myAdv(); // oyun döndü karşılaştırması için tur başı üstünlük
   if(G.mode==='online')pushFields(Object.assign({dice:G.dice,all:G.all,rolled:true,last:null,hl:G.hl,rp:{x:G.rollPos.x,y:G.rollPos.y,s:G.me,sd:G.seed,sw:G.sw||null}},tf));
@@ -1129,6 +1139,7 @@ function centerBtn(){
     if(!G.loaded||!both)return {label:i18('waitOpp'),en:false};
     if(!G.started)return G.me===1?{label:i18('startGame'),en:true}:{label:i18('hostStarts'),en:false};
     if(G.over)return {label:'Tekrar Oyna',en:true};
+    if(window.RZ&&RZ.hold())return {label:RZ.label(),en:false};
   }
   if(G.turn===G.me&&!G.rolled&&!G.busy&&!G.over&&!opHeld()&&!cdOn())return {label:i18('roll'),en:true,roll:true};
   return null;
@@ -1270,7 +1281,7 @@ function applyRoom(d){
   G.turn=d.turn;G.dice=(d.dice||[]).slice();G.all=(d.all||[]).slice();G.rolled=!!d.rolled;
   G.over=!!d.over;G.started=!!d.started;G.seats=Object.assign({w:null,k:null},d.seats);
   G.last=Array.isArray(d.last)?d.last:(d.last&&typeof d.last.to!=='undefined'?[{f:null,t:d.last.to,by:d.last.by}]:null);G.score=Object.assign({w:0,k:0},d.score);
-  G.target=d.target||0;G.tl=d.tl||0;
+  G.target=d.target||0;G.tl=d.tl||0;G.rz=d.rz?1:0;
   G.result=d.over?{winner:d.winner,pts:d.pts,mars:d.mars,why:d.why||'',quick:!!d.quick}:null;
   G.op=d.op||0;G.pw=d.pw||0;G.offer=d.offer||null;G.offN=Object.assign({w:3,k:3},d.offN);
   G.nm=Object.assign({w:'',k:''},d.nm);G.av=Object.assign({w:-1,k:-1},d.av);G.lv=Object.assign({w:0,k:0},d.lv);G.open=d.open||[0,0];G.openN=d.openN||[0,0];G.hl=Array.isArray(d.hl)?d.hl:[];G.un=Object.assign({w:3,k:3},d.un);
@@ -1286,6 +1297,7 @@ function openingNote(){
 function onRoom(snap){
   if(G.mode!=='online'||!snap.exists)return;
   if(window.TESTADM)TESTADM.room(snap.data());
+  if(window.RZ)RZ.room(snap.data());
   if(pending||writing){lateSnap=snap;return;}
   const d=deHtml(snap.data()),gid=d.gid||0;
   if(G.me===-1&&G.loaded&&!d.started&&((d.ban||{})[TOKEN]||(d.seats||{}).k!==TOKEN)){kickedOut();return;}
@@ -1355,7 +1367,7 @@ function setIntro(){
 function enterRoom(code,ref,me){
   leaveRoom();G.run++;G.autoTok++;G.endTok++;cdTok++;G.cd=null;
   Object.assign(G,{mode:'online',me,code,st:newState(),turn:1,dice:[],all:[],rolled:false,over:false,hist:[],sel:null,busy:false,auto:false,msg:'',flash:'',
-    last:null,result:null,seats:{w:null,k:null},th:{w:'',k:''},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,endTimer:null,shownGid:-1,hl:[],un:{w:3,k:3},poseKey:'',rollPos:{x:218,y:200},target:0,tl:0,deadline:0});
+    last:null,result:null,seats:{w:null,k:null},th:{w:'',k:''},started:false,score:{w:0,k:0},gid:0,rev:-1,loaded:false,endTimer:null,shownGid:-1,hl:[],un:{w:3,k:3},poseKey:'',rollPos:{x:218,y:200},target:0,tl:0,rz:0,deadline:0});
   tmKey='';prevMyTurn=false;G.skInit=false;
   ROOM=ref;pending=null;lateSnap=null;
   lsSet('tavla_room',code);
@@ -1402,7 +1414,7 @@ async function createRoom(){
       const ref=DB.doc('games/'+code);
       if(!await codeFree(ref,code))continue;
       const st=newState(),ct=Date.now();
-      await ref.set({ct,b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:cleanName(NAME)},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
+      await ref.set({ct,b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,rz:RZM,seats:{w:TOKEN,k:null},nm:{w:cleanName(NAME)},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
       DB.doc('gix/'+code).set(ct).catch(()=>{});setTimeout(cleanOld,3000);
       lobbyMsg('');enterRoom(code,ref,1);return;
     }
@@ -1455,7 +1467,7 @@ function roomTheme(){
 }
 function themeSync(){const t=roomTheme()||myTheme();if(t!==THEME)applyTheme(t,false);}
 let lbBeat=null,lbCode=null;
-function lbEntry(){return {u:TOKEN,n:cleanName(NAME),av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,th:myTheme(),t:Date.now()};}
+function lbEntry(){return {u:TOKEN,n:cleanName(NAME),av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,rz:G.rz||0,th:myTheme(),t:Date.now()};}
 // kurucu, rakip yokken ve set başlamamışken odasını listede tutar
 function lbSync(){
   const want=!!(DB&&G.mode==='online'&&G.loaded&&G.me===1&&G.code&&!G.seats.k&&!G.started);
@@ -1499,7 +1511,7 @@ function lbPaint(){
   el.innerHTML=L.map(r=>{
     const lv=Math.max(1,+r.lv||1),tg=+r.tg||0,th=THEMES[r.th]?r.th:'poker',av=AVATARS[+r.av]||AVATARS[0]||'';
     return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(seeName(r.n))||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
-      `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
+      `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}${+r.rz?`<i class="rzt">${escH(i18('rzTag'))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
       `<button class="rmj" data-c="${r.code}">${i18('join')}</button></div>`;}).join('');
 }
 
@@ -1940,6 +1952,7 @@ function xpAward(r,mt,local,T){
   if(!end){lsSet('tavla_xp',XP);return null;}
   const cm=XP.cm;XP.cm={mars:0,tm:false};
   if(cm.tm){lsSet('tavla_xp',XP);return {p:0,tm:true,l0:myLv(),l:myLv()};}
+  if(!local&&G.rz){lsSet('tavla_xp',XP);return {p:0,rz:true,l0:myLv(),l:myLv()};} // Rakip Zar: eğlence modu, XP yok
   const ol=+((G.lv||{})[oppKey()])||0,n=T>0?T:1;
   const p=xpGain({won,n,over:T>0?Math.max(me,op)-T:0,mars:cm.mars,local,lvl:LVL,d:local||!ol?0:ol-myLv()});
   const l0=myLv();
@@ -1952,7 +1965,7 @@ function xpAward(r,mt,local,T){
 }
 function xpHtml(a){
   const v=lvOf(XP.xp),f=v.l>=LV_MAX?100:Math.round(v.cur/v.need*100);
-  return `<div class="xpres"><b class="xpg${a.p<0?' neg':''}">${a.tm?i18('xpTest'):a.p>0?i18('xpGain',{p:a.p}):a.p<0?i18('xpLoss',{p:-a.p}):i18('xpNone')}</b>`+
+  return `<div class="xpres"><b class="xpg${a.p<0?' neg':''}">${a.tm?i18('xpTest'):a.rz?i18('xpRz'):a.p>0?i18('xpGain',{p:a.p}):a.p<0?i18('xpLoss',{p:-a.p}):i18('xpNone')}</b>`+
     (a.l>a.l0?`<p class="lvup">${i18('lvUp',{n:a.l})}</p>`:a.l<a.l0?`<p class="lvup">${i18('lvDown',{n:a.l})}</p>`:'')+
     (a.l>a.l0&&lvTitle(a.l)!==lvTitle(a.l0)?`<p class="lvup ttl">🏅 ${i18('ttlUp',{t:lvTitle(a.l)})}</p>`:'')+
     `<div class="xpline"><span class="lvb">${i18('lvS',{n:v.l})}</span><span class="xpb"><i style="width:${f}%"></i></span><span class="xpt">${v.l>=LV_MAX?'MAX':i18('xpOf',{a:v.cur,b:v.need})}</span></div>${a.l>a.l0&&lvTitle(a.l)!==lvTitle(a.l0)?'':`<p class="xpttl">${lvTitle(v.l)}</p>`}</div>`;
@@ -2592,6 +2605,7 @@ function subText(){
   const p=[],T=curTarget();
   if(G.mode&&G.st)p.push(i18('left',{a:pips(G.st,G.me),b:pips(G.st,-G.me)}));
   if(T>0)p.push(i18('toN',{n:T}));
+  if(G.mode==='online'&&G.rz)p.push(i18('gmRz'));
   // tur süresi yalnızca avatar halkasında (ringPaint); ikinci sayaç yok
   return p.join(' · ');
 }
@@ -2938,9 +2952,10 @@ $('#rxRec').addEventListener('click',e=>{const b=e.target.closest('button');if(b
 rxRecPaint();
 function segSync(){
   document.querySelectorAll('.seg').forEach(g=>{
-    const cur=String(g.dataset.grp==='snd'?SND:g.dataset.grp==='lvl'?LVL:g.dataset.grp==='tgt'?TARGET:g.dataset.grp==='tlc'?TLC:TLIM);
+    const cur=String(g.dataset.grp==='rzm'?RZM:g.dataset.grp==='snd'?SND:g.dataset.grp==='lvl'?LVL:g.dataset.grp==='tgt'?TARGET:g.dataset.grp==='tlc'?TLC:TLIM);
     g.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===cur));
   });
+  const rn=$('#rzNote');if(rn)rn.hidden=!RZM;
 }
 document.querySelectorAll('.seg').forEach(g=>g.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -2949,6 +2964,7 @@ document.querySelectorAll('.seg').forEach(g=>g.addEventListener('click',e=>{
   if(k==='lvl'){LVL=v;lsSet('tavla_lvl',LVL);}
   else if(k==='tgt'){TARGET=+v;lsSet('tavla_target',TARGET);}
   else if(k==='tlc'){TLC=+v;lsSet('tavla_tlc',TLC);}
+  else if(k==='rzm'){RZM=+v?1:0;lsSet('tavla_rzm',RZM);}
   else{TLIM=+v;lsSet('tavla_tl',TLIM);}
   segSync();
 }));
@@ -3140,7 +3156,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610282300';
+const APP_VER='202610282330';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
@@ -3152,4 +3168,5 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
 }
 </script>
 <script src="test-admin.js"></script>
+<script src="rakip-zar.js"></script>
 </body></html>
