@@ -861,8 +861,12 @@ let JOKE=lsGet('tavla_joke',true)!==false;
 const RXOK=()=>SND==='all';
 MUTE=SND==='off';
 const UP=s=>{s=String(s||'');try{return s.toLocaleUpperCase(ULOC());}catch(e){return s.toUpperCase();}};
-const myName=()=>UP(NAME)||i18('you');
-const oppName=()=>G.mode==='online'?(UP((G.nm||{})[G.me===1?'k':'w'])||i18('opp')):i18('cpu');
+// Odadan ve oda listesinden gelen veri başkası tarafından REST ile yazılabilir: HTML'e girebilecek karakterler atılır
+function deHtml(v){if(typeof v==='string')return v.replace(/[<>&"'`]/g,'');if(Array.isArray(v))return v.map(deHtml);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=deHtml(v[k]);return o;}return v;}
+// Oyuncu adı: harf, rakam, boşluk, nokta, alt çizgi, tire; en fazla 14 karakter
+const cleanName=s=>String(s==null?'':s).replace(/[^\p{L}\p{M}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,14);
+const myName=()=>UP(cleanName(NAME))||i18('you');
+const oppName=()=>G.mode==='online'?(UP(cleanName((G.nm||{})[G.me===1?'k':'w']))||i18('opp')):i18('cpu');
 function locSfx(n){if(n==='BİLGİSAYAR')return 'BİLGİSAYARDA';const v=(n.match(/[AEIİOÖUÜ](?=[^AEIİOÖUÜ]*$)/)||['E'])[0];const a='AIOU'.includes(v)?'A':'E';const c='FSTKÇŞHP'.includes(n.slice(-1))?'T':'D';return n+"'"+c+a;}
 let DB=null,ROOM=null,unsub=null,pending=null,writing=false,lateSnap=null,flashT=null;
 const RM=(()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}})();
@@ -1073,7 +1077,7 @@ function showResult(owner){
   const local=G.mode==='local',won=r.winner===G.me;
   const sc=local?`${myName()} ${SC.you} – ${SC.cpu} ${i18('cpu')}`:`${myName()} ${G.score[myKey()]||0} – ${G.score[oppKey()]||0} ${oppName()}`;
   const mt=matchDone(local?'local':'online'),T=curTarget();
-  const wn=r.winner===G.me?myName():oppName(),ln=r.winner===G.me?oppName():myName();
+  const wn=escH(r.winner===G.me?myName():oppName()),ln=escH(r.winner===G.me?oppName():myName());
   const why=r.why==='resign'?`<p>${i18('resignW',{n:ln,p:r.pts})}</p>`:r.why==='offer'?`<p>${i18('offerW',{n:ln})}</p>`:(r.mars?`<p>${i18('marsW',{p:r.pts})}</p>`:'');
   const title=mt?(won?i18('matchWonMe'):i18('matchWon',{n:wn})):(won?i18('setWonMe'):i18('setWon',{n:wn}));
   const xa=xpAward(r,mt,local,T),xh=xa?xpHtml(xa):'';
@@ -1277,7 +1281,7 @@ function onRoom(snap){
   if(G.mode!=='online'||!snap.exists)return;
   if(window.TESTADM)TESTADM.room(snap.data());
   if(pending||writing){lateSnap=snap;return;}
-  const d=snap.data(),gid=d.gid||0;
+  const d=deHtml(snap.data()),gid=d.gid||0;
   if(G.me===-1&&G.loaded&&!d.started&&((d.ban||{})[TOKEN]||(d.seats||{}).k!==TOKEN)){kickedOut();return;}
   // rev iki istemcide ayrı sayılır: rakibin sırasında çekilmede iki taraf aynı anda yazınca rakibin rev'i bizimkinden büyük olmayabilir.
   // yeni set ve set sonu bu yüzden rev'e bakılmadan alınır; yoksa eski setin hamleleri yeni tahtaya uygulanır
@@ -1449,7 +1453,7 @@ function lbWatch(){
   if(!on){lbUnwatch();return;}
   if(lbUnsub)return;
   lbRooms=null;lbPaint();
-  try{lbUnsub=DB.collection('lobby').orderBy('t').limit(40).onSnapshot(s=>{lbRooms=s.docs.map(x=>Object.assign({code:x.id},x.data()));lbPaint();},()=>{});}catch(e){}
+  try{lbUnsub=DB.collection('lobby').orderBy('t').limit(40).onSnapshot(s=>{lbRooms=s.docs.map(x=>Object.assign({code:x.id},deHtml(x.data())));lbPaint();},()=>{});}catch(e){}
   lbTick=setInterval(lbPaint,30000);
 }
 function lbUnwatch(){if(lbUnsub){try{lbUnsub();}catch(e){}}lbUnsub=null;clearInterval(lbTick);lbTick=null;}
@@ -1461,7 +1465,7 @@ function lbPaint(){
   const nf=v=>{try{return (+v||0).toLocaleString(ULOC());}catch(e){return String(+v||0);}};
   el.innerHTML=L.map(r=>{
     const lv=Math.max(1,+r.lv||1),tg=+r.tg||0,th=THEMES[r.th]?r.th:'poker',av=AVATARS[+r.av]||AVATARS[0]||'';
-    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(r.n)||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
+    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(cleanName(r.n))||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
       `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
       `<button class="rmj" data-c="${r.code}">${i18('join')}</button></div>`;}).join('');
 }
@@ -2639,7 +2643,7 @@ function chatPaint(){
   let prev=null;
   for(const m of CH.msgs){
     const me=m.from===TOKEN;
-    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(m.nm)||oppName());list.appendChild(n);prev=m.from;}
+    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(cleanName(m.nm))||oppName());list.appendChild(n);prev=m.from;}
     const d=document.createElement('div');d.className='cm '+(me?'me':'them');d.textContent=m.text;d.title=m.text;list.appendChild(d);}
   list.scrollTop=grew?list.scrollHeight:y;scbSync();
   const b=$('#bdg');b.hidden=!(CH.unread>0&&G.tab!=='c');b.textContent=CH.unread>9?'9+':String(CH.unread);
@@ -2759,7 +2763,7 @@ function showHome(){
 function askName(first){
   if(window.ACCT&&!ACCT.signed())return ACCT.askGuest(first); // misafir ad seçemez (GUEST…), giriş yapınca seçer
   showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2><p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
-    let v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
+    let v=UP(cleanName($('#nmIn').value));
     if(window.TESTADM)v=TESTADM.name(v); // "BURAK"+PIN: gizli test girişi, görünen ad BURAK
     NAME=v||NAME||i18('player');lsSet('tavla_name',NAME);
     const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
@@ -3084,7 +3088,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281500';
+const APP_VER='202610281600';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

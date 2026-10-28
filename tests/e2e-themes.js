@@ -541,6 +541,25 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('odalar testinde sayfa hatası yok',!A.errs.length&&!B.errs.length&&!C.errs.length,A.errs.concat(B.errs,C.errs).join('|'));
     await A.context().close();await B.context().close();await C.context().close();
   }
+  /* 5a2) güvenlik: odaya ve oda listesine REST ile yazılan HTML/kod çalışmaz (XSS) */
+  {
+    const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}});
+    await A.goto(URL);await sleep(400);
+    await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
+    const code=await A.evaluate(()=>G.code),bad='<IMG SRC=X ONERROR=window.__xss=1>"\'';
+    const put=(path,v)=>fetch(DB+'/'+path+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});
+    await put('games/'+code,{nm:{k:bad},seats:{k:'zz'},rev:99999,score:{w:'<b id=xsb>1</b>',k:0}});
+    await put('lobby/'+code,{n:bad,t:Date.now()});
+    await A.waitForFunction(()=>G.seats&&G.seats.k==='zz',null,{timeout:8000}).catch(()=>{});
+    const r=await A.evaluate(()=>({nm:G.nm.k,opp:oppName(),sc:String(G.score.w)}));
+    ok('XSS: odadaki ad ve skor HTML karakterlerinden arındırıldı',!/[<>"']/.test(r.nm+r.opp+r.sc)&&r.opp.length<=14&&r.opp.startsWith('IMG SRCX'),JSON.stringify(r));
+    await A.evaluate(()=>{G.result={winner:-G.me,pts:1,why:'resign'};showResult(false);});await sleep(300);
+    await A.evaluate(()=>{lbRooms=[{code:'1234',n:'<img src=x onerror="window.__xss=2">',t:Date.now(),lv:1}];lbPaint();});await sleep(200);
+    ok('XSS: sonuç penceresi ve oda listesinde kod çalışmadı, etiket oluşmadı',await A.evaluate(()=>!window.__xss&&!document.querySelector('#ovBox img,#ovBox #xsb,#rmList img')),await A.evaluate(()=>String(window.__xss)));
+    ok('ad kuralı: yalnız harf, rakam, boşluk, . _ - ve 14 karakter',await A.evaluate(()=>cleanName('  a<b>c "d"  ŞÜ_k-1.2 xxxxxxxxxx ')==='abc d ŞÜ_k-1.2'&&cleanName('<script>')==='script'));
+    ok('XSS testinde sayfa hatası yok',!A.errs.length,A.errs.join('|'));
+    await A.context().close();
+  }
   /* 5b) davet bağlantısı: ismi olmayan arkadaş ?oda= ile açar, isim girer, odaya oturur */
   {
     const A=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off'}}),B=await mkPage(b,{guest:true,ls:{tavla_snd:'off',tavla_name:''}});

@@ -99,7 +99,7 @@
     const ok=$('#ovOk'),i=$('#nmIn');if(!ok||!i)return;
     const save=ok.onclick;
     ok.onclick=async()=>{
-      const raw=UP((i.value||'').trim().replace(/\s+/g,' ')).slice(0,14),v=window.TESTADM?TESTADM.name(raw):raw;
+      const raw=UP(cleanName(i.value)),v=window.TESTADM?TESTADM.name(raw):raw;
       if(!v&&isGuest(NAME)){nmErr('acNeed');return;}
       if(v&&isGuest(v)){nmErr('acNoGuest');return;}
       if(v&&v===raw&&nk(v)!==nk(NAME)){
@@ -136,7 +136,7 @@
   function apply(c){
     applying=true;
     try{
-      if(typeof c.n==='string'&&c.n){NAME=c.n;lsSet('tavla_name',NAME);}
+      if(typeof c.n==='string'&&cleanName(c.n)){NAME=cleanName(c.n);lsSet('tavla_name',NAME);}
       if(Number.isInteger(c.av)&&c.av>=0&&c.av<AVATARS.length){AV=c.av;lsSet('tavla_av',AV);}
       if(c.xp&&typeof c.xp==='object'&&c.xp.xp>=0){
         XP=Object.assign({v:1,xp:0,g:0,w:0},c.xp);if(!Array.isArray(XP.ks))XP.ks=[];if(!XP.cm||typeof XP.cm!=='object')XP.cm={mars:0,tm:false};
