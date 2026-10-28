@@ -896,7 +896,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 9) puan (XP) ve level: yerel set sonu, tekrar yazmama, level atlama, online rakip leveli */
   {
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_lvl:'hard',tavla_xp:{v:1,xp:495,g:0,w:0}}});await p.goto(URL);await sleep(400);
-    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHome').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHome').textContent+' '+$('#xpTxt').textContent));
+    ok('xp: ana ekranda level ve çubuk',await p.evaluate(()=>!$('#xpRow').hidden&&$('#lvHomeAv').textContent==='Level 5'&&$('#xpTxt').textContent==='145/150 XP'),await p.evaluate(()=>$('#lvHomeAv').textContent+' '+$('#xpTxt').textContent));
     await p.click('#bGo');await sleep(800);
     ok('xp: oyunda kendi level rozetim',await p.evaluate(()=>$('#lvMe').textContent==='Level 5'&&$('#lvOp').textContent===''));
     await p.evaluate(()=>{G.st.off[0]=15;gameOver(1);});await sleep(1500);
@@ -907,7 +907,10 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.evaluate(()=>showResult(false));await sleep(200);
     ok('xp: aynı set iki kez sayılmadı',await p.evaluate(()=>XP.xp===525&&JSON.parse(localStorage.getItem('tavla_xp')).xp===525));
     ok('xp: kaybedip çekilen oyuncuya puan yok',await p.evaluate(()=>xpGain({winner:-1,why:'resign'},false,true,3)===0&&xpGain({winner:-1,why:''},false,true,3)===5&&xpGain({winner:1,mars:false},true,true,3)===38));
-    ok('xp: level eğrisi',await p.evaluate(()=>lvOf(0).l===1&&lvOf(49).l===1&&lvOf(50).l===2&&lvOf(125).l===3&&lvOf(350).l===5&&lvOf(1e9).l===99));
+    ok('ünvan: her 10 levelde değişir, 100 ve sonrası en üst',await p.evaluate(()=>lvTitle(1)==='Çaylak'&&lvTitle(9)==='Çaylak'&&lvTitle(10)==='Acemi'&&lvTitle(99)==='Büyük Usta'&&lvTitle(100)==='Tavla Sultanı'&&lvTitle(250)==='Tavla Sultanı'));
+    ok('ünvan: 10. levelde yeni ünvan mesajı',await p.evaluate(()=>xpHtml({p:30,l0:9,l:10}).includes('Yeni ünvan: Acemi')&&!xpHtml({p:30,l0:5,l:6}).includes('Yeni ünvan')));
+    ok('ünvan: ana ekranda görünür',await p.evaluate(()=>$('#ttlHome').textContent==='Çaylak'));
+    ok('xp: level eğrisi',await p.evaluate(()=>lvOf(0).l===1&&lvOf(49).l===1&&lvOf(50).l===2&&lvOf(125).l===3&&lvOf(350).l===5&&lvOf(126225).l===100&&lvOf(1e9).l===999));
     for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-9-xp-sonuc.png`});}
     ok('xp: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
