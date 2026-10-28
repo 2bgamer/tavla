@@ -24,7 +24,7 @@
   let i18ok=false;
   function addI18n(){
     if(i18ok||typeof I18N==='undefined')return;i18ok=true;
-    Object.assign(I18N.tr,{acG:'Google ile devam et',acM:'E-posta ile devam et',acOr:'veya misafir olarak',acT:'Hesap',
+    Object.assign(I18N.tr,{acA:'Apple ile devam et',acG:'Google ile devam et',acM:'E-posta ile devam et',acOr:'veya misafir olarak',acT:'Hesap',
       acGuest:'Misafir · puanın yalnız bu cihazda',acIn:'{e}',acVia:'{p} ile giriş yapıldı',acOut:'Çıkış yap',acHome:'Giriş yap, adını seç, puanın kaybolmasın',
       acMT:'E-posta ile giriş',acMP:'Adresine bir giriş bağlantısı gönderelim. Şifre gerekmez.',acMPh:'ornek@mail.com',acSend:'Bağlantı gönder',
       acSent:'Bağlantı gönderildi',acSentP:'{e} adresine gelen maildeki bağlantıya bu telefonda dokun. Gelmezse spam klasörüne bak.',
@@ -35,7 +35,7 @@
       acOutQ:'Çıkış yapılsın mı?',acOutP:'Puanın hesabında saklı kalır. Bu cihaz misafir olarak baştan başlar.',
       acErr:'Giriş yapılamadı',acErrNet:'İnternet bağlantını kontrol edip tekrar dene.',acErrMail:'Geçerli bir e-posta adresi yaz.',
       acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acErrRedir:'Google girişi bu tarayıcıda tamamlanamadı. Oyunu Safari ya da Chrome\'da açıp tekrar dene ya da E-posta ile devam et.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç',acTaken:'Bu ad başka bir oyuncuya ait. Başka bir ad seç.',acNoGuest:'GUEST ile başlayan adlar misafirlere ayrılmış.',acNeed:'Masada görünecek bir ad yaz.',acProf:'Profil',acGuestF:'Misafir olarak {n} adıyla oynarsın. Kendi adını seçmek için giriş yap.',acGuestP:'Şu an misafir olarak {n} adıyla oynuyorsun. Kendi adını seçmek için giriş yap.',acPlayG:'Misafir olarak oyna'});
-    Object.assign(I18N.en,{acG:'Continue with Google',acM:'Continue with email',acOr:'or as a guest',acT:'Account',
+    Object.assign(I18N.en,{acA:'Continue with Apple',acG:'Continue with Google',acM:'Continue with email',acOr:'or as a guest',acT:'Account',
       acGuest:'Guest · your points live on this device only',acIn:'{e}',acVia:'Signed in with {p}',acOut:'Sign out',acHome:'Sign in to pick a name and keep your points',
       acMT:'Sign in with email',acMP:'We\'ll send you a sign-in link. No password needed.',acMPh:'you@mail.com',acSend:'Send link',
       acSent:'Link sent',acSentP:'Tap the link in the email sent to {e} on this phone. Check spam if it doesn\'t arrive.',
@@ -184,7 +184,7 @@
     else{lsw('tavla_uid',null);lsw('tavla_acc',null);if(NAME&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}}
     paint();
   }
-  const prov=u=>{const p=((u.providerData||[])[0]||{}).providerId||'';return p==='google.com'?'Google':'E-posta';};
+  const prov=u=>{const p=((u.providerData||[])[0]||{}).providerId||'';return p==='google.com'?'Google':p==='apple.com'?'Apple':'E-posta';};
 
   /* ---------- giriş yolları ---------- */
   function err(e){
@@ -194,10 +194,15 @@
       (c==='auth/invalid-action-code'||c==='auth/expired-action-code')?'acErrLink':c==='tavla/redirect'?'acErrRedir':'acErrX';
     showOverlay(`<h2>${esc(t('acErr'))}</h2><p>${esc(t(m))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`);
   }
-  async function google(){
+  // Apple ile Giriş (App Store 4.8): Apple geliştirici hesabı ve Firebase'de Apple sağlayıcısı açılınca APPLE_ON=true yapılır
+  const APPLE_ON=false,apple=()=>APPLE_ON||!!window.__apple;
+  const google=()=>popup('g');
+  async function popup(k){
     try{
       // SDK önceden yüklüyse pencere dokunuşla aynı anda açılır (Safari aradaki beklemeyle pencereyi engelliyor)
-      const a=auth||await load(),pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});
+      const a=auth||await load();let pr;
+      if(k==='a'){pr=new firebase.auth.OAuthProvider('apple.com');pr.addScope('email');pr.addScope('name');}
+      else{pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});}
       fresh=true;
       try{await a.signInWithPopup(pr);}
       catch(e){
@@ -268,10 +273,11 @@
   }
 
   /* ---------- görünüm ---------- */
+  const ASVG='<svg class="acA" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.59 1.1 8.75.73 1.05 1.6 2.24 2.73 2.2 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.3-3.51zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z"/></svg>';
   const GSVG='<svg class="acG" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
   const MSVG='<svg class="acM" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
-  const btns=()=>`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button><button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`;
-  function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,m:mail,o:signOut,d:delAcct})[b.dataset.ac]();});}
+  const btns=()=>(apple()?`<button type="button" class="acBtn acBA" data-ac="a">${ASVG}<span>${esc(t('acA'))}</span></button>`:'')+`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button><button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`;
+  function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,a:()=>popup('a'),m:mail,o:signOut,d:delAcct})[b.dataset.ac]();});}
   // ilk açılıştaki "Hoş geldin" penceresine eklenen giriş düğmeleri (askName çağırır)
   function paint(){
     const acc=ls('tavla_acc',null),inn=!!(user||(acc&&!ready));
@@ -292,6 +298,7 @@
     css.textContent=`
 .acBtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:46px;font-size:15px;font-weight:700;border-radius:12px;margin-top:0!important}
 .acBtn svg{width:20px;height:20px;flex:none}
+.acBtn.acBA{background:#000!important;color:#fff!important;border:1px solid #000!important;box-shadow:none!important;text-shadow:none!important;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
 .acBtn.acBG{background:#fff!important;color:#1f1f1f!important;border:1px solid #dadce0!important;box-shadow:none!important;text-shadow:none!important;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
 .acOv{display:flex;flex-direction:column;gap:10px;margin:10px 0 2px}
 .acOr{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin-top:4px}.acOr:before,.acOr:after{content:'';flex:1;height:1px;background:var(--line)}

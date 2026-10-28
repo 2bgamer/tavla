@@ -1219,6 +1219,18 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('google: dönüşte giriş yoksa uyarı gösterilir',await p.evaluate(()=>!$('#overlay').hidden&&$('#ovBox').textContent.includes('tamamlanamadı')&&!localStorage.getItem('tavla_redir')));
     ok('google: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
+    // Apple ile Giriş (App Store 4.8): açıkken düğmeler Apple, Google, e-posta sırasıyla
+    p=await acPage({ls:{tavla_name:'',tavla_snd:'off'}},uid+'ap');await p.context().addInitScript(()=>{window.__apple=true;});
+    await p.goto(URL);await sleep(1200);
+    ok('apple: ilk pencerede Apple, Google, e-posta sırası',await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')==='agm'),await p.evaluate(()=>[...document.querySelectorAll('#ovBox [data-ac]')].map(b=>b.dataset.ac).join('')));
+    for(const t of THEMES){await p.evaluate(t=>applyTheme(t,false),t);await sleep(250);await p.screenshot({path:`${OUT}/${t}-14-apple.png`});}
+    await press(p,'#ovBox [data-ac=a]');await sleep(800);
+    ok('apple: Apple sağlayıcısıyla giriş, ad soruluyor',await p.evaluate(()=>window.__popupProv==='apple.com'&&!!$('#nmIn')));
+    await p.fill('#nmIn','ELMA');await press(p,'#ovOk');await sleep(900);
+    await p.evaluate(()=>{$('#overlay').hidden=true;});await press(p,'#bSet');await sleep(300);
+    ok('apple: ayarlarda Apple ile giriş yapıldı yazıyor',await p.evaluate(()=>$('#acSet').textContent.includes('Apple ile giriş yapıldı')));
+    ok('apple: sayfa hatası yok',!p.errs.length,p.errs.join('|'));
+    await p.context().close();
     // e-posta bağlantısı: gönder, sonra bağlantıyla açılınca giriş tamamlanır ve adres çubuğu temizlenir
     p=await acPage({ls:{tavla_snd:'off'}});
     await p.goto(URL);await sleep(600);await press(p,'#bSet');await sleep(300);await press(p,'#acSet [data-ac=m]');await sleep(300);
