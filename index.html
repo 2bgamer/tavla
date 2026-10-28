@@ -859,12 +859,17 @@ let JOKE=lsGet('tavla_joke',true)!==false;
 const RXOK=()=>SND==='all';
 MUTE=SND==='off';
 const UP=s=>{s=String(s||'');try{return s.toLocaleUpperCase(ULOC());}catch(e){return s.toUpperCase();}};
-const myName=()=>UP(NAME)||i18('you');
-const oppName=()=>G.mode==='online'?(UP((G.nm||{})[G.me===1?'k':'w'])||i18('opp')):i18('cpu');
+// Odadan ve oda listesinden gelen veri başkası tarafından REST ile yazılabilir: HTML'e girebilecek karakterler atılır
+function deHtml(v){if(typeof v==='string')return v.replace(/[<>&"'`]/g,'');if(Array.isArray(v))return v.map(deHtml);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=deHtml(v[k]);return o;}return v;}
+// Oyuncu adı: harf, rakam, boşluk, nokta, alt çizgi, tire; en fazla 14 karakter
+const cleanName=s=>String(s==null?'':s).replace(/[^\p{L}\p{M}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,14);
+const myName=()=>UP(cleanName(NAME))||i18('you');
+const oppName=()=>G.mode==='online'?(UP(cleanName((G.nm||{})[G.me===1?'k':'w']))||i18('opp')):i18('cpu');
 function locSfx(n){if(n==='BİLGİSAYAR')return 'BİLGİSAYARDA';const v=(n.match(/[AEIİOÖUÜ](?=[^AEIİOÖUÜ]*$)/)||['E'])[0];const a='AIOU'.includes(v)?'A':'E';const c='FSTKÇŞHP'.includes(n.slice(-1))?'T':'D';return n+"'"+c+a;}
 let DB=null,ROOM=null,unsub=null,pending=null,writing=false,lateSnap=null,flashT=null;
 const RM=(()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}})();
-const TOKEN=(()=>{try{let t=localStorage.getItem('tavla_tok');if(!t){t=Math.random().toString(36).slice(2,10);localStorage.setItem('tavla_tok',t);}return t;}catch(e){return Math.random().toString(36).slice(2,10);}})();
+// oyuncu kimliği: online'a girerken Firebase uid'i olur (idReady); eski sürümlerden kalan tavla_tok yalnız yedek
+let TOKEN=(()=>{try{let t=localStorage.getItem('tavla_tok');if(!t){t=Math.random().toString(36).slice(2,10);localStorage.setItem('tavla_tok',t);}return t;}catch(e){return Math.random().toString(36).slice(2,10);}})();
 const myKey=()=>G.me===1?'w':'k';
 const oppKey=()=>G.me===1?'k':'w';
 const curTarget=()=>G.mode==='online'?(G.target||0):TARGET;
@@ -1071,7 +1076,7 @@ function showResult(owner){
   const local=G.mode==='local',won=r.winner===G.me;
   const sc=local?`${myName()} ${SC.you} – ${SC.cpu} ${i18('cpu')}`:`${myName()} ${G.score[myKey()]||0} – ${G.score[oppKey()]||0} ${oppName()}`;
   const mt=matchDone(local?'local':'online'),T=curTarget();
-  const wn=r.winner===G.me?myName():oppName(),ln=r.winner===G.me?oppName():myName();
+  const wn=escH(r.winner===G.me?myName():oppName()),ln=escH(r.winner===G.me?oppName():myName());
   const why=r.why==='resign'?`<p>${i18('resignW',{n:ln,p:r.pts})}</p>`:r.why==='offer'?`<p>${i18('offerW',{n:ln})}</p>`:(r.mars?`<p>${i18('marsW',{p:r.pts})}</p>`:'');
   const title=mt?(won?i18('matchWonMe'):i18('matchWon',{n:wn})):(won?i18('setWonMe'):i18('setWon',{n:wn}));
   const xa=xpAward(r,mt,local,T),xh=xa?xpHtml(xa):'';
@@ -1275,7 +1280,7 @@ function onRoom(snap){
   if(G.mode!=='online'||!snap.exists)return;
   if(window.TESTADM)TESTADM.room(snap.data());
   if(pending||writing){lateSnap=snap;return;}
-  const d=snap.data(),gid=d.gid||0;
+  const d=deHtml(snap.data()),gid=d.gid||0;
   if(G.me===-1&&G.loaded&&!d.started&&((d.ban||{})[TOKEN]||(d.seats||{}).k!==TOKEN)){kickedOut();return;}
   // rev iki istemcide ayrı sayılır: rakibin sırasında çekilmede iki taraf aynı anda yazınca rakibin rev'i bizimkinden büyük olmayabilir.
   // yeni set ve set sonu bu yüzden rev'e bakılmadan alınır; yoksa eski setin hamleleri yeni tahtaya uygulanır
@@ -1359,17 +1364,29 @@ function leaveRoom(){
   chatReset();
 }
 function lobbyMsg(t){$('#lobbyMsg').textContent=t||'';}
+// Firebase kimliği alınır (misafire görünmez anonim hesap); alınamazsa eski jetonla devam edilir
+const LTOK=TOKEN;
+async function idReady(){if(window.ACCT&&ACCT.uid){try{TOKEN=await ACCT.uid();}catch(e){}}}
+const ROOM_TTL=7*864e5; // 7 günden eski odalar (sohbetiyle) yeni oda kurulurken silinir
+// kod boşsa ya da oradaki oda eskiyse (ct yok ya da 7 günden eski) true; eski oda silinir
+async function codeFree(ref,code){
+  let snap=null;try{snap=await ref.get();}catch(e){} // dolu ve başkasına ait oda okunamaz
+  if(snap&&!snap.exists)return true;
+  let ct;try{ct=(await DB.doc('games/'+code+'/ct').get()).data();}catch(e){return false;}
+  if(ct!=null&&+ct>Date.now()-ROOM_TTL)return false;
+  try{await ref.set(null);return true;}catch(e){return false;}
+}
 async function createRoom(){
   if(!DB)return;
   lobbyMsg(i18('mkRoom'));
   try{
+    await idReady();
     for(let t=0;t<6;t++){
       const code=String(1000+Math.floor(Math.random()*9000));
       const ref=DB.doc('games/'+code);
-      const snap=await ref.get();
-      if(snap.exists)continue;
+      if(!await codeFree(ref,code))continue;
       const st=newState();
-      await ref.set({b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:NAME||''},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
+      await ref.set({ct:Date.now(),b:st.b,bar:st.bar,off:st.off,turn:1,dice:[],all:[],rolled:false,over:false,winner:0,pts:0,mars:false,started:false,last:null,gid:0,rev:0,open:[0,0],hl:[],un:{w:3,k:3},score:{w:0,k:0},target:TARGET,tl:TLIM,seats:{w:TOKEN,k:null},nm:{w:cleanName(NAME)},av:{w:AV},lv:{w:myLv()},th:{w:myTheme()}});
       lobbyMsg('');enterRoom(code,ref,1);return;
     }
     lobbyMsg(i18('mkFail'));
@@ -1380,22 +1397,26 @@ async function joinRoom(code){
   if(!/^\d{4}$/.test(code)){lobbyMsg(i18('code4'));return;}
   lobbyMsg(i18('joining'));
   try{
+    await idReady();
     const ref=DB.doc('games/'+code);
     const snap=await ref.get();
     if(!snap.exists){lobbyMsg(i18('noRoom'));return;}
     const d=snap.data();let me,fresh=false;
+    // eski sürümde jetonla (tavla_tok) oturulan koltuk uid'e taşınır
+    const mv=['w','k'].find(s=>LTOK!==TOKEN&&d.seats&&d.seats[s]===LTOK);
+    if(mv){try{await ref.update({seats:{[mv]:TOKEN}});d.seats[mv]=TOKEN;}catch(e){}}
     if(d.seats&&d.seats.w===TOKEN)me=1;
     else if(d.seats&&d.seats.k===TOKEN)me=-1;
     else if((d.ban||{})[TOKEN]){lobbyMsg(i18('banned'));return;}
-    else if(d.seats&&!d.seats.k){await ref.update({seats:{k:TOKEN},nm:{k:NAME||''},av:{k:AV},lv:{k:myLv()},th:{k:myTheme()},rev:(d.rev||0)+1});me=-1;fresh=true;
+    else if(d.seats&&!d.seats.k){await ref.update({seats:{k:TOKEN},nm:{k:cleanName(NAME)},av:{k:AV},lv:{k:myLv()},th:{k:myTheme()},rev:(d.rev||0)+1});me=-1;fresh=true;
       DB.doc('lobby/'+code).set(null).catch(()=>{});}
     else{lobbyMsg(i18('full'));return;}
     if(!fresh&&((d.av||{})[me===1?'w':'k'])!==AV){try{await ref.update({av:{[me===1?'w':'k']:AV},rev:(d.rev||0)+1});}catch(e){}}
     if(!fresh&&((d.lv||{})[me===1?'w':'k'])!==myLv()){try{await ref.update({lv:{[me===1?'w':'k']:myLv()},rev:(d.rev||0)+1});}catch(e){}}
     if(!fresh&&((d.th||{})[me===1?'w':'k'])!==myTheme()){try{await ref.update({th:{[me===1?'w':'k']:myTheme()},rev:(d.rev||0)+1});}catch(e){}}
-    if(NAME&&!fresh&&((d.nm||{})[me===1?'w':'k'])!==NAME){try{await ref.update({nm:{[me===1?'w':'k']:NAME},rev:(d.rev||0)+1});}catch(e){}}
+    if(NAME&&!fresh&&((d.nm||{})[me===1?'w':'k'])!==NAME){try{await ref.update({nm:{[me===1?'w':'k']:cleanName(NAME)},rev:(d.rev||0)+1});}catch(e){}}
     lobbyMsg('');enterRoom(code,ref,me);
-  }catch(e){lobbyMsg(i18('joinFail'));}
+  }catch(e){lobbyMsg(/http 40[13]/.test(e&&e.message)?i18('full'):i18('joinFail'));} // kurallar dolu odayı yabancıya göstermez
 }
 
 /* ---------- odalar listesi ve oda teması ----------
@@ -1416,7 +1437,7 @@ function roomTheme(){
 }
 function themeSync(){const t=roomTheme()||myTheme();if(t!==THEME)applyTheme(t,false);}
 let lbBeat=null,lbCode=null;
-function lbEntry(){return {n:NAME||'',av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,th:myTheme(),t:Date.now()};}
+function lbEntry(){return {u:TOKEN,n:cleanName(NAME),av:AV,lv:myLv(),xp:Math.max(0,Math.floor(XP.xp)||0),tg:G.target||0,tl:G.tl||0,th:myTheme(),t:Date.now()};}
 // kurucu, rakip yokken ve set başlamamışken odasını listede tutar
 function lbSync(){
   const want=!!(DB&&G.mode==='online'&&G.loaded&&G.me===1&&G.code&&!G.seats.k&&!G.started);
@@ -1447,7 +1468,7 @@ function lbWatch(){
   if(!on){lbUnwatch();return;}
   if(lbUnsub)return;
   lbRooms=null;lbPaint();
-  try{lbUnsub=DB.collection('lobby').orderBy('t').limit(40).onSnapshot(s=>{lbRooms=s.docs.map(x=>Object.assign({code:x.id},x.data()));lbPaint();},()=>{});}catch(e){}
+  try{lbUnsub=DB.collection('lobby').orderBy('t').limit(40).onSnapshot(s=>{lbRooms=s.docs.map(x=>Object.assign({code:x.id},deHtml(x.data())));lbPaint();},()=>{});}catch(e){}
   lbTick=setInterval(lbPaint,30000);
 }
 function lbUnwatch(){if(lbUnsub){try{lbUnsub();}catch(e){}}lbUnsub=null;clearInterval(lbTick);lbTick=null;}
@@ -1459,7 +1480,7 @@ function lbPaint(){
   const nf=v=>{try{return (+v||0).toLocaleString(ULOC());}catch(e){return String(+v||0);}};
   el.innerHTML=L.map(r=>{
     const lv=Math.max(1,+r.lv||1),tg=+r.tg||0,th=THEMES[r.th]?r.th:'poker',av=AVATARS[+r.av]||AVATARS[0]||'';
-    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(r.n)||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
+    return `<div class="rm"><span class="av">${av}</span><span class="rmi"><b>${escH(UP(cleanName(r.n))||i18('opp'))}</b><small>${escH(i18('lvS',{n:lv}))} · ${escH(lvTitle(lv))} · ${escH(i18('rmPts',{p:nf(r.xp)}))}</small>`+
       `<span class="rmt"><i>${escH(tg>1?i18('rmSets',{n:tg}):i18('rmSet1'))}</i>${+r.tl?`<i>⏱ ${escH(i18('rmTl',{n:+r.tl}))}</i>`:''}<i class="rth" data-t="${th}">🎨 ${escH(THN[th]||th)}</i></span></span>`+
       `<button class="rmj" data-c="${r.code}">${i18('join')}</button></div>`;}).join('');
 }
@@ -2637,7 +2658,7 @@ function chatPaint(){
   let prev=null;
   for(const m of CH.msgs){
     const me=m.from===TOKEN;
-    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(m.nm)||oppName());list.appendChild(n);prev=m.from;}
+    if(prev!==m.from){const n=document.createElement('div');n.className='cmn '+(me?'r':'l');n.textContent=me?myName():(UP(cleanName(m.nm))||oppName());list.appendChild(n);prev=m.from;}
     const d=document.createElement('div');d.className='cm '+(me?'me':'them');d.textContent=m.text;d.title=m.text;list.appendChild(d);}
   list.scrollTop=grew?list.scrollHeight:y;scbSync();
   const b=$('#bdg');b.hidden=!(CH.unread>0&&G.tab!=='c');b.textContent=CH.unread>9?'9+':String(CH.unread);
@@ -2757,7 +2778,7 @@ function showHome(){
 function askName(first){
   if(window.ACCT&&!ACCT.signed())return ACCT.askGuest(first); // misafir ad seçemez (GUEST…), giriş yapınca seçer
   showOverlay(`<h2>${first?i18('welcome'):i18('chgName')}</h2><p>${i18('nameP')}</p><input id="nmIn" maxlength="14" autocomplete="off" placeholder="${i18('namePh')}" value="${UP(NAME).replace(/"/g,'')}"><p style="font-size:13px;color:var(--muted);margin:4px 0 0">${i18('nameLater')}</p><div class="avg" role="radiogroup" aria-label="${i18('avPick')}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${i18('avN',{n:i+1})}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${first?i18('start'):i18('save')}</button>`,()=>{
-    let v=UP(($('#nmIn').value||'').trim().replace(/\s+/g,' ')).slice(0,14);
+    let v=UP(cleanName($('#nmIn').value));
     if(window.TESTADM)v=TESTADM.name(v); // "BURAK"+PIN: gizli test girişi, görünen ad BURAK
     NAME=v||NAME||i18('player');lsSet('tavla_name',NAME);
     const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
@@ -2887,7 +2908,7 @@ function rxRecPaint(){const r=$('#rxRec');if(r)r.innerHTML=RXR.slice(0,3).map(e=
 async function sendRx(em){
   if(!ROOM||!em)return;floatEmoji(em,true);$('#rx').hidden=true;
   RXR=[em].concat(RXR.filter(x=>x!==em)).slice(0,3);lsSet('tavla_rxr',RXR);rxRecPaint();
-  try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:NAME||'',t:Date.now(),text:em,r:1});}catch(err){}
+  try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:cleanName(NAME),t:Date.now(),text:em,r:1});}catch(err){}
 }
 $('#rx').addEventListener('click',e=>{const b=e.target.closest('button');if(b)sendRx(b.dataset.e);});
 $('#rxRec').addEventListener('click',e=>{const b=e.target.closest('button');if(b)sendRx(b.dataset.e);});
@@ -2979,7 +3000,7 @@ $('#chatForm').addEventListener('submit',async e=>{
   const i=$('#chatIn'),t=i.value.trim().slice(0,200);
   if(!t||!ROOM)return;
   i.value='';
-  try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:NAME||'',t:Date.now(),text:t});}
+  try{await ROOM.collection('msgs').add({from:TOKEN,n:G.me,nm:cleanName(NAME),t:Date.now(),text:t});}
   catch(err){i.value=t;flash(i18('sendFail'),3000);}
 });
 $('#chatIn').addEventListener('blur',()=>{try{window.scrollTo(0,0);}catch(e){}});
@@ -2995,8 +3016,14 @@ function makeRTDB(base){
   base=base.replace(/\/+$/,'');
   const enc=s=>s.split('/').map(encodeURIComponent).join('/');
   const clone=x=>x===undefined?x:JSON.parse(JSON.stringify(x));
+  // oyuncunun kimlik jetonu: kurallar odayı yalnız iki oyuncuya açar
+  async function tq(q){
+    let t='';try{t=window.ACCT&&ACCT.idToken?await ACCT.idToken():'';}catch(e){}
+    if(window.__DBNS)q=(q?q+'&':'?')+'ns='+window.__DBNS; // test: Firebase emülatörü
+    return t?(q?q+'&':'?')+'auth='+encodeURIComponent(t):(q||'');
+  }
   async function req(method,path,body,q){
-    const r=await fetch(base+'/'+enc(path)+'.json'+(q||''),{method,headers:body!==undefined?{'Content-Type':'application/json'}:undefined,body:body!==undefined?JSON.stringify(body):undefined});
+    const r=await fetch(base+'/'+enc(path)+'.json'+await tq(q),{method,headers:body!==undefined?{'Content-Type':'application/json'}:undefined,body:body!==undefined?JSON.stringify(body):undefined});
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
   }
@@ -3029,8 +3056,11 @@ function makeRTDB(base){
   // SSE akışı: önbelleği tutar, her değişimde cb(ağaç)
   function stream(path,q,cb,onErr){
     let tree=null,es=null,dead=false;
-    function open(){
-      es=new EventSource(base+'/'+enc(path)+'.json'+(q||''));
+    async function open(){
+      const u=base+'/'+enc(path)+'.json'+await tq(q);if(dead)return;
+      es=new EventSource(u);
+      // jetonun süresi dolunca (1 saat) sunucu akışı keser: yeni jetonla yeniden bağlanılır
+      es.addEventListener('auth_revoked',()=>{es.close();if(!dead)open();});
       es.addEventListener('put',e=>{try{const m=JSON.parse(e.data);tree=m.path==='/'?(m.data===undefined?null:m.data):putAt(tree,m.path,m.data);cb(tree);}catch(x){}});
       es.addEventListener('patch',e=>{try{const m=JSON.parse(e.data);tree=patchAt(tree,m.path==='/'?'':m.path,m.data);cb(tree);}catch(x){}});
       es.addEventListener('cancel',()=>{if(onErr)onErr(new Error('cancel'));});
@@ -3081,7 +3111,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610281600';
+const APP_VER='202610281800';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
