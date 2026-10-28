@@ -1267,7 +1267,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('hesap: sayfa hatası yok (3)',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
-  /* 11) Rakip Zar modu: zarı rakip seçer (5 sn), seçmezse rastgele; oda listesinde etiket; XP yok */
+  /* 11) Rakip Zar modu: zarı rakip seçer (9 sn), seçmezse rastgele; oda listesinde etiket; XP yok */
   {
     const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_target:1,tavla_theme:'poker',tavla_xp:{v:1,xp:600,g:0,w:0}}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'poker',tavla_xp:{v:1,xp:300,g:0,w:0}}});
     await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
@@ -1294,7 +1294,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await B.evaluate(()=>{__dice.push(2);opThrowOnline();});
     await A.waitForFunction(()=>!G.op&&G.turn===1&&!G.opHold,null,{timeout:12000});
     await B.waitForFunction(()=>!!document.getElementById('rzSheet'),null,{timeout:6000}).catch(()=>{});
-    ok('rakip zar: rakibe 5 sn\'lik zar seçme penceresi açıldı',await B.evaluate(()=>!!$('#rzSheet')&&+$('#rzSheet .rzc').textContent<=5&&document.querySelectorAll('#rzSheet .row button').length===12&&$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
+    ok('rakip zar: rakibe 9 sn\'lik zar seçme penceresi açıldı',await B.evaluate(()=>!!$('#rzSheet')&&+$('#rzSheet .rzc').textContent<=9&&$('#rzSheet .row button').textContent==='1'&&document.querySelectorAll('#rzSheet .row button').length===12&&$('#rzSheet .ok').disabled),await B.evaluate(()=>JSON.stringify({s:!!$('#rzSheet'),cd:$('#rzSheet')&&$('#rzSheet .rzc').textContent,t:G.turn,me:G.me,r:G.rolled,op:G.op})));
     ok('rakip zar: sırası gelen bekliyor, ZAR AT kapalı ve atılamaz',await A.evaluate(()=>{doRoll(218,200);const c=centerBtn();return !G.rolled&&c&&!c.en&&c.label.includes('seçiyor');}),await A.evaluate(()=>JSON.stringify(centerBtn())));
     ok('rakip zar: seçen tarafta pencere yok',await A.evaluate(()=>!$('#rzSheet')));
     await press(B,'#rzSheet .row[data-i="0"] [data-v="6"]');
@@ -1316,11 +1316,21 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     for(const t of THEMES){await A.evaluate(k=>applyTheme(k,false),t);await B.evaluate(k=>applyTheme(k,false),t);await sleep(120);
       await A.screenshot({path:`${OUT}/${t}-11-rakip-zar-secim.png`});await B.screenshot({path:`${OUT}/${t}-11-rakip-zar-bekleme.png`});}
     await A.evaluate(()=>applyTheme('poker',false));await B.evaluate(()=>applyTheme('poker',false));
-    await A.waitForFunction(()=>!document.getElementById('rzSheet'),null,{timeout:8000}).catch(()=>{});
+    await A.waitForFunction(()=>!document.getElementById('rzSheet'),null,{timeout:14000}).catch(()=>{});
     const shut=Date.now()-t0;
-    await B.waitForFunction(()=>G.rolled,null,{timeout:8000}).catch(()=>{});
+    await B.waitForFunction(()=>G.rolled,null,{timeout:14000}).catch(()=>{});
     const tr=Date.now()-t0;
-    ok('rakip zar: 5 sn içinde seçilmezse pencere kapanır, zar rastgele atılır',shut>=3800&&shut<=5800&&tr>=4500&&tr<=7500&&await B.evaluate(()=>G.rolled&&G.all.length>=2),shut+' / '+tr+' ms');
+    ok('rakip zar: 9 sn içinde seçilmezse pencere kapanır, zar rastgele atılır',shut>=7800&&shut<=9800&&tr>=8500&&tr<=11500&&await B.evaluate(()=>G.rolled&&G.all.length>=2),shut+' / '+tr+' ms');
+    await sleep(2600);
+    // kırık taşı olan oyuncu (A) zarını normal atar, rakibe pencere açılmaz
+    await B.evaluate(()=>{G.st.bar=[1,0];G.dice=[];G.busy=false;G.auto=false;G.endTimer=null;pushFields({b:G.st.b,bar:G.st.bar,off:G.st.off});endTurnOnline();});
+    await A.waitForFunction(()=>G.turn===1&&!G.rolled&&G.st.bar[0]===1,null,{timeout:8000}).catch(()=>{});await sleep(1200);
+    ok('rakip zar: kırık taşı varken seçim yok, zar normal atılır',await B.evaluate(()=>!$('#rzSheet'))&&await A.evaluate(()=>{const c=centerBtn();return !!(c&&c.en&&c.roll)&&!RZ.hold();}),await A.evaluate(()=>JSON.stringify(centerBtn())));
+    await A.evaluate(()=>doRoll(218,200));await sleep(2400);
+    // toplamaya başlayan oyuncu (B: bütün taşları evde) zarını normal atar
+    await A.evaluate(()=>{const b=Array(24).fill(0);b[IDX(-1,0)]=-15;b[IDX(1,10)]=15;G.st={b,bar:[0,0],off:[0,0]};G.dice=[];G.busy=false;G.auto=false;G.endTimer=null;pushFields({b:G.st.b,bar:G.st.bar,off:G.st.off});endTurnOnline();});
+    await B.waitForFunction(()=>G.turn===-1&&!G.rolled&&allHome(G.st,-1),null,{timeout:8000}).catch(()=>{});await sleep(1200);
+    ok('rakip zar: toplamada seçim yok, zar normal atılır',await A.evaluate(()=>!$('#rzSheet'))&&await B.evaluate(()=>{const c=centerBtn();return !!(c&&c.en&&c.roll)&&!RZ.hold();}),await B.evaluate(()=>JSON.stringify(centerBtn())));
     await A.evaluate(()=>{G.st.off[0]=15;gameOver(1);});
     await B.waitForFunction(()=>G.over,null,{timeout:8000}).catch(()=>{});await sleep(1600);
     ok('rakip zar: maç sonunda XP değişmedi, sonuçta "XP yok"',await A.evaluate(()=>XP.xp===600&&$('#overlay').innerHTML.includes('XP yok'))&&await B.evaluate(()=>XP.xp===300&&$('#overlay').innerHTML.includes('XP yok')),await A.evaluate(()=>XP.xp)+' / '+await B.evaluate(()=>XP.xp));

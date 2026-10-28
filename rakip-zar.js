@@ -1,12 +1,13 @@
 /* ---------- RAKİP ZAR: ikinci oyun modu (yalnız online oda) ----------
    Oda kurulurken "Oyun modu: Rakip Zar" seçilirse odaya rz:1 yazılır. Bu odada her atışta zarı rakip seçer:
-   sırası gelen oyuncunun rakibine 5 sn'lik seçim penceresi açılır (çift zar seçilemez), Tamam'a basınca seçim odaya pk={k,d} yazılır
+   sırası gelen oyuncunun rakibine 9 sn'lik seçim penceresi açılır (çift zar seçilemez), Tamam'a basınca seçim odaya pk={k,d} yazılır
    (k: atışın anahtarı set:sıra:atış sayısı, d: iki zar). Sırası gelen oyuncunun zarı bu değerlerle kendiliğinden atılır.
-   5 sn içinde seçilmezse zar normal rastgele atılır. Açılış zarı (kim başlar) her zaman rastgeledir.
+   9 sn içinde seçilmezse zar normal rastgele atılır. Açılış zarı (kim başlar) her zaman rastgeledir.
+   Atacak oyuncunun kırık taşı varsa ya da toplamaya başladıysa (bütün taşları evde ya da toplanmış taşı var) seçim olmaz, zarı normal atar.
    Bu modda XP kazanılmaz ve kaybedilmez (index.html xpAward). */
 (function(){
   'use strict';
-  const PICK_MS=5000,GRACE=900; // GRACE: seçimin ağdan gelmesi için atan tarafın ek beklemesi
+  const PICK_MS=9000,GRACE=900; // GRACE: seçimin ağdan gelmesi için atan tarafın ek beklemesi
   const okPair=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isInteger(v)&&v>=1&&v<=6)&&p[0]!==p[1]; // çift zar seçilemez
   let pk=null;   // odadaki son seçim
   let win=null;  // açık atış penceresi {key,mine,t0,go,free,taken,miss}
@@ -31,8 +32,7 @@
 #rzSheet .rzb i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left center}
 #rzSheet .row{display:flex;gap:6px;margin-bottom:7px}
 #rzSheet .row button{flex:1;min-width:0;height:46px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--row,rgba(0,0,0,.18));color:var(--fg);
-  display:flex;align-items:center;justify-content:center}
-#rzSheet .row button svg{width:30px;height:30px}
+  display:flex;align-items:center;justify-content:center;font:800 22px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums}
 #rzSheet .row button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 #rzSheet .ok{display:block;width:100%;height:46px;margin-top:4px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);font:800 16px system-ui,sans-serif}
 #rzSheet .ok:disabled{opacity:.45}
@@ -46,23 +46,19 @@
   function ctx(){
     if(G.mode!=='online'||!G.rz||!G.loaded||!G.started||G.over||G.rolled||G.op||!G.st)return null;
     if(cdOn()||opHeld()||doorsClosed(G.st,G.turn))return null;
+    if(G.st.bar[K(G.turn)]>0||G.st.off[K(G.turn)]>0||allHome(G.st,G.turn))return null; // kırık taş ya da toplama: normal zar
     return {key:G.gid+':'+G.turn+':'+rolls(),mine:G.turn===G.me};
   }
   const left=()=>win?Math.max(0,PICK_MS-(Date.now()-win.t0)):0;
   const fmt=d=>d[0]+'-'+d[1];
   const roll=()=>doRoll(98+Math.random()*240,56+Math.random()*288);
 
-  function face(v){
-    const at=[[7,7],[16,7],[25,7],[7,16],[16,16],[25,16],[7,25],[16,25],[25,25]];
-    return `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1.5" y="1.5" width="29" height="29" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>`+
-      PIP[v].map(i=>`<circle cx="${at[i][0]}" cy="${at[i][1]}" r="2.9" fill="currentColor"/>`).join('')+'</svg>';
-  }
   function openSheet(){
     closeSheet();sel=[0,0];
     const el=document.createElement('div');el.id='rzSheet';el.setAttribute('role','dialog');el.setAttribute('aria-label',i18('gmRz'));
     el.innerHTML=`<div class="in"><div class="rzh"><span class="rzx"><b>${escH(i18('rzTag'))}</b><small>${escH(i18('rzPickT',{n:oppName()}))}</small></span><span class="rzc" aria-live="off"></span></div>
       <div class="rzb"><i></i></div>
-      ${[0,1].map(i=>`<div class="row" data-i="${i}">${[1,2,3,4,5,6].map(v=>`<button type="button" data-v="${v}" aria-label="${v}" aria-pressed="false">${face(v)}</button>`).join('')}</div>`).join('')}
+      ${[0,1].map(i=>`<div class="row" data-i="${i}">${[1,2,3,4,5,6].map(v=>`<button type="button" data-v="${v}" aria-label="${v}" aria-pressed="false">${v}</button>`).join('')}</div>`).join('')}
       <button type="button" class="ok" disabled>${escH(i18('rzOk'))}</button></div>`;
     el.querySelectorAll('.row button').forEach(b=>b.onclick=()=>{
       const i=+b.closest('.row').dataset.i;if(b.disabled)return;sel[i]=+b.dataset.v;
