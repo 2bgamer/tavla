@@ -622,8 +622,10 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.context().close();
     // yedek: görseller yüklenemezse kod çizimi önizleme görünür
     const q=await mkPage(b,{ls:{tavla_snd:'off'}});await q.context().route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
-    await q.evaluate(()=>themeMenu());await sleep(600);
-    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(()=>!document.querySelector('#thBody .thimg')&&[...document.querySelectorAll('#thBody .thpv svg')].every(s=>s.getBoundingClientRect().height>20)));
+    await q.evaluate(()=>themeMenu());
+    const yedek=()=>!document.querySelector('#thBody .thimg')&&[...document.querySelectorAll('#thBody .thpv svg')].every(s=>s.getBoundingClientRect().height>20);
+    await q.waitForFunction(yedek,null,{timeout:8000}).catch(()=>{});
+    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(yedek),JSON.stringify(await q.evaluate(()=>({img:document.querySelectorAll('#thBody .thimg').length,h:[...document.querySelectorAll('#thBody .thpv svg')].map(s=>Math.round(s.getBoundingClientRect().height))}))));
     await q.context().close();
   }
   /* 5h) kırık pulun tek ve zorunlu girişi sormadan oynanır */
