@@ -621,7 +621,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('tema kartı testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // yedek: görseller yüklenemezse kod çizimi önizleme görünür
-    const q=await mkPage(b,{ls:{tavla_snd:'off'}});await q.context().route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
+    const q=await mkPage(b,{ls:{tavla_snd:'off'},noSW:true});await q.context().route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
     await q.evaluate(()=>themeMenu());
     const yedek=()=>!document.querySelector('#thBody .thimg')&&[...document.querySelectorAll('#thBody .thpv svg')].every(s=>s.getBoundingClientRect().height>20);
     await q.waitForFunction(yedek,null,{timeout:8000}).catch(()=>{});
