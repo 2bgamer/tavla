@@ -1,0 +1,15 @@
+{
+  "appId": "com.games2b.tavlasultani",
+  "appName": "Tavla Sultanı",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "scheme": "TavlaSultani"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com", "apple.com"]
+    }
+  }
+}
