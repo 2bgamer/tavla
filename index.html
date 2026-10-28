@@ -278,8 +278,6 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
     </div>
     <button class="go" id="bGo"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg><span data-i="go">OYUNU BAŞLAT</span></button>
     <button class="go2" id="bCont" disabled><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M19.5 3.5v4.5H15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i="contGame">OYUNA DEVAM ET</span></button>
-    <div class="shr"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.5-1.8-.4-1.2.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z" fill="currentColor"/><circle cx="7.5" cy="11" r="1.5" fill="var(--bg)"/><circle cx="10" cy="7" r="1.5" fill="var(--bg)"/><circle cx="14.5" cy="7" r="1.5" fill="var(--bg)"/></svg><span class="sh" data-i="thT">Masa Teması</span><button type="button" id="bThAll" class="lnk"><span data-i="seeAll">Tümünü Gör</span> ›</button></div>
-    <div id="thHome"></div>
     <p id="dbNote" hidden></p>
   </section>
   <section id="play" hidden>
@@ -1807,7 +1805,7 @@ function thPrev(k){
   return `<span class="thpv${cd?' has':''}">${img}<svg viewBox="0 0 100 60" aria-hidden="true"><rect width="100" height="60" rx="6" fill="${t.frame}"/><rect x="5" y="4" width="90" height="52" rx="3" fill="${t.field}" stroke="${t.l.s}" stroke-width="1"/>${p}${c(17,48,t.l)}${c(17,37,t.l)}${c(73,12,t.d)}${c(73,23,t.d)}${c(45,48,t.d)}</svg></span>`;
 }
 function thCards(){return `<div class="thg">${Object.keys(THEMES).map(k=>`<button type="button" class="thc" data-t="${k}" aria-pressed="${k===THEME}">${thPrev(k)}<b>${THN[k]}</b><small>${i18('th_'+k)}</small></button>`).join('')}</div>`;}
-function thHomePaint(){const h=$('#thHome');if(h)h.innerHTML=thCards();heroName();}
+function thHomePaint(){heroName();}
 // giriş tahtası: sağa/sola kaydırarak ya da oklarla tema seçimi
 const THL=Object.keys(THEMES);
 function heroName(){const n=$('#heroN');if(!n)return;n.innerHTML=`<b>${THN[THEME]||THEME}</b><span class="hdots">${THL.map(k=>`<i class="${k===THEME?'on':''}"></i>`).join('')}</span>`;}
@@ -2982,7 +2980,7 @@ $('#bLang').onclick=langMenu;
 $('#wpIn').checked=WPON;$('#wpIn').addEventListener('change',e=>setWp(e.target.checked));
 $('#jkIn').checked=JOKE;$('#jkIn').addEventListener('change',e=>setJoke(e.target.checked));
 $('#fxHome').innerHTML=fxControls('');fxWire('');
-$('#bTheme').onclick=themeMenu;$('#bThAll').onclick=themeMenu;
+$('#bTheme').onclick=themeMenu;
 function sheetOpen(id){const d=$(id);thFocus=document.activeElement;d.hidden=false;requestAnimationFrame(()=>{d.classList.add('open');const f=d.querySelector('button,input');if(f)f.focus();});}
 function sheetClose(id){const d=$(id);if(!d||d.hidden)return;d.classList.remove('open');d.hidden=true;if(thFocus&&thFocus.focus)try{thFocus.focus();}catch(e){}}
 $('#bSet').onclick=()=>sheetOpen('#setDrawer');$('#setX').onclick=()=>sheetClose('#setDrawer');
@@ -2992,7 +2990,6 @@ $('#bBell').onclick=()=>showOverlay(`<h2>${i18('bellT')}</h2><p>${i18('bellNone'
 function chatFold(v){CHATMIN=!!v;lsSet('tavla_chatmin',CHATMIN);$('#play').classList.toggle('chatmin',CHATMIN);const b=$('#bFold');b.setAttribute('aria-expanded',String(!CHATMIN));b.textContent=CHATMIN?'▴':'▾';b.setAttribute('aria-label',i18(CHATMIN?'unfoldT':'foldT'));}
 let CHATMIN=lsGet('tavla_chatmin',false)===true;chatFold(CHATMIN);
 $('#bFold').onclick=()=>chatFold(!CHATMIN);$('#thX').onclick=themeClose;
-$('#thHome').addEventListener('click',e=>{const b=e.target.closest('.thc');if(b)applyTheme(b.dataset.t,true);});
 $('#heroPrev').onclick=()=>heroStep(-1);$('#heroNext').onclick=()=>heroStep(1);
 {let sx=null,sy=0;const h=$('#hero');
   h.addEventListener('pointerdown',e=>{if(e.target.closest('.hnav'))return;sx=e.clientX;sy=e.clientY;});
@@ -3143,7 +3140,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610282200';
+const APP_VER='202610282300';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});

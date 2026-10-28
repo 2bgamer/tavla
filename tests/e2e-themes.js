@@ -87,7 +87,8 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   for(const t of THEMES){
     const p=await mkPage(b,{ls:{tavla_theme:'poker',tavla_snd:'off'}});await p.goto(URL);await sleep(500);
     const bg0=await p.evaluate(()=>getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage);
-    await press(p,`#thHome .thc[data-t=${t}]`);await sleep(250);
+    if(t==='poker')ok('giriş: altta ayrı tema listesi yok, ortadaki sağ/sol seçici var',await p.evaluate(()=>!document.querySelector('#home .thc,#thHome,#bThAll,.shr')&&!!$('#heroPrev')&&!!$('#heroNext')));
+    await p.evaluate(()=>themeMenu());await p.waitForSelector('#thDrawer:not([hidden])');await press(p,`#thDrawer .thc[data-t=${t}]`);await sleep(350);
     const st=await p.evaluate(()=>({th:document.documentElement.dataset.theme,ls:lsGet('tavla_theme'),bg:getComputedStyle(document.body).backgroundImage+getComputedStyle($('#bGo')).backgroundImage,hero:!!document.querySelector('#heroB polygon')}));
     ok(`[${t}] giriş: tema anında uygulandı ve kaydedildi`,st.th===t&&st.ls===t&&(t==='poker'||st.bg!==bg0)&&st.hero,JSON.stringify({th:st.th,ls:st.ls}));
     ok(`[${t}] giriş: devam düğmesi kayıt yokken pasif`,await p.evaluate(()=>$('#bCont').disabled));
@@ -397,11 +398,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('reduced motion: sade solma animasyonu',await p3.evaluate(()=>getComputedStyle($('#slg')).animationName==='slgfade'));
     await p3.context().close();
     const p4=await mkPage(b,{ls:{tavla_lang:'en'}});await p4.goto(URL);await sleep(300);
-    ok('İngilizce: tema başlığı',await p4.evaluate(()=>[...document.querySelectorAll('.sh')].some(e=>e.textContent==='Table theme')));
+    ok('İngilizce: tema başlığı',await p4.evaluate(()=>$('#thTitle [data-i=thT]').textContent==='Table theme'));
     await p4.evaluate(()=>moment('hit',0,'en'));
     ok('İngilizce: slogan',await waitSlg(p4,'GOTCHA!'));
-    await p4.evaluate(()=>{LANGSEL='tr';LANG='tr';applyLang();});
-    ok('dil değişince tema kartları yeniden yazıldı',await p4.evaluate(()=>$('#thHome .thc small').textContent==='Neon ışıklar, gece kulübü'));
+    await p4.evaluate(()=>{LANGSEL='tr';LANG='tr';applyLang();themeMenu();});
+    ok('dil değişince tema kartları yeniden yazıldı',await p4.evaluate(()=>$('#thBody .thc small').textContent==='Neon ışıklar, gece kulübü'));
     await p4.context().close();
   }
 
@@ -708,22 +709,22 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   /* 5g) sinematik tema kartları (Faz 1): yazısız orta bant, yedek, taşma, çekmece */
   {
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'neon'}});await p.goto(URL);await sleep(300);
-    await p.evaluate(()=>$('#thHome').scrollIntoView());
-    await p.waitForFunction(()=>[...document.querySelectorAll('#thHome .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
-    const r=await p.evaluate(()=>[...document.querySelectorAll('#thHome .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
+    await p.evaluate(()=>themeMenu());await p.waitForSelector('#thDrawer.open');
+    await p.waitForFunction(()=>[...document.querySelectorAll('#thBody .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
+    const r=await p.evaluate(()=>[...document.querySelectorAll('#thBody .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
       return {t:c.dataset.t,w:i&&i.naturalWidth,h:i&&i.naturalHeight,fit:cs&&cs.objectFit,pos:cs&&cs.objectPosition,lazy:i&&i.loading,kare:Math.abs(pv.width-pv.height)<1.5,ad:c.querySelector('b').textContent};}));
     ok('tema kartı: dört temada sinematik görsel yüklendi (384×1024)',r.length===4&&r.every(x=>x.w===384&&x.h===1024),JSON.stringify(r.map(x=>x.t+':'+x.w+'×'+x.h)));
     ok('tema kartı: yalnızca yazısız orta bant (kare pencere, cover, %65)',r.every(x=>x.fit==='cover'&&x.pos==='50% 65%'&&x.kare),JSON.stringify(r[0]));
     ok('tema kartı: ad ve açıklama HTML\'den (görselde yazı yok)',r.map(x=>x.ad).join()==='Neon Club,Sunset Pop,Poker Lounge,Street Arcade');
     ok('tema kartı: görseller tembel yükleniyor (lazy)',r.every(x=>x.lazy==='lazy'));
-    const sel=await p.evaluate(()=>{const c=$('#thHome .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
+    const sel=await p.evaluate(()=>{const c=$('#thBody .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
     ok('tema kartı: seçili işaret görselin üstünde',sel);
-    await p.click('#thHome .thc[data-t=poker]');await sleep(200);
+    await p.click('#thBody .thc[data-t=poker]');await sleep(200);
     ok('tema kartı: dokununca tema değişip kaydedildi',await p.evaluate(()=>THEME==='poker'&&lsGet('tavla_theme')==='poker'));
     // CI'daki geniş yedek yazı tipini taklit et (en kötü durum)
     await p.evaluate(()=>{const st=document.createElement('style');st.id='wideHome';st.textContent='#home,#home *{font-family:"DejaVu Sans",Verdana,sans-serif!important}';document.head.appendChild(st);});
     for(const w of [320,375,390,430]){await p.setViewportSize({width:w,height:740});await sleep(150);
-      ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thHome .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
+      ok(`tema kartı: ${w}px'te yatay taşma yok`,await p.evaluate(()=>document.scrollingElement.scrollWidth<=innerWidth&&$('#home').scrollWidth<=$('#home').clientWidth+1&&[...document.querySelectorAll('#thBody .thc')].every(c=>c.getBoundingClientRect().right<=innerWidth+.5)));}
     await p.evaluate(()=>$('#wideHome').remove());
     // oyunda çekmece: kısa ekranda da Kapat'a ulaşılır
     await p.setViewportSize({width:390,height:664});await p.click('#bGo');await sleep(400);
@@ -733,9 +734,11 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('tema kartı testinde sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
     // yedek: görseller yüklenemezse kod çizimi önizleme görünür
-    const q=await mkPage(b,{ls:{tavla_snd:'off'}});await q.route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
-    await q.evaluate(()=>$('#thHome').scrollIntoView());await sleep(600);
-    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(()=>!document.querySelector('#thHome .thimg')&&[...document.querySelectorAll('#thHome .thpv svg')].every(s=>s.getBoundingClientRect().height>20)));
+    const q=await mkPage(b,{ls:{tavla_snd:'off'},noSW:true});await q.context().route(/theme-cards\/.*\.webp/,r=>r.abort());await q.goto(URL);await sleep(300);
+    await q.evaluate(()=>themeMenu());
+    const yedek=()=>!document.querySelector('#thBody .thimg')&&[...document.querySelectorAll('#thBody .thpv svg')].every(s=>s.getBoundingClientRect().height>20);
+    await q.waitForFunction(yedek,null,{timeout:8000}).catch(()=>{});
+    ok('tema kartı: görsel yüklenemezse kod çizimi önizleme görünür',await q.evaluate(yedek),JSON.stringify(await q.evaluate(()=>({img:document.querySelectorAll('#thBody .thimg').length,h:[...document.querySelectorAll('#thBody .thpv svg')].map(s=>Math.round(s.getBoundingClientRect().height))}))));
     await q.context().close();
   }
   /* 5h) kırık pulun tek ve zorunlu girişi sormadan oynanır */

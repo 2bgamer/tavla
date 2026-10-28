@@ -331,13 +331,6 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
   background:var(--go2-bg,color-mix(in srgb,var(--surface) 80%,transparent));border:1.5px solid var(--go2-line,var(--accent));color:var(--go2-fg,var(--fg))}
 #home .go2 .ico{color:var(--go2-ic,var(--accent))}
 #home .go2:disabled{opacity:.45}
-.shr{display:flex;align-items:center;gap:8px;margin:4px 2px -4px}
-.shr .sh{margin:0;font-size:14px;font-weight:800;color:var(--fg);letter-spacing:.05em}
-.shr .lnk{margin-left:auto;min-height:36px;padding:4px 6px;border:0!important;background:none!important;box-shadow:none!important;color:var(--muted);font-size:13px;font-weight:600}
-#thHome .thg{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-#thHome .thc{padding:5px;border-radius:12px;gap:4px}
-#thHome .thc b{font-size:11.5px}#thHome .thc small{font-size:9.5px;line-height:1.2}
-#thHome .thc[aria-pressed=true]::after{top:2px;right:2px;width:20px;height:20px;font-size:12px}
 #setDrawer{position:fixed;inset:0;z-index:12;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55)}
 #setDrawer .sheet{width:100%;max-width:520px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:88vh;max-height:88dvh;overflow:auto;display:flex;flex-direction:column;gap:12px}
 #setDrawer .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto}
