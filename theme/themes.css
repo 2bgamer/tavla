@@ -167,6 +167,9 @@ button.primary{background:var(--pri-bg)}
 .xpres{margin:6px 0 10px}
 .xpres .xpg{display:block;font-size:18px;font-weight:900;color:var(--accent)}
 .xpres .lvup{margin:4px 0 0;font-weight:800}
+#xpRow{flex-wrap:wrap;row-gap:3px}
+#xpRow .ttl{flex-basis:100%;text-align:center;font-size:13px;font-weight:800;letter-spacing:.03em;color:var(--accent)}
+.xpres .xpttl{margin:4px 0 0;font-size:13px;font-weight:800;color:var(--accent)}
 .xpres .xpline{margin-top:6px}
 @media (max-height:700px){#adv .av{width:38px;height:38px}#adv .asc b{font-size:19px}}
 @media (prefers-reduced-motion:reduce){#adv.fl .abar{animation:none}}
