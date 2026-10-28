@@ -883,13 +883,20 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       await press(p,`#taSheet ${sd} .row[data-i="0"] button[data-v="${a}"]`);await press(p,`#taSheet ${sd} .row[data-i="1"] button[data-v="${b2}"]`);};
     for(const t of THEMES){
       await fetch(DB+'/names.json',{method:'DELETE'});
-      const p=await mkPage(b,{name:'AHMET',acct:'adm'+t+Date.now(),ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);await sleep(500);
+      const uid='adm'+t+Date.now();await fetch(DB+'/names/BURAK.json',{method:'PUT',body:JSON.stringify(uid)});
       if(t==='neon'){
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak1111');await press(p,'#ovOk');await sleep(400);
-        ok('test modu: yanlış PIN admin açmaz',await p.evaluate(()=>!TESTADM.on&&NAME==='BURAK1111'));
+        // başka hesap: eski şifreyi yazsa da test modu açılmaz, BURAK adını da alamaz; misafirde de kapalı
+        const o=await mkPage(b,{name:'AHMET',acct:'baska'+Date.now(),ls:{tavla_snd:'off'}});await o.goto(URL);await sleep(1500);
+        await o.evaluate(()=>askName(false));await o.fill('#nmIn','burak31');await press(o,'#ovOk');await sleep(1500);
+        ok('test modu: başka hesap BURAK31 yazınca açılmaz, BURAK adını alamaz',await o.evaluate(()=>!TESTADM.on&&NAME!=='BURAK'),await o.evaluate(()=>NAME+' '+TESTADM.on));
+        await o.context().close();
+        const gp=await mkPage(b,{guest:true,ls:{tavla_snd:'off'}});await gp.goto(URL);await sleep(1500);
+        ok('test modu: misafirde kapalı',await gp.evaluate(()=>!TESTADM.on));
+        await gp.context().close();
       }
-      await p.evaluate(()=>askName(false));await p.fill('#nmIn','burak31');await press(p,'#ovOk');await sleep(400);
-      ok(`[${t}] test modu: BURAK+PIN admin girişi, görünen ad yalnız BURAK, açılış bildirimi yok`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&lsGet('tavla_name','')==='BURAK'&&!G.flash));
+      const p=await mkPage(b,{name:'BURAK',acct:uid,ls:{tavla_theme:t,tavla_snd:'off'}});await p.goto(URL);
+      await p.waitForFunction(()=>TESTADM.on,null,{timeout:6000}).catch(()=>{});
+      ok(`[${t}] test modu: BURAK adının sahibi hesapla şifresiz açık, açılış bildirimi yok`,await p.evaluate(()=>TESTADM.on&&NAME==='BURAK'&&!G.flash));
       await press(p,'#mCpu');await press(p,'#bGo');
       await p.waitForFunction(()=>G.mode==='local'&&!G.op&&!cdOn(),null,{timeout:15000}).catch(()=>{});
       await p.evaluate(()=>{G.run++;G.autoTok++;G.endTok++;$('#overlay').hidden=true;Object.assign(G,{op:0,opHold:0,over:false,busy:false,auto:false,turn:1,rolled:false,dice:[],all:[],sel:null,hist:[],endTimer:null});opClear();render();});
@@ -922,14 +929,17 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
         await p.evaluate(()=>{G.over=false;G.busy=false;G.turn=1;G.rolled=false;G.dice=[];G.all=[];saveCur();});
         await p.reload();await p.waitForFunction(()=>G.mode==='local',null,{timeout:8000}).catch(()=>{});await sleep(400);
         ok('test modu: sayfa yenilenince düğme hemen görünür',await p.evaluate(()=>TESTADM.on)&&await p.isVisible('#taBtn'));
-        await p.evaluate(()=>askName(false));await p.fill('#nmIn','AHMET');await press(p,'#ovOk');await sleep(400);
-        ok('test modu: başka ad girilince admin kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
+        // BURAK adı artık bu hesabın değilse test modu kapanır
+        await fetch(DB+'/names/BURAK.json',{method:'PUT',body:JSON.stringify('baskasi')});
+        await p.reload();await sleep(2500);
+        ok('test modu: ad sahibi değişince kapanır, düğme gizlenir',await p.evaluate(()=>!TESTADM.on)&&!(await p.isVisible('#taBtn')));
       }
       ok(`[${t}] test modu yerel: sayfa hatası yok`,!p.errs.length,p.errs.join('|'));
       await p.context().close();
     }
     // online: admin (A) rakibinin (B) zarını seçer; B'nin ekranında sağ altta sabit 🧪 simgesi, oda alanı temizlenir
-    const A=await mkPage(b,{name:'BURAK',ls:{tavla_snd:'off',tavla_adm:true,tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
+    await fetch(DB+'/names.json',{method:'DELETE'});await fetch(DB+'/names/BURAK.json',{method:'PUT',body:JSON.stringify('admOnline')});
+    const A=await mkPage(b,{name:'BURAK',acct:'admOnline',ls:{tavla_snd:'off',tavla_theme:'poker'}}),B=await mkPage(b,{name:'AHMET',ls:{tavla_snd:'off',tavla_theme:'neon'}});
     await A.goto(URL);await B.goto(URL);await sleep(500);await hook(A);await hook(B);
     await A.evaluate(()=>createRoom());await A.waitForFunction(()=>G.code,null,{timeout:5000});
     await B.evaluate(c=>joinRoom(c),await A.evaluate(()=>G.code));
@@ -958,9 +968,6 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('test modu online: atışta iki ekranda da bildirim yok, rakipte simge duruyor',await noNote(A)&&await noNote(B)&&await icoOn(B));
     for(const t of THEMES){await B.evaluate(k=>applyTheme(k,false),t);await sleep(300);await B.screenshot({path:`${OUT}/${t}-8-test-simgesi-rakip.png`});}
     ok('test modu online: seçim kullanıldı, odadaki alan temizlendi',!(await A.textContent('#taBtn')).includes('2-1'),await A.textContent('#taBtn'));
-    await press(A,'#taBtn');await press(A,'#taSheet .out');
-    await B.waitForFunction(()=>{const t=document.getElementById('taIco');return !t||t.hidden;},null,{timeout:8000}).catch(()=>{});
-    ok('test modu online: admin moddan çıkınca rakipteki simge kalkar',!(await icoOn(B)));
     ok('test modu online: sayfa hatası yok',!A.errs.length&&!B.errs.length,A.errs.concat(B.errs).join('|'));
     await A.context().close();await B.context().close();
   }

@@ -1,5 +1,6 @@
-/* ---------- TEST MODU: gizli admin girişi + elle zar seçimi ----------
-   Giriş: oyuncu adı kutusuna BURAK ve PIN birlikte yazılır (ör. BURAK31). Görünen ad yalnız BURAK olur.
+/* ---------- TEST MODU: Burak'ın hesabına özel elle zar seçimi ----------
+   Yalnız BURAK adının sahibi olan hesapla (names/BURAK = uid, bkz. account.js) giriş yapınca kendiliğinden açılır.
+   Misafir ya da başka bir hesap açamaz; şifre yoktur.
    Admin, kendi ve rakibinin (bilgisayar ya da online arkadaş) sıradaki zarını seçebilir.
    Test modu sağ alttaki 🧪 simgesiyle görünür: online odada rakibin ekranında da sürekli durur, gizli değildir.
 
@@ -10,9 +11,20 @@
    index.html içindeki "window.TESTADM" kancaları dosya yokken hiçbir şey yapmaz (grep TESTADM ile bulunup silinebilir). */
 (function(){
   'use strict';
-  const ADMIN='BURAK',PIN_H=2698340926; // PIN'in kendisi değil, ADMIN+PIN özeti (FNV-1a)
-  const hash=s=>{let h=2166136261;for(const c of s){h^=c.codePointAt(0);h=Math.imul(h,16777619)>>>0;}return h;};
-  let on=lsGet('tavla_adm',false)===true;
+  const ADMIN='BURAK',OWN='tavla_adm_uid'; // OWN: bu cihazda doğrulanmış sahibin uid'si (açılışta beklemeden göstermek için)
+  const dbBase=()=>String(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app').replace(/\/+$/,'');
+  const uidNow=()=>(window.ACCT&&ACCT.user&&ACCT.user.uid)||lsGet('tavla_uid',null)||null;
+  let on=false,checked;           // checked: test modu kararının verildiği uid
+  // giriş yapan hesap BURAK adının sahibi mi: names/BURAK kaydı bu uid mi
+  function verify(){
+    const uid=uidNow();if(uid===checked)return;checked=uid;
+    if(!uid){on=false;return;}
+    on=lsGet(OWN,null)===uid;
+    fetch(dbBase()+'/names/'+ADMIN+'.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(o=>{
+      if(uidNow()!==uid)return;
+      on=o===uid;lsSet(OWN,on?uid:null);paint();
+    }).catch(()=>{}); // ağ hatası: bu cihazdaki önceki karar geçerli kalır
+  }
   const q={};                    // yerel sıradaki zarlar: q[1] beyaz, q[-1] siyah
   const room={w:null,k:null};    // online: odaya yazılmış bekleyen zarlar (admW/admK)
   let used=null,tmSeed=0,hit=false,roomAdm=null; // roomAdm: odada test modu açık olan koltuk (admOn)        // used: bu atışta odadan alınan koltuk; tmSeed: elle seçilen atışın tohumu
@@ -40,8 +52,7 @@
 #taSheet .rnd{background:none;border:0;color:#ffd54f;font:600 12px system-ui,sans-serif;padding:2px 0;text-decoration:underline}
 #taSheet .act{display:flex;gap:8px;margin-top:12px}
 #taSheet .act button{flex:1;height:42px;border-radius:12px;border:1px solid #6b5a33;background:#2b2110;color:#fff3d6;font:700 14px system-ui,sans-serif}
-#taSheet .act .ok{background:#ffb300;border-color:#ffb300;color:#1b1408}
-#taSheet .out{display:block;margin:10px auto 0;background:none;border:0;color:#d9c79f;font:12px system-ui,sans-serif;text-decoration:underline}`;
+#taSheet .act .ok{background:#ffb300;border-color:#ffb300;color:#1b1408}`;
   document.head.appendChild(css);
 
   // bekleyen zar: yerelde q, online'da kendi zarın q, rakibinki odada
@@ -63,7 +74,7 @@
     el.innerHTML=`<div class="in"><h3>🧪 Test modu · zar seçimi</h3><p>Seçilen zar o tarafın bir sonraki atışında gelir. Online odada rakibin ekranında da sağ altta 🧪 simgesi durur.</p>
       ${side(G.me)}${side(-G.me)}
       <div class="act"><button type="button" class="no">Vazgeç</button><button type="button" class="ok">Kaydet</button></div>
-      <button type="button" class="out">Admin modundan çık</button></div>`;
+</div>`;
     const paintSel=()=>el.querySelectorAll('.sd').forEach(d=>{const s=+d.dataset.s;d.querySelectorAll('.row').forEach(r=>{const i=+r.dataset.i;r.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(sel[s][i]===+b.dataset.v)));});});
     el.querySelectorAll('.row button').forEach(b=>b.onclick=()=>{const s=+b.closest('.sd').dataset.s,i=+b.closest('.row').dataset.i;sel[s][i]=+b.dataset.v;
       if(!sel[s][1-i])sel[s][1-i]=+b.dataset.v;paintSel();});
@@ -75,13 +86,12 @@
       [G.me,-G.me].forEach(s=>{const p=okPair(sel[s])?sel[s]:null,o=pend(s);if(JSON.stringify(p)!==JSON.stringify(o||null))setPend(s,p);});
       close();
     };
-    el.querySelector('.out').onclick=()=>{on=false;lsSet('tavla_adm',false);[1,-1].forEach(s=>delete q[s]);
-      if(G.mode==='online'&&ROOM&&roomAdm===myKey()){roomAdm=null;ROOM.update({admOn:null}).catch(()=>{});}close();};
     document.body.appendChild(el);
   }
 
   function paint(){
     // düğme body'de: #play kaydırılabilir bir kutu, iOS Safari içindeki sabit (fixed) öğeyi kaydırınca kırpıp kaybedebiliyor
+    verify();
     let b=document.getElementById('taBtn');
     const pl=document.getElementById('play'),show=on&&!!G.mode&&!!pl&&!pl.hidden;
     if(show&&!b){b=document.createElement('button');b.id='taBtn';b.type='button';b.setAttribute('aria-label','Test modu: zar seç');b.onclick=openSheet;document.body.appendChild(b);}
@@ -97,13 +107,8 @@
   }
 
   window.TESTADM={
-    // ad kutusu: "BURAK"+PIN admin girişi yapar, görünen ad BURAK kalır; başka bir ad admin modunu kapatır
-    name(v){
-      const m=/^(.*?)\s*(\d{2,})$/.exec(v||'');
-      if(m&&m[1]===ADMIN&&hash(ADMIN+m[2])===PIN_H){on=true;lsSet('tavla_adm',true);return ADMIN;}
-      if(on&&v&&v!==ADMIN){on=false;lsSet('tavla_adm',false);}
-      return v;
-    },
+    // ad kutusu kancası: eski şifreli giriş kaldırıldı, ad olduğu gibi kalır
+    name(v){return v;},
     // atıştan önce: bu koltuk için seçilmiş zar varsa onu ver (yoksa null → normal rastgele)
     take(s){
       used=null;
@@ -134,6 +139,8 @@
   // ana ekrana dönüş render() çağırmaz: #play gizlenip açıldıkça düğmeyi güncelle
   const pl=document.getElementById('play');
   if(pl&&window.MutationObserver)new MutationObserver(paint).observe(pl,{attributes:true,attributeFilter:['hidden']});
+  // giriş/çıkış (Firebase oturumu sonradan yüklenir) render beklemeden yakalansın
+  setInterval(()=>{if(uidNow()!==checked)paint();},1000);
   // sayfa açılırken kaldığı oyun bu dosya yüklenmeden önce çizilir; sıradaki render'ı (ör. zar atışı) beklemeden düğmeyi göster
   paint();
 })();
