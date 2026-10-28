@@ -4,6 +4,8 @@
    - Hesapta profil yoksa cihazdaki profil hesaba aktarılır.
    - Hesapta profil varsa hesaptaki geçerli olur (yeni girişte her zaman, sonraki açılışlarda daha yeniyse).
    - Çıkış yapınca bu cihazdaki profil silinir (hesapta saklı kalır), oyun misafir olarak baştan başlar.
+   Misafir ad seçemez: GUEST ve 4 rakam (GUEST4821) adıyla oynar; ad seçmek için giriş yapar.
+   Giriş yapanın adı tekildir: names/<AD> = uid ile ona ayrılır, başkası alamaz. BURAK = Burak = burak aynı ad sayılır; GUEST ile başlayan adlar misafirlere ayrılmıştır.
    Firebase SDK (assets/fb) yalnız gerektiğinde yüklenir: giriş yapılmışsa, giriş düğmesine basılınca ya da e-posta bağlantısıyla açılınca.
    Online oda/davet akışı hesaptan bağımsızdır (oyuncu kimliği tavla_tok). */
 (function(){
@@ -21,23 +23,23 @@
   function addI18n(){
     if(i18ok||typeof I18N==='undefined')return;i18ok=true;
     Object.assign(I18N.tr,{acG:'Google ile devam et',acM:'E-posta ile devam et',acOr:'veya misafir olarak',acT:'Hesap',
-      acGuest:'Misafir · puanın yalnız bu cihazda',acIn:'{e}',acVia:'{p} ile giriş yapıldı',acOut:'Çıkış yap',acHome:'Giriş yap, puanın kaybolmasın',
+      acGuest:'Misafir · puanın yalnız bu cihazda',acIn:'{e}',acVia:'{p} ile giriş yapıldı',acOut:'Çıkış yap',acHome:'Giriş yap, adını seç, puanın kaybolmasın',
       acMT:'E-posta ile giriş',acMP:'Adresine bir giriş bağlantısı gönderelim. Şifre gerekmez.',acMPh:'ornek@mail.com',acSend:'Bağlantı gönder',
       acSent:'Bağlantı gönderildi',acSentP:'{e} adresine gelen maildeki bağlantıya bu telefonda dokun. Gelmezse spam klasörüne bak.',
       acMC:'E-postanı doğrula',acMCP:'Girişi tamamlamak için bağlantıyı istediğin e-posta adresini yaz.',acGo:'Giriş yap',
       acOk:'Hesabın bağlandı',acOkP:'Puanın ve profilin artık hesabında saklanıyor; başka telefondan girince de devam eder.',
       acOutQ:'Çıkış yapılsın mı?',acOutP:'Puanın hesabında saklı kalır. Bu cihaz misafir olarak baştan başlar.',
       acErr:'Giriş yapılamadı',acErrNet:'İnternet bağlantını kontrol edip tekrar dene.',acErrMail:'Geçerli bir e-posta adresi yaz.',
-      acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç'});
+      acErrLink:'Bu bağlantının süresi dolmuş ya da kullanılmış. Yeni bağlantı iste.',acErrX:'Bir sorun oldu, biraz sonra tekrar dene.',acSync:'Hesap eşitleniyor…',cancel2:'Vazgeç',acTaken:'Bu ad başka bir oyuncuya ait. Başka bir ad seç.',acNoGuest:'GUEST ile başlayan adlar misafirlere ayrılmış.',acNeed:'Masada görünecek bir ad yaz.',acProf:'Profil',acGuestF:'Misafir olarak {n} adıyla oynarsın. Kendi adını seçmek için giriş yap.',acGuestP:'Şu an misafir olarak {n} adıyla oynuyorsun. Kendi adını seçmek için giriş yap.',acPlayG:'Misafir olarak oyna'});
     Object.assign(I18N.en,{acG:'Continue with Google',acM:'Continue with email',acOr:'or as a guest',acT:'Account',
-      acGuest:'Guest · your points live on this device only',acIn:'{e}',acVia:'Signed in with {p}',acOut:'Sign out',acHome:'Sign in to keep your points',
+      acGuest:'Guest · your points live on this device only',acIn:'{e}',acVia:'Signed in with {p}',acOut:'Sign out',acHome:'Sign in to pick a name and keep your points',
       acMT:'Sign in with email',acMP:'We\'ll send you a sign-in link. No password needed.',acMPh:'you@mail.com',acSend:'Send link',
       acSent:'Link sent',acSentP:'Tap the link in the email sent to {e} on this phone. Check spam if it doesn\'t arrive.',
       acMC:'Confirm your email',acMCP:'Type the email address you requested the link for.',acGo:'Sign in',
       acOk:'Account connected',acOkP:'Your points and profile are now saved to your account and follow you to other phones.',
       acOutQ:'Sign out?',acOutP:'Your points stay in your account. This device starts over as a guest.',
       acErr:'Couldn\'t sign in',acErrNet:'Check your connection and try again.',acErrMail:'Enter a valid email address.',
-      acErrLink:'This link has expired or was already used. Request a new one.',acErrX:'Something went wrong, try again later.',acSync:'Syncing account…',cancel2:'Cancel'});
+      acErrLink:'This link has expired or was already used. Request a new one.',acErrX:'Something went wrong, try again later.',acSync:'Syncing account…',cancel2:'Cancel',acTaken:'This name belongs to another player. Pick another one.',acNoGuest:'Names starting with GUEST are reserved for guests.',acNeed:'Type the name shown at the table.',acProf:'Profile',acGuestF:'As a guest you play as {n}. Sign in to pick your own name.',acGuestP:'You\'re playing as guest {n}. Sign in to pick your own name.',acPlayG:'Play as guest'});
   }
   const t=(k,p)=>{addI18n();return i18(k,p);};
 
@@ -63,10 +65,71 @@
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
   }
+  /* ---------- ad ayırma: names/<AD> = uid ---------- */
+  const nk=v=>String(v||'').toLocaleUpperCase('tr').replace(/İ/g,'I').replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,' ').trim();
+  async function names(k,method,body){
+    const tok=method==='GET'||!user?'':'?auth='+encodeURIComponent(await user.getIdToken());
+    const r=await fetch(dbBase()+'/names/'+encodeURIComponent(k)+'.json'+tok,{method,headers:body!==undefined?{'Content-Type':'application/json'}:undefined,body:body!==undefined?JSON.stringify(body):undefined});
+    if(!r.ok)throw new Error('http '+r.status);
+    return r.json();
+  }
+  // true: ad kullanılabilir (girişliyse artık bu hesabın); false: başkasına ait. Bağlantı yoksa engellemez.
+  async function claim(v,old){
+    const k=nk(v);if(!k)return true;
+    let o;try{o=await names(k,'GET');}catch(e){return true;}
+    if(o&&(!user||o!==user.uid))return false;
+    if(!user||o===user.uid)return true;
+    try{await names(k,'PUT',user.uid);}catch(e){
+      try{const o2=await names(k,'GET');if(o2&&o2!==user.uid)return false;}catch(e2){}
+      return true;
+    }
+    const ok=old&&nk(old);
+    if(ok&&ok!==k)names(ok,'GET').then(x=>{if(x===user.uid)return names(ok,'DELETE');}).catch(()=>{});
+    return true;
+  }
+  const isGuest=v=>/^GUEST/.test(nk(v));
+  const guestName=()=>'GUEST'+(1000+Math.floor(Math.random()*9000));
+  // girişli mi (SDK daha yüklenmediyse son bilinen durum)
+  const signed=()=>!!(user||(!ready&&ls('tavla_uid',null)));
+  function nmErr(k){const i=$('#nmIn');if(!i)return;let e=$('#nmE');if(!e){e=document.createElement('p');e.id='nmE';e.className='acE';i.after(e);}e.textContent=t(k);try{i.focus();}catch(x){}}
+  // ad penceresindeki kaydet düğmesi (girişli oyuncu): ad boş, GUEST… ya da başkasınınsa kaydetme
+  function guardName(){
+    const ok=$('#ovOk'),i=$('#nmIn');if(!ok||!i)return;
+    const save=ok.onclick;
+    ok.onclick=async()=>{
+      const raw=UP((i.value||'').trim().replace(/\s+/g,' ')).slice(0,14),v=window.TESTADM?TESTADM.name(raw):raw;
+      if(!v&&isGuest(NAME)){nmErr('acNeed');return;}
+      if(v&&isGuest(v)){nmErr('acNoGuest');return;}
+      if(v&&v===raw&&nk(v)!==nk(NAME)){
+        ok.disabled=true;const free=await claim(v,NAME);ok.disabled=false;
+        if(!free){nmErr('acTaken');return;}
+      }
+      save();
+    };
+  }
+  // misafirin profil penceresi: ad yok (GUEST…), giriş düğmeleri ve avatar
+  function askGuest(first){
+    const g=isGuest(NAME)?NAME:guestName();
+    showOverlay(`<h2>${esc(first?i18('welcome'):t('acProf'))}</h2><div class="acOv">${btns()}<div class="acOr"><span>${esc(t('acOr'))}</span></div></div><p>${esc(t(first?'acGuestF':'acGuestP',{n:g}))}</p><div class="avg" role="radiogroup" aria-label="${esc(i18('avPick'))}">${AVATARS.map((v,i)=>`<button type="button" class="avb" role="radio" aria-checked="${i===AV}" aria-label="${esc(i18('avN',{n:i+1}))}" data-a="${i}">${v}</button>`).join('')}</div><button class="primary" id="ovOk">${esc(first?t('acPlayG'):i18('save'))}</button>`,()=>{
+      NAME=g;lsSet('tavla_name',NAME);
+      const ab=document.querySelector('.avb[aria-checked=true]');if(ab){AV=+ab.dataset.a;lsSet('tavla_av',AV);if(ROOM)pushFields({av:{[myKey()]:AV}});}
+      refreshHome();if(G.mode)render();
+    });
+    bind($('#ovBox'));
+    document.querySelectorAll('.avb').forEach(b=>b.onclick=()=>document.querySelectorAll('.avb').forEach(x=>x.setAttribute('aria-checked',String(x===b))));
+  }
+  // yeni hesap ya da misafirken giriş: kendi adını sor (Google adıyla doldurulur)
+  function askOwn(){
+    askName(isGuest(NAME)||!NAME);
+    const i=$('#nmIn');if(!i)return;
+    if(isGuest(i.value))i.value='';
+    const dn=String((user&&user.displayName)||'').trim().split(/\s+/)[0]||'';
+    if(!i.value&&dn&&!isGuest(dn))i.value=UP(dn).slice(0,14);
+  }
   const local=()=>({n:NAME||'',av:AV,xp:XP,t:ls('tavla_pt',0)||0});
   function push(){
     clearTimeout(pushT);
-    pushT=setTimeout(()=>{if(!user||!NAME)return;const p=local();if(!p.t){p.t=Date.now();lsw('tavla_pt',p.t);}cloud('PUT',p).catch(()=>{});},600);
+    pushT=setTimeout(()=>{if(!user||!NAME||isGuest(NAME))return;const p=local();if(!p.t){p.t=Date.now();lsw('tavla_pt',p.t);}cloud('PUT',p).catch(()=>{});},600);
   }
   function apply(c){
     applying=true;
@@ -87,20 +150,19 @@
     let c=null;
     try{c=await cloud('GET');}catch(e){return;}
     const was=fresh;fresh=false;
-    if(c&&c.n){
+    if(c&&c.n&&!isGuest(c.n)){
       if(was||(+c.t||0)>=(ls('tavla_pt',0)||0))apply(c);else push();
+      claim(NAME).catch(()=>{});
       // ad sorusu açıksa hesaptaki profil geldiği için kapat
       if($('#nmIn')&&!$('#overlay').hidden&&NAME)$('#overlay').hidden=true;
       if(was)done();
     }else{
-      if(NAME){push();if(was)done();}
-      else{
-        // yeni hesap, ad henüz yok: ad sorusunu Google adıyla doldur
-        const dn=String(user.displayName||'').trim().split(/\s+/)[0]||'';
-        if(!$('#nmIn')||$('#overlay').hidden)askName(true);
-        const ov=document.querySelector('#ovBox .acOv');if(ov)ov.remove();
-        const i=$('#nmIn');if(i&&!i.value&&dn)i.value=UP(dn).slice(0,14);
+      // yeni hesap: misafir adı (GUEST…) hesaba taşınmaz, kendi adı sorulur; puan ve avatar ad kaydedilince hesaba yazılır
+      if(NAME&&!isGuest(NAME)){
+        if(await claim(NAME)){push();if(was)done();}
+        else{askOwn();nmErr('acTaken');}
       }
+      else askOwn();
     }
   }
   function done(){showOverlay(`<h2>${esc(t('acOk'))}</h2><p>${esc(t('acOkP'))}</p><button class="primary" id="ovOk">${esc(i18('close'))}</button>`);}
@@ -108,7 +170,7 @@
   function onUser(u){
     user=u||null;ready=true;
     if(user){lsw('tavla_uid',user.uid);lsw('tavla_acc',{e:user.email||'',p:prov(user)});sync();}
-    else lsw('tavla_uid',null),lsw('tavla_acc',null);
+    else{lsw('tavla_uid',null);lsw('tavla_acc',null);if(NAME&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}}
     paint();
   }
   const prov=u=>{const p=((u.providerData||[])[0]||{}).providerId||'';return p==='google.com'?'Google':'E-posta';};
@@ -177,7 +239,6 @@
   const btns=()=>`<button type="button" class="acBtn acBG" data-ac="g">${GSVG}<span>${esc(t('acG'))}</span></button><button type="button" class="acBtn" data-ac="m">${MSVG}<span>${esc(t('acM'))}</span></button>`;
   function bind(root){(root||document).querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{try{audio();}catch(e){}if(!$('#setDrawer').hidden)try{sheetClose('#setDrawer');}catch(e){}({g:google,m:mail,o:signOut})[b.dataset.ac]();});}
   // ilk açılıştaki "Hoş geldin" penceresine eklenen giriş düğmeleri (askName çağırır)
-  function ovHtml(first){return first&&!user?`<div class="acOv">${btns()}<div class="acOr"><span>${esc(t('acOr'))}</span></div></div>`:'';}
   function paint(){
     const acc=ls('tavla_acc',null),inn=!!(user||(acc&&!ready));
     const s=$('#acSet');
@@ -217,11 +278,13 @@
     if(xr&&!$('#acHome')){const b=document.createElement('button');b.type='button';b.id='acHome';b.hidden=true;
       b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span></span>';
       b.onclick=()=>{try{audio();}catch(e){}$('#bSet').click();};xr.after(b);}
+    // misafir ad seçemez: eskiden seçilmiş adlar GUEST… olur (giriş yapınca kendi adını seçer)
+    if(NAME&&!signed()&&!isGuest(NAME)&&!window.__keepName){NAME=guestName();lsSet('tavla_name',NAME);refreshHome();}
     paint();
     if(linkIn())finishLink();
     else if(ls('tavla_uid',null))load().catch(()=>{});
   }
-  window.ACCT={ovHtml,bind,paint,init,
+  window.ACCT={bind,paint,init,guardName,askGuest,signed,nk,
     // index.html lsSet kancası: profil değişince hesaba yaz
     dirty(k){if(applying||!PK.includes(k))return;lsw('tavla_pt',Date.now());if(user)push();},
     get user(){return user;}};
