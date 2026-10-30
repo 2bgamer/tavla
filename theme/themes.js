@@ -4,6 +4,7 @@
    card: tema seçim kartının sinematik önizlemesi (384×1024 portre; logo/başlık/OYNA resme gömülü olduğu için kartta
       yalnızca yazısız orta bant, yani masa sahnesi, gösterilir: object-position 50% 65%). Yüklenemezse kod çizimi önizleme kalır.
    home (isteğe bağlı): giriş ekranı görsel yuvaları {logo, table, bg}: dosya yolu verilince yedek çizimin yerine geçer.
+   img (isteğe bağlı): tahta zemini/çerçevesi için .svg yerine kullanılacak dosya adı (ör. 3× WebP dokusu); 410×400 koordinatları aynı kalır.
    tk: varlık yüklenene kadar ve küçük çizimlerde (isim etiketi, toplanan pul) kullanılan renkler. adv: üstünlük barı [oyuncu, rakip]. */
 window.TAVLA_THEMES={
   neon:{card:'assets/home/theme-cards/neon.webp',c:'#0b0620',a:'assets/neon/',adv:['#21c8ff','#ff2f9a'],tk:{frame:'#150a31',field:'#0d0724',bar:'#1d1042',
@@ -26,8 +27,8 @@ window.TAVLA_THEMES={
     l:{g:['#ffffff','#fffaf1','#bab2aa'],s:'#04cdff'},d:{g:['#ff8aa5','#da0938','#570218'],s:'#04cdff'},
     hi:'#00f0ff',hiFill:'rgba(0,240,255,.3)',dest:'rgba(0,240,255,.42)',destS:'#00f0ff',
     die:{face:[255,255,255],edge:'#000000',pip:'#111111',one:'#ff3b47'}}},
-  // Klasik: kızıl maun, bordo, fildişi, pirinç (assets/classic v0.9). Sinematik kart görseli henüz yok: kod önizlemesi gösterilir.
-  classic:{c:'#21100d',a:'assets/classic/',adv:['#e8d0a3','#a3242c'],tk:{frame:'#2a0f0c',field:'#6a2a1c',bar:'#4a1a12',
+  // Klasik: kızıl maun, bordo, fildişi, pirinç. Zemin/çerçeve/pul/ZAR AT/logo ChatGPT görsel paketi 01'den (WebP); sinematik kart görseli henüz yok: kod önizlemesi gösterilir.
+  classic:{c:'#21100d',a:'assets/classic/',img:{'board-field':'board-field.webp','board-frame':'board-frame.webp'},home:{logo:'assets/classic/logo.webp'},adv:['#e8d0a3','#a3242c'],tk:{frame:'#2a0f0c',field:'#6a2a1c',bar:'#4a1a12',
     triA:'#fff0cd',triSA:'#f3cf87',triB:'#8c1d23',triSB:'#bf6c4c',triW:.7,
     l:{g:['#fffaf0','#e5c9a0','#968166'],s:'#d8ad61'},d:{g:['#e74a4d','#8f171b','#340709'],s:'#d8ad61'},
     hi:'#f2cf79',hiFill:'rgba(242,207,121,.3)',dest:'rgba(242,207,121,.4)',destS:'#f2cf79',
