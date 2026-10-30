@@ -29,6 +29,7 @@ body{background:var(--bg-img),var(--bg);background-attachment:fixed}
 .thc[data-t=neon]{background:linear-gradient(150deg,#2a0f5c,#0b0620 60%,#3a0a4a);color:#f6f0ff}
 .thc[data-t=sunset]{background:linear-gradient(150deg,#ffb36b,#ff6f61 55%,#e94a7a);color:#fff}
 .thc[data-t=poker]{background:linear-gradient(150deg,#0e5a3a,#07140f 70%);color:#f3ead2}
+.thc[data-t=classic]{background:linear-gradient(150deg,#8d3425,#21100d 70%);color:#f3e3c3}
 .thc[data-t=arcade]{background:linear-gradient(150deg,#1c6ee8,#0a1f4d 70%);color:#fff}
 /* tema çekmecesi */
 #thDrawer{position:fixed;inset:0;z-index:12;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55)}
@@ -107,6 +108,20 @@ button.primary{background:var(--pri-bg)}
 :root[data-theme=poker] button.primary,:root[data-theme=poker] .mc.on,:root[data-theme=poker] .seg button.on,:root[data-theme=poker] .tab.on{background:linear-gradient(135deg,#f3d27a,#b8862b);border-color:#f3d27a;color:#1a1405}
 :root[data-theme=poker] .go{box-shadow:0 8px 22px rgba(212,175,55,.3)!important}
 :root[data-theme=poker] .opts,:root[data-theme=poker] #chat{border-color:rgba(212,175,55,.35)}
+
+/* 5) Klasik: kızıl maun, bordo, fildişi, pirinç; ZAR AT ve OYNA koyu yeşil */
+:root[data-theme=classic]{color-scheme:dark;
+  --bg:#21100d;--surface:#3a1712;--line:#6b3a25;--fg:#f3e3c3;--muted:#c8a98a;--accent:#d8ad61;--accent-fg:#2a1206;--dis:#5a3326;--track:#2e120e;--thumb:#8a5a36;--cur:rgba(216,173,97,.14);
+  --toast-bg:rgba(33,16,13,.94);--tag-bg:rgba(33,16,13,.9);--input-bg:#1a0b09;--tgl-off:#5a3326;--banner-stroke:#3a0d10;
+  --score-bg:rgba(216,173,97,.08);--score-line:rgba(216,173,97,.55);--pri-bg:linear-gradient(135deg,#f2cf79,#a8762c);
+  --display:"Playfair Display","Bricolage Grotesque",Georgia,serif;
+  --slg-bg:linear-gradient(135deg,#751720,#3a0a0e);--slg-line:#d8ad61;--slg-fg:#f2cf79;
+  --bg-img:radial-gradient(110% 70% at 50% 0%,rgba(113,48,32,.6),transparent 65%),radial-gradient(90% 50% at 50% 100%,rgba(117,23,32,.35),transparent 60%);
+}
+:root[data-theme=classic] button.primary,:root[data-theme=classic] .mc.on,:root[data-theme=classic] .seg button.on,:root[data-theme=classic] .tab.on{background:linear-gradient(135deg,#f2cf79,#a8762c);border-color:#f2cf79;color:#2a1206}
+:root[data-theme=classic] .go{box-shadow:0 8px 22px rgba(216,173,97,.28)!important}
+:root[data-theme=classic] .opts,:root[data-theme=classic] #chat{border-color:rgba(216,173,97,.4)}
+:root[data-theme=classic] #adv .aring{filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
 
 /* 4) Street Arcade: kalın çizgi roman konturları */
 :root[data-theme=arcade]{color-scheme:dark;
@@ -187,6 +202,7 @@ button.primary{background:var(--pri-bg)}
 .rbig .rlab{fill:var(--accent-fg);font-family:var(--display);font-weight:800;text-anchor:middle;letter-spacing:.04em}
 @media (prefers-reduced-motion:no-preference){.rbig .rring{animation:rring 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes rring{0%,100%{opacity:.25;transform:scale(.98)}50%{opacity:.7;transform:scale(1.04)}}}
 :root[data-theme=neon] .rbig .rbtn{stroke:#ff9be6}:root[data-theme=arcade] .rbig .rbtn{stroke:#000;stroke-width:3}:root[data-theme=poker] .rbig .rbtn{stroke:#f3d27a}
+:root[data-theme=classic] .rbig .rbtn{fill:#14382f;stroke:#d8ad61}:root[data-theme=classic] .rbig .rlab{fill:#f6e2b0}
 
 /* tam kapı + rakip kırık: fx-closed-point.svg, sakin nabız */
 .bz{animation:bzpulse 1.6s ease-in-out infinite}
@@ -350,6 +366,11 @@ body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(8px,en
 :root[data-theme=poker]{--mc-on:linear-gradient(135deg,#2ea866,#0f6b3f);--mc-on-line:#9ee6bd;--mc-glow:rgba(46,168,102,.35);--mc-off:linear-gradient(135deg,#2a1d12,#14100b);--mc-off-line:#5a4630;
   --panel:rgba(10,30,22,.9);--panel-line:#2e5b44;--row:rgba(0,0,0,.25);--go2-bg:#0e3a28;--go2-line:#2c6b4b;--go2-ic:#e7c66b;--go2-fg:#f3ead2}
 :root[data-theme=poker] #home .go{background:linear-gradient(180deg,#f7dc8a,#d4a53a 55%,#a77a1f)!important;color:#2a1b05!important}
+:root[data-theme=classic]{--mc-on:linear-gradient(135deg,#9b2a2c,#5e1016);--mc-on-line:#e7b866;--mc-glow:rgba(216,173,97,.35);--mc-off:linear-gradient(135deg,#4a1d14,#24100c);--mc-off-line:#7a4a2c;
+  --panel:rgba(40,16,12,.92);--panel-line:#6b3a25;--row:rgba(0,0,0,.25);--go2-bg:#3a1712;--go2-line:#8a5a36;--go2-ic:#e7c070;--go2-fg:#f3e3c3}
+:root[data-theme=classic] #home .go{background:linear-gradient(180deg,#2c5648,#14382f 55%,#061f1b)!important;color:#f6e2b0!important;border:2px solid #d8ad61!important}
+/* Klasik: giriş tahtası da eğimsiz, düz karşıdan */
+:root[data-theme=classic] #heroB{width:auto;height:96%;transform:translate(-50%,-50%);filter:drop-shadow(0 10px 12px rgba(0,0,0,.55))}
 :root[data-theme=arcade]{--mc-on:#ffd400;--mc-on-fg:#111;--mc-on-line:#000;--mc-off:#1677ff;--mc-off-line:#000;
   --panel:#ffffff;--panel-line:#000;--row:#f2f6ff;--row-line:#c9d6f5;--go2-bg:#1677ff;--go2-line:#000;--go2-ic:#fff;--go2-fg:#fff}
 :root[data-theme=arcade] #home .go{background:#ff2f3f!important;color:#fff!important}
