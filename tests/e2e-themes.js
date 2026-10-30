@@ -87,8 +87,12 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
   {
     const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'classic'}});await p.goto(URL);
     await p.waitForFunction(()=>ASSET.classic&&ASSET.classic.ok,null,{timeout:5000}).catch(()=>{});await sleep(200);
-    const h=await p.evaluate(()=>({th:THEME,ad:$('#heroN b').textContent,tf:getComputedStyle($('#heroB')).transform,img:!!$('#heroB image[href="assets/classic/board-field.svg"]')}));
+    const h=await p.evaluate(()=>({th:THEME,ad:$('#heroN b').textContent,tf:getComputedStyle($('#heroB')).transform,img:!!$('#heroB image[href="assets/classic/board-field.webp"]')}));
     ok('[classic] giriş: Klasik adı, eğimsiz tahta, Klasik zemini',h.th==='classic'&&h.ad==='Klasik'&&!/matrix3d/.test(h.tf)&&h.img,JSON.stringify(h));
+    const im=await p.evaluate(async()=>{const ld=u=>new Promise(r=>{const i=new Image();i.onload=()=>r(i.naturalWidth+'×'+i.naturalHeight);i.onerror=()=>r('yok');i.src=u;});
+      return {field:await ld(bgImg('classic','board-field')),frame:await ld(bgImg('classic','board-frame')),ck:await ld('assets/classic/checker-light.webp'),btn:await ld('assets/classic/btn-roll.webp'),
+        logo:!$('#lgImg').hidden&&$('#lgImg').complete&&$('#lgImg').naturalWidth>0};});
+    ok('[classic] doku varlıkları (3× WebP) yüklendi, logo görünüyor',im.field==='1230×1200'&&im.frame==='1230×1200'&&im.ck==='192×192'&&im.btn==='642×264'&&im.logo,JSON.stringify(im));
     await p.evaluate(()=>startLocal());await sleep(500);
     const r=await p.evaluate(()=>{const s=$('#thdefs symbol#fxC'),pt=ASSET.classic.pts,bd=getComputedStyle($('#board')).transform,w=getComputedStyle($('#boardWrap')).transform;
       const L=document.querySelectorAll('#bg use[href="#ckL"]').length,D=document.querySelectorAll('#bg use[href="#ckD"]').length;
@@ -245,7 +249,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
       ok(`[${t}] maç ortasında tema: 24 nokta points.svg degradesiyle çizildi`,r.a===12&&r.b===12&&r.stopA===r.exp[0]&&r.stopB===r.exp[1],JSON.stringify(r));
       ok(`[${t}] zar paleti güncellendi`,await p.evaluate(()=>PAL.one===TK.die.one));
     }
-    ok('tema değişince tahta zemini ve çerçevesi yeni temanın dosyası',await p.evaluate(()=>{const a=THEMES[THEME].a;return $('#bgField image').getAttribute('href')===a+'board-field.svg'&&$('#bgFrame image').getAttribute('href')===a+'board-frame.svg';}));
+    ok('tema değişince tahta zemini ve çerçevesi yeni temanın dosyası',await p.evaluate(()=>$('#bgField image').getAttribute('href')===bgImg(THEME,'board-field')&&$('#bgFrame image').getAttribute('href')===bgImg(THEME,'board-frame')&&bgImg(THEME,'board-field').startsWith(THEMES[THEME].a)));
     ok('tema değişimi maç durumunu ve zar tohumunu değiştirmedi',before===await stSnap(p));
     ok('çekmece kapandı',await p.evaluate(()=>$('#thDrawer').hidden));
     // kalıcılık

@@ -1834,9 +1834,9 @@ function homeArt(){
 function heroPaint(){
   homeArt();if(THEMES[THEME].home&&THEMES[THEME].home.table)return;
   const s=$('#heroB');if(!s)return;try{PX(0);}catch(e){return;}/* tahta kodu henüz yüklenmedi */const A=THEMES[THEME].a,ok=assetOk();let h='';
-  h+=ok?`<image href="${A}board-field.svg" width="410" height="400" preserveAspectRatio="none"/>`:`<rect width="410" height="400" rx="10" fill="${TK.frame}"/><rect x="34" y="6" width="368" height="388" fill="${TK.field}"/>`;
+  h+=ok?`<image href="${bgImg(THEME,'board-field')}" width="410" height="400" preserveAspectRatio="none"/>`:`<rect width="410" height="400" rx="10" fill="${TK.frame}"/><rect x="34" y="6" width="368" height="388" fill="${TK.field}"/>`;
   for(let p=0;p<24;p++){const x=PX(p),top=PTOP(p),yb=top?8:392,yt=top?178:222;h+=tri(`${x+1},${yb} ${x+27},${yb} ${x+14},${yt}`,p%2===0);}
-  if(ok)h+=`<image href="${A}board-frame.svg" width="410" height="400" preserveAspectRatio="none"/>`;
+  if(ok)h+=`<image href="${bgImg(THEME,'board-frame')}" width="410" height="400" preserveAspectRatio="none"/>`;
   const st=newState();
   for(let p=0;p<24;p++){const v=st.b[p];if(!v)continue;const c=Math.abs(v),x=PX(p)+14,top=PTOP(p);for(let j=0;j<c;j++)h+=checker(x,top?21.5+j*25:378.5-j*25,v>0);}
   s.innerHTML=h;
@@ -1885,7 +1885,7 @@ function loadAssets(k){
     const ga=gr('pa'),gb=gr('pb');o.pts=ga&&gb?{a:sk('pt-a'),b:sk('pt-b')}:null;
     o.sym=sy('ckL',cl)+sy('ckD',cd)+sy('fxC',fx)+sy('rbB',rb)+(o.pts?ga+gb:'');
     const t=svgInner(tr,'a'+k+'trk');o.track=t?`<svg viewBox="${t.vb}" preserveAspectRatio="none" aria-hidden="true">${t.inner}</svg>`:'';
-    o.ok=true;[A+'board-field.svg',A+'board-frame.svg',A+'avatar-ring.svg'].forEach(u=>{const i=new Image();i.src=u;});
+    o.ok=true;[bgImg(k,'board-field'),bgImg(k,'board-frame'),A+'avatar-ring.svg'].forEach(u=>{const i=new Image();i.src=u;});
     if(THEME===k)assetsApply();
   }).catch(()=>{delete ASSET[k];});
   return o.p;
@@ -1901,6 +1901,8 @@ function assetsApply(){
   if(G.mode){render();drawDice(performance.now());}
 }
 const assetOk=()=>!!(ASSET[THEME]&&ASSET[THEME].ok);
+// tahta zemini/çerçevesi dosyası: tema img ile .svg yerine doku (WebP) verebilir
+const bgImg=(k,n)=>THEMES[k].a+((THEMES[k].img||{})[n]||n+'.svg');
 
 /* tema çekmecesi: ana ekranda ve oyunda aynı, alttan açılan iletişim kutusu */
 let thFocus=null;
@@ -2409,8 +2411,8 @@ function setLayer(sel,html){const e=$(sel);if(e&&e.__h!==html){e.__h=html;e.inne
 // tahta zemini ve çerçevesi: yalnızca tema ya da varlık durumu değişince yazılır. Her render'da yeni <image> oluşturmak
 // Safari'de görselin bir an boş çizilmesine, çerçeve çizgilerinin yanıp sönmesine yol açıyordu.
 function boardLayers(AS,AD){
-  const f=AS?`<image href="${AD}board-field.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
-  const r=AS?`<image href="${AD}board-frame.svg" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
+  const f=AS?`<image href="${bgImg(THEME,'board-field')}" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
+  const r=AS?`<image href="${bgImg(THEME,'board-frame')}" x="0" y="0" width="410" height="400" preserveAspectRatio="none"/>`:'';
   setLayer('#bgField',f);setLayer('#bgFrame',r);
 }
 function render(){
@@ -3158,7 +3160,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610301100';
+const APP_VER='202610301200';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
