@@ -25,6 +25,12 @@ window.TAVLA_THEMES={
     triA:'#04cdff',triSA:'#f02e4c',triB:'#ffe217',triSB:'#f02e4c',triW:.7,
     l:{g:['#ffffff','#fffaf1','#bab2aa'],s:'#04cdff'},d:{g:['#ff8aa5','#da0938','#570218'],s:'#04cdff'},
     hi:'#00f0ff',hiFill:'rgba(0,240,255,.3)',dest:'rgba(0,240,255,.42)',destS:'#00f0ff',
-    die:{face:[255,255,255],edge:'#000000',pip:'#111111',one:'#ff3b47'}}}
+    die:{face:[255,255,255],edge:'#000000',pip:'#111111',one:'#ff3b47'}}},
+  // Klasik: kızıl maun, bordo, fildişi, pirinç (assets/classic v0.9). Sinematik kart görseli henüz yok: kod önizlemesi gösterilir.
+  classic:{c:'#21100d',a:'assets/classic/',adv:['#e8d0a3','#a3242c'],tk:{frame:'#2a0f0c',field:'#6a2a1c',bar:'#4a1a12',
+    triA:'#fff0cd',triSA:'#f3cf87',triB:'#8c1d23',triSB:'#bf6c4c',triW:.7,
+    l:{g:['#fffaf0','#e5c9a0','#968166'],s:'#d8ad61'},d:{g:['#e74a4d','#8f171b','#340709'],s:'#d8ad61'},
+    hi:'#f2cf79',hiFill:'rgba(242,207,121,.3)',dest:'rgba(242,207,121,.4)',destS:'#f2cf79',
+    die:{face:[247,238,218],edge:'#a8875a',pip:'#2a120e',one:'#8f171b'}}}
 };
-window.TAVLA_THEME_NAMES={neon:'Neon Club',sunset:'Sunset Pop',poker:'Poker Lounge',arcade:'Street Arcade'};
+window.TAVLA_THEME_NAMES={neon:'Neon Club',sunset:'Sunset Pop',poker:'Poker Lounge',arcade:'Street Arcade',classic:'Klasik'};

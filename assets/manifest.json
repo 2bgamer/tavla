@@ -44,6 +44,17 @@
       "checker-light.svg",
       "fx-closed-point.svg",
       "points.svg"
+    ],
+    "classic": [
+      "adv-bar-track.svg",
+      "avatar-ring.svg",
+      "board-field.svg",
+      "board-frame.svg",
+      "btn-roll.svg",
+      "checker-dark.svg",
+      "checker-light.svg",
+      "fx-closed-point.svg",
+      "points.svg"
     ]
   },
   "runtimeDynamic": [

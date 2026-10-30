@@ -8,7 +8,7 @@ const SP=process.env.SP||__dirname+'/out',OUT=SP+'/shots-'+TAG;require('fs').mkd
 const URL='http://localhost:8765/index.html',DB=process.env.DB||'http://localhost:8790',DBNS=process.env.DBNS||'',AQ=DBNS?'?ns='+DBNS:'';
 // testin kendi doğrudan veritabanı istekleri (emülatörde yönetici yetkisiyle, kurallara takılmadan)
 const dbf=(u,o={})=>fetch(u,Object.assign({},o,{headers:Object.assign({Authorization:'Bearer owner'},o.headers||{})}));
-const THEMES=['neon','sunset','poker','arcade'];
+const THEMES=['neon','sunset','poker','arcade','classic'];
 const FBM=require('fs').readFileSync(__dirname+'/firebase-mock.js','utf8');
 const res=[];let fails=0;
 const skip=(name,why)=>res.push(`SKIP  ${name}  — ${why}`);
@@ -80,6 +80,24 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok(`[${t}] pul gradyanı tokenla güncellendi`,stop===(await p.evaluate(()=>TK.d.g[0])));
     await p.screenshot({path:`${OUT}/${t}-1-home.png`});
     ok(`[${t}] ana ekranda hata yok`,!p.errs.length,p.errs.join('|'));
+    await p.context().close();
+  }
+
+  /* 1a) Klasik: düz tahta, varlık sözleşmesi, standart dizilim */
+  {
+    const p=await mkPage(b,{ls:{tavla_snd:'off',tavla_theme:'classic'}});await p.goto(URL);
+    await p.waitForFunction(()=>ASSET.classic&&ASSET.classic.ok,null,{timeout:5000}).catch(()=>{});await sleep(200);
+    const h=await p.evaluate(()=>({th:THEME,ad:$('#heroN b').textContent,tf:getComputedStyle($('#heroB')).transform,img:!!$('#heroB image[href="assets/classic/board-field.svg"]')}));
+    ok('[classic] giriş: Klasik adı, eğimsiz tahta, Klasik zemini',h.th==='classic'&&h.ad==='Klasik'&&!/matrix3d/.test(h.tf)&&h.img,JSON.stringify(h));
+    await p.evaluate(()=>startLocal());await sleep(500);
+    const r=await p.evaluate(()=>{const s=$('#thdefs symbol#fxC'),pt=ASSET.classic.pts,bd=getComputedStyle($('#board')).transform,w=getComputedStyle($('#boardWrap')).transform;
+      const L=document.querySelectorAll('#bg use[href="#ckL"]').length,D=document.querySelectorAll('#bg use[href="#ckD"]').length;
+      return {fx:s&&s.getAttribute('preserveAspectRatio'),pts:pt&&pt.a.s+'/'+pt.b.s,ptA:!!$('#thdefs #ptA'),duz:bd==='none'&&w==='none',L,D,
+        dizi:JSON.stringify(newState().b)===JSON.stringify(G.st.b)};});
+    ok('[classic] fx-closed-point 26×170 kutuya geriliyor',r.fx==='none',r.fx);
+    ok('[classic] points.svg #pa/#pb/#pt-a/#pt-b okundu',r.ptA&&r.pts==='#f3cf87/#bf6c4c',r.pts);
+    ok('[classic] oyun tahtası düz (transform yok), 15+15 pul motorun dizilimiyle',r.duz&&r.L===15&&r.D===15&&r.dizi,JSON.stringify(r));
+    ok('[classic] sayfa hatası yok',!p.errs.length,p.errs.join('|'));
     await p.context().close();
   }
 
@@ -232,7 +250,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     ok('çekmece kapandı',await p.evaluate(()=>$('#thDrawer').hidden));
     // kalıcılık
     await p.reload();await sleep(500);
-    ok('yenileme sonrası tema korundu (arcade)',await p.evaluate(()=>document.documentElement.dataset.theme==='arcade'&&lsGet('tavla_theme')==='arcade'));
+    ok('yenileme sonrası tema korundu (classic)',await p.evaluate(()=>document.documentElement.dataset.theme==='classic'&&lsGet('tavla_theme')==='classic'));
     await hook(p);
     // normal tur + AI turu (bilgisayarın olayları slogan üretmez)
     await p.evaluate(()=>{startLocal();});await sleep(300);
@@ -524,7 +542,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     // ekran görüntüleri: kurucunun ekranı (rakip katıldı, odadan at), dört tema; kurucu belirleyici olduğu için tema iki tarafta değişir
     for(const t of THEMES){await A.evaluate(t=>applyTheme(t,true),t);await B.waitForFunction(t=>THEME===t,t,{timeout:5000}).catch(()=>{});await sleep(350);
       await A.screenshot({path:`${OUT}/odadan-at-${t}.png`});}
-    ok('oda teması: kurucunun seçimi rakibe de geçti',await B.evaluate(()=>THEME==='arcade'));
+    ok('oda teması: kurucunun seçimi rakibe de geçti',await B.evaluate(()=>THEME==='classic'));
     await A.evaluate(()=>applyTheme('neon',true));
     await press(A,'#bKick');await sleep(200);await press(A,'#ovOk');
     await B.waitForFunction(()=>!G.mode,null,{timeout:8000}).catch(()=>{});
@@ -684,7 +702,7 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.click('#heroNext');await sleep(200);
     ok('giriş tahtası: sonraki ok temayı değiştirip kaydetti',await p.evaluate(()=>THEME==='sunset'&&lsGet('tavla_theme')==='sunset'&&$('#heroN b').textContent==='Sunset Pop'));
     await p.click('#heroPrev');await p.click('#heroPrev');await sleep(200);
-    ok('giriş tahtası: önceki ok başa sarıyor',await p.evaluate(()=>THEME==='arcade'));
+    ok('giriş tahtası: önceki ok başa sarıyor',await p.evaluate(()=>THEME==='classic'));
     const r=await p.evaluate(()=>{const x=$('#hero').getBoundingClientRect();return {x:x.left+x.width/2,y:x.top+x.height/2};});
     await p.evaluate(({x,y})=>{const h=$('#hero'),ev=(t,cx)=>h.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:cx,clientY:y,pointerId:1}));ev('pointerdown',x+80);ev('pointerup',x-80);},r);await sleep(200);
     ok('giriş tahtası: sola kaydırınca sonraki tema',await p.evaluate(()=>THEME==='neon'));
@@ -715,10 +733,13 @@ const board=(m)=>{const b=Array(24).fill(0);for(const [i,v] of Object.entries(m)
     await p.waitForFunction(()=>[...document.querySelectorAll('#thBody .thimg')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:8000}).catch(()=>{});
     const r=await p.evaluate(()=>[...document.querySelectorAll('#thBody .thc')].map(c=>{const i=c.querySelector('.thimg'),cs=i&&getComputedStyle(i),pv=c.querySelector('.thpv').getBoundingClientRect();
       return {t:c.dataset.t,w:i&&i.naturalWidth,h:i&&i.naturalHeight,fit:cs&&cs.objectFit,pos:cs&&cs.objectPosition,lazy:i&&i.loading,kare:Math.abs(pv.width-pv.height)<1.5,ad:c.querySelector('b').textContent};}));
-    ok('tema kartı: dört temada sinematik görsel yüklendi (384×1024)',r.length===4&&r.every(x=>x.w===384&&x.h===1024),JSON.stringify(r.map(x=>x.t+':'+x.w+'×'+x.h)));
-    ok('tema kartı: yalnızca yazısız orta bant (kare pencere, cover, %65)',r.every(x=>x.fit==='cover'&&x.pos==='50% 65%'&&x.kare),JSON.stringify(r[0]));
-    ok('tema kartı: ad ve açıklama HTML\'den (görselde yazı yok)',r.map(x=>x.ad).join()==='Neon Club,Sunset Pop,Poker Lounge,Street Arcade');
-    ok('tema kartı: görseller tembel yükleniyor (lazy)',r.every(x=>x.lazy==='lazy'));
+    // Klasik'in sinematik kart görseli henüz yok: kod çizimi önizleme gösterilir
+    const rc=r.filter(x=>x.t!=='classic'),rk=r.find(x=>x.t==='classic');
+    ok('tema kartı: dört temada sinematik görsel yüklendi (384×1024)',r.length===5&&rc.length===4&&rc.every(x=>x.w===384&&x.h===1024),JSON.stringify(r.map(x=>x.t+':'+x.w+'×'+x.h)));
+    ok('tema kartı: Klasik görselsiz, kod önizlemesiyle',!!rk&&!rk.w,JSON.stringify(rk));
+    ok('tema kartı: yalnızca yazısız orta bant (kare pencere, cover, %65)',rc.every(x=>x.fit==='cover'&&x.pos==='50% 65%'&&x.kare),JSON.stringify(r[0]));
+    ok('tema kartı: ad ve açıklama HTML\'den (görselde yazı yok)',r.map(x=>x.ad).join()==='Neon Club,Sunset Pop,Poker Lounge,Street Arcade,Klasik');
+    ok('tema kartı: görseller tembel yükleniyor (lazy)',rc.every(x=>x.lazy==='lazy'));
     const sel=await p.evaluate(()=>{const c=$('#thBody .thc[aria-pressed=true]'),a=getComputedStyle(c,'::after');return a.content.includes('✓')&&+a.zIndex>=2;});
     ok('tema kartı: seçili işaret görselin üstünde',sel);
     await p.click('#thBody .thc[data-t=poker]');await sleep(200);
