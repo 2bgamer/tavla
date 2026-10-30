@@ -1,4 +1,4 @@
-# Tavla Masası: görsel ve ses varlık listesi
+# Tavla Sultanı: görsel ve ses varlık listesi
 
 Onaylı tasarım konseptine göre hazırlanmıştır (dört tema, üstünlük barı, avatarlar, hamle sonrası efektler). Varlıkları ChatGPT üretecek; oyun koduna entegrasyon Claude Code tarafından yapılacak. Bu listede yeni tasarım yoktur; yalnızca konseptteki öğelerin hangi dosyalar olarak, hangi ölçü ve kurallarla teslim edileceği yazılıdır.
 
@@ -136,7 +136,7 @@ Yeni görseller koda dokunmadan takılır: `theme/themes.js` içinde ilgili tema
 
 | # | Dosya | Biçim, ölçü | Yuva | Not |
 |---|---|---|---|---|
-| H1 | `assets/common/logo.webp` (ya da tema başına `assets/<tema>/logo.webp`) | şeffaf, 1080 × 420 | `home.logo` | Taç ve zar detaylı "Tavla Masası" logosu. Görseldeki yazı yalnızca bu logo için kabul edilir; ekran okuyucu metni kodda kalır. Şu an yedek: CSS ile biçimlenmiş metin. |
+| H1 | `assets/common/logo.webp` (ya da tema başına `assets/<tema>/logo.webp`) | şeffaf, 1080 × 420 | `home.logo` | Taç ve zar detaylı "Tavla Sultanı" logosu. Görseldeki yazı yalnızca bu logo için kabul edilir; ekran okuyucu metni kodda kalır. Şu an yedek: CSS ile biçimlenmiş metin. |
 | H2 | `assets/<tema>/home-bg.webp` | 1290 × 2796, şeffaf olmayan | `home.bg` | Tema sahnesi: neon şehir, gün batımı plajı, lounge, arcade salonu. Ortası sakin olmalı; paneller üstüne gelecek. |
 | H3 | `assets/<tema>/home-table.webp` | şeffaf, 1170 × 560 | `home.table` | Üç boyutlu dekoratif tavla masası; çay bardağı gibi aksesuarlar dahil. Şu an yedek: paket SVG'leriyle perspektifli tahta. |
 | H4 | `assets/common/icons.svg` | sembol seti, `viewBox 0 0 24 24` | — | Zil, ayarlar, bilgisayar, iki kişi, ok, seviye, set, saat, oynat, yenile, palet. Şu an basit yedek simgeler var. |
