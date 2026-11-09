@@ -250,6 +250,15 @@ input{font:inherit;font-size:18px;letter-spacing:.2em;color:var(--fg);background
 #overlay .sc{font-variant-numeric:tabular-nums;color:var(--muted)}
 #overlay button{margin-top:12px;width:100%}
 
+/* okul tatili alevli zar: iç g'ler parent'ın yerel (0,0) noktasından (alevin dibinden) büyür */
+#dl .fire g{transform-origin:0 0}
+#dl .fl1{animation:fl1 .9s ease-in-out infinite}#dl .fl2{animation:fl2 .9s ease-in-out infinite}#dl .fl3{animation:fl3 .9s ease-in-out infinite}
+#dl .spk{animation:spk 1.2s linear infinite}
+@keyframes fl1{0%,100%{transform:scale(1,1)skewX(0)}30%{transform:scale(.94,1.14)skewX(-4deg)}65%{transform:scale(1.05,.93)skewX(3deg)}}
+@keyframes fl2{0%,100%{transform:scale(1,.95)}40%{transform:scale(1.08,1.18)}75%{transform:scale(.95,.88)}}
+@keyframes fl3{0%,100%{transform:scale(1,1.05)skewX(2deg)}50%{transform:scale(1.04,.9)skewX(-3deg)}}
+@keyframes spk{0%{transform:translate(0,0);opacity:0}15%{opacity:1}100%{transform:translate(.4px,-3.2px);opacity:0}}
+@media (prefers-reduced-motion:reduce){#dl .fire g,#dl .spk{animation:none}}
 </style>
 <link rel="stylesheet" href="theme/themes.css">
 
@@ -1798,6 +1807,32 @@ function faceMap(Rf,v,rnd){
 
 const PAL={face:[252,252,250],edge:'#b4b3ad',pip:'#10142b',one:'#e8453c'};
 const HOLD=350,GLIDE=300,CX=218,CY=200,CSC=.55;
+/* ---------- okul tatili: alevli zar ----------
+   MEB çalışma takvimine göre okullar kapandığı ilk gün (cumartesi) ile yeniden açıldığı günden önceki pazar arası, zarlar alev alır.
+   Tarihler Türkiye saatine (UTC+3) göre, iki uç dahil. 2026-2027 takvimi: 1. ara tatil 16-20 Kasım, yarıyıl 25 Ocak-5 Şubat,
+   2. ara tatil 8-12 Mart, ders yılı sonu 25 Haziran 2027. 2027-2028 açılışı henüz açıklanmadı: 13 Eylül 2027 tahmini, takvim çıkınca güncellenmeli.
+   Deneme: ?alev=1 (hep açık), ?alev=0 (hep kapalı), ?tarih=2027-01-30 (o güne göre). */
+const OKUL_TATIL=[['2026-06-27','2026-09-13'],['2026-11-14','2026-11-22'],['2027-01-23','2027-02-07'],['2027-03-06','2027-03-14'],['2027-06-26','2027-09-12']];
+const FIRE=(()=>{try{
+  const q=location.search,a=/[?&]alev=([01])(?:&|$)/.exec(q);if(a)return a[1]==='1';
+  const t=/[?&]tarih=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(q),d=t?t[1]:new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
+  return OKUL_TATIL.some(([s,e])=>d>=s&&d<=e);}catch(e){return false;}})();
+// tema başına alev renkleri: [dış, orta, çekirdek, kıvılcım]
+const FIRE_PAL={neon:['#ff2fb4','#c056ff','#9ff6ff','#ff84f3'],sunset:['#ff4d2e','#ff9b2f','#ffe27a','#ffcf3a'],poker:['#c2410c','#f59e0b','#fff1b8','#ffd86b'],
+  arcade:['#ff3b47','#ffe217','#ffffff','#00f0ff'],classic:['#8f171b','#e2701e','#f6d58a','#f2cf79']};
+const FLAME='M0 0C-.62 0-.6-.5-.28-.82-.12-.98-.08-1.18 0-1.4.1-1.12.42-.9.55-.55.68-.2.5 0 0 0Z';
+function fireSVG(x,y,h,now,i){
+  const P=FIRE_PAL[THEME]||FIRE_PAL.poker,dl=k=>`style="animation-delay:-${(((now||0)+i*137+k*211)%900/1000).toFixed(3)}s"`;
+  let s=`<g class="fire" transform="translate(${x.toFixed(1)} ${(y+h*.8).toFixed(1)}) scale(${h.toFixed(2)})">`;
+  s+=`<circle cy="-.9" r="2.4" fill="url(#fglw)" opacity=".8"/>`;
+  s+=`<g class="fl1" ${dl(0)}><path d="${FLAME}" transform="scale(2.3 3.1)" fill="${P[0]}" opacity=".9"/></g>`;
+  s+=`<g class="fl2" ${dl(1)}><path d="${FLAME}" transform="translate(-.85 .05) rotate(-20) scale(1.2 1.9)" fill="${P[0]}" opacity=".85"/><path d="${FLAME}" transform="translate(.85 .05) rotate(18) scale(1.2 1.75)" fill="${P[0]}" opacity=".85"/></g>`;
+  s+=`<g class="fl3" ${dl(2)}><path d="${FLAME}" transform="scale(1.65 2.45)" fill="${P[1]}"/></g>`;
+  s+=`<g class="fl1" ${dl(3)}><path d="${FLAME}" transform="scale(.95 1.85)" fill="${P[2]}"/></g>`;
+  for(let k=0;k<3;k++)s+=`<circle class="spk" cx="${(k-1)*.55}" cy="-1.4" r=".1" fill="${P[3]}" style="animation-delay:-${(((now||0)+i*300+k*390)%1200/1000).toFixed(3)}s"/>`;
+  return s+'</g>';
+}
+function fireDefs(){const P=FIRE_PAL[THEME]||FIRE_PAL.poker;return `<defs><radialGradient id="fglw"><stop offset="0" stop-color="${P[1]}" stop-opacity=".75"/><stop offset=".55" stop-color="${P[0]}" stop-opacity=".3"/><stop offset="1" stop-color="${P[0]}" stop-opacity="0"/></radialGradient></defs>`;}
 /* ---------- masa temaları ----------
    tk: SVG çizim tokenları (tahta, üçgen, pul, zar); render(), checker(), drawDice() bunları doğrudan özniteliklere yazar.
    Arayüz renkleri (düğme, skor, sohbet) CSS'te html[data-theme] altında. */
@@ -2128,9 +2163,11 @@ function drawDice(now){
     let R=mm(T.fr[Math.min(idx,T.fr.length-1)],T.Q);
     if(gl>0)R=mm(axisRot([0,0,1],T.yawFix*gl),R);
     const base=.42+(CSC-.42)*gl;
-    h+=`<g opacity="${((used?.3:1)*Math.min(1,t/110)).toFixed(2)}">${cubeSVG(x,y,z*(1-gl),R,22*base,PAL)}</g>`;
+    const op=((used?.3:1)*Math.min(1,t/110)).toFixed(2),hs=22*base*(1+z*(1-gl)/260);
+    h+=`<g opacity="${op}">${FIRE&&!used?fireSVG(x,y,hs,now,i):''}${cubeSVG(x,y,z*(1-gl),R,22*base,PAL)}</g>`;
   });
   if(dbl&&G.dice.length>0&&t>=S.dur*1000+HOLD+GLIDE)h+=`<rect class="chipb" x="${CX-20}" y="${CY+20}" width="40" height="19" rx="9.5"/><text class="chipt" x="${CX}" y="${CY+34}" font-size="12">×${G.dice.length}</text>`;
+  if(FIRE&&h)h=fireDefs()+h;
   g.innerHTML=h;
 }
 const DBLS=()=>tl('dbl');
@@ -3160,7 +3197,7 @@ if(window.claude&&window.claude.use){
 }else{
   DB=makeRTDB(window.__DBURL||'https://e-tavla-default-rtdb.europe-west1.firebasedatabase.app');refreshHome();
 }
-const APP_VER='202610301200';
+const APP_VER='202611091200';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!window.__hadSW)return;reloaded=true;if(!(G&&G.mode==='online'&&G.started&&!G.over))location.reload();else window.__upd=true;});
